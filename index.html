@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حكاوي — الشيخ سالم</title>
+    <meta name="description" content="حكاوي — أول منصة ذكاء اصطناعي لإحياء التراث المصري. تكلم مع شخصيات تراثية حية من كل محافظة.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-shell">
+        <!-- ─── Global App Navigation ─── -->
+        <nav class="global-nav">
+            <div class="nav-logo">🏛️</div>
+            <div class="nav-items">
+                <button class="nav-item active" onclick="switchView('view-map')" title="خريطة التراث">
+                    <span class="nav-icon">🗺️</span>
+                    <span class="nav-label">الخريطة</span>
+                </button>
+                <button class="nav-item" onclick="switchView('view-family')" title="إحياء الجذور">
+                    <span class="nav-icon">🧬</span>
+                    <span class="nav-label">شخصياتي</span>
+                </button>
+                <button class="nav-item" onclick="switchView('view-kids')" title="حكايات أطفال">
+                    <span class="nav-icon">🧒</span>
+                    <span class="nav-label">للأطفال</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- ─── Views Container ─── -->
+        <div class="views-container">
+            
+            <!-- 1️⃣ MAP VIEW (الخريطة + الشات) -->
+            <section id="view-map" class="app-view active">
+                
+                <!-- أ. شاشة الخريطة (SVG Map) -->
+                <div id="mapScreen" class="map-screen active">
+                    <div class="map-header">
+                        <h2>خريطة الأصوات التراثية</h2>
+                        <p>اضغط على أي نقطة مضيئة لتبدأ المحادثة</p>
+                    </div>
+                    <div class="map-container">
+                        <!-- خريطة مصر مبسطة كـ SVG -->
+                        <svg viewBox="0 0 400 400" class="egypt-map">
+                            <!-- حدود مصر المبسطة -->
+                            <path class="map-outline" d="M 50,50 L 350,50 L 350,350 L 50,350 Z" />
+                            <!-- نهر النيل -->
+                            <path class="map-nile" d="M 200,350 Q 220,250 180,150 T 150,50" />
+                            <!-- سيناء -->
+                            <path class="map-sinai" d="M 250,50 L 350,50 L 300,150 Z" />
+
+                            <!-- نقطة الشيخ سالم (سيناء) -->
+                            <g class="map-pin-group" onclick="openChat('sheikh-salem')" transform="translate(300, 100)">
+                                <circle class="pin-glow" cx="0" cy="0" r="20"/>
+                                <circle class="pin-core" cx="0" cy="0" r="6"/>
+                                <text x="0" y="35" class="pin-label">الشيخ سالم</text>
+                            </g>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- ب. شاشة المحادثة (تظهر عند الضغط على نقطة في الخريطة) -->
+                <div id="chatScreen" class="chat-screen hidden">
+                    <div class="app">
+        <!-- ─── Header ─── -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <button class="back-btn" onclick="closeChat()" title="العودة للخريطة">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    </button>
+                    <div class="logo-mark">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 2L2 7V17L12 22L22 17V7L12 2Z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                            <circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.6"/>
+                        </svg>
+                    </div>
+                    <div class="logo-text">
+                        <h1>حكاوي</h1>
+                        <span class="logo-tagline">خريطة الأصوات</span>
+                    </div>
+                </div>
+                <div class="header-end">
+                    <button class="mute-btn" id="muteBtn" onclick="toggleMute()" title="كتم الصوت">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                        </svg>
+                    </button>
+                    <span class="version-badge">نسخة تجريبية</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- ─── Main Content ─── -->
+        <main class="main-content">
+            <!-- ─── Sidebar ─── -->
+            <aside class="sidebar" id="sidebar">
+                <div class="character-card">
+                    <!-- Avatar -->
+                    <div class="avatar-section">
+                        <div class="avatar-container">
+                            <img src="assets/sheikh_salem.png" alt="الشيخ سالم" class="avatar-image">
+                            <div class="avatar-status">
+                                <span class="status-dot-pulse"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Info -->
+                    <div class="character-info">
+                        <h2 class="character-name">الشيخ سالم</h2>
+                        <div class="character-location">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            <span>سيناء، مصر</span>
+                        </div>
+                        <p class="character-title">شيخ قبيلة بدوية حكيم</p>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <!-- Bio -->
+                    <p class="character-bio">
+                        حارس تراث سيناء وحكيم الصحراء. يعرف أسرار النجوم وطرق القوافل القديمة.
+                        يقرأ رموز الكليم البدوي ويحوّل نسيج السجاد إلى حكايات من عمق التاريخ.
+                    </p>
+
+                    <div class="divider"></div>
+
+                    <!-- Abilities -->
+                    <div class="abilities-section">
+                        <h3 class="section-title">القدرات</h3>
+                        <div class="abilities-list">
+                            <div class="ability-item">
+                                <span class="ability-icon">🏜️</span>
+                                <div class="ability-content">
+                                    <span class="ability-name">حكايات الصحراء</span>
+                                    <span class="ability-desc">قصص القبائل والقوافل</span>
+                                </div>
+                            </div>
+                            <div class="ability-item">
+                                <span class="ability-icon">⭐</span>
+                                <div class="ability-content">
+                                    <span class="ability-name">قراءة النجوم</span>
+                                    <span class="ability-desc">ملاحة وأساطير سماوية</span>
+                                </div>
+                            </div>
+                            <div class="ability-item">
+                                <span class="ability-icon">🧵</span>
+                                <div class="ability-content">
+                                    <span class="ability-name">فك رموز الكليم</span>
+                                    <span class="ability-desc">قراءة النسيج البدوي</span>
+                                </div>
+                            </div>
+                            <div class="ability-item">
+                                <span class="ability-icon">☕</span>
+                                <div class="ability-content">
+                                    <span class="ability-name">فنون الضيافة</span>
+                                    <span class="ability-desc">طقوس القهوة والشاي</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <!-- Powered by -->
+                    <div class="powered-by">
+                        <span class="ai-badge">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+                            يعمل بالذكاء الاصطناعي
+                        </span>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- ─── Chat Section ─── -->
+            <section class="chat-section">
+                <!-- Chat Header (Mobile) -->
+                <div class="chat-header">
+                    <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg>
+                    </button>
+                    <div class="chat-header-info">
+                        <img src="assets/sheikh_salem.png" alt="" class="chat-header-avatar">
+                        <div>
+                            <span class="chat-header-name">الشيخ سالم</span>
+                            <span class="chat-header-status">
+                                <span class="status-dot-sm"></span>
+                                متصل الآن
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Messages Area -->
+                <div class="messages-area" id="messagesArea">
+                    <div class="messages-scroll" id="messagesScroll">
+                        <!-- Messages injected by JS -->
+                    </div>
+
+                    <!-- Typing Indicator -->
+                    <div class="typing-indicator" id="typingIndicator">
+                        <div class="typing-bubble">
+                            <span class="typing-label">الشيخ سالم</span>
+                            <div class="typing-dots">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="quick-actions" id="quickActions">
+                    <button class="quick-btn" onclick="quickSend('احكيلي عن الصحراء')">
+                        <span>🏜️</span> عن الصحراء
+                    </button>
+                    <button class="quick-btn" onclick="quickSend('عايز حكمة من حكم الأجداد')">
+                        <span>📜</span> حكمة
+                    </button>
+                    <button class="quick-btn" onclick="quickSend('احكيلي عن النجوم والسما')">
+                        <span>⭐</span> حكايات النجوم
+                    </button>
+                    <button class="quick-btn" onclick="quickSend('فسرلي رموز الكليم البدوي')">
+                        <span>🧵</span> رموز الكليم
+                    </button>
+                    <button class="quick-btn" onclick="quickSend('قولي عن فنون الضيافة والقهوة')">
+                        <span>☕</span> الضيافة
+                    </button>
+                </div>
+
+                <!-- Input Area -->
+                <div class="input-area">
+                    <div class="input-wrapper">
+                        <input
+                            type="text"
+                            id="messageInput"
+                            placeholder="اكتب رسالتك للشيخ سالم..."
+                            autocomplete="off"
+                        >
+                        <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="input-disclaimer">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                        حكاوي تعمل بالذكاء الاصطناعي — الردود مبنية على تراث مسجل وقد لا تكون دقيقة 100%
+                    </p>
+                </div>
+            </section>
+        </main>
+
+        <!-- Sidebar Overlay (Mobile) -->
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    </div>
+                </div>
+            </section>
+
+            <!-- 2️⃣ FAMILY VIEW (مكان عمل المطور الثاني) -->
+            <section id="view-family" class="app-view hidden">
+                <div class="placeholder-page">
+                    <h1>🧬 إحياء الجذور (شخصياتي)</h1>
+                    <p>هذه الصفحة مخصصة لإضافة شخصيات الأجداد. (يمكن للفريق كتابة الكود الخاص بهم هنا)</p>
+                </div>
+            </section>
+
+            <!-- 3️⃣ KIDS VIEW (مكان عمل المطور الثالث) -->
+            <section id="view-kids" class="app-view hidden">
+                <div class="placeholder-page">
+                    <h1>🧒 حكايات أطفال</h1>
+                    <p>هذه الصفحة مخصصة لتوليد حكايات الأطفال بصوت الشخصيات. (يمكن للفريق كتابة الكود الخاص بهم هنا)</p>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
