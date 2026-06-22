@@ -130,6 +130,12 @@ body::before {
     font-size: 1.8rem;
     margin-bottom: 2rem;
     color: var(--accent);
+    cursor: pointer;
+    transition: transform var(--transition-fast);
+}
+
+.nav-logo:hover {
+    transform: scale(1.1);
 }
 
 .nav-items {

@@ -14,7 +14,7 @@
     <div class="app-shell">
         <!-- ─── Global App Navigation ─── -->
         <nav class="global-nav">
-            <div class="nav-logo">🏛️</div>
+            <div class="nav-logo" id="navLogo" onclick="switchView('view-home')" title="الرئيسية">🏛️</div>
             <div class="nav-items">
                 <button class="nav-item active" onclick="switchView('view-map')" title="خريطة التراث">
                     <span class="nav-icon">🗺️</span>
@@ -34,8 +34,20 @@
         <!-- ─── Views Container ─── -->
         <div class="views-container">
             
+            <!-- 0️⃣ HOME VIEW (الصفحة الرئيسية / الشرح) -->
+            <section id="view-home" class="app-view active">
+                <div class="placeholder-page">
+                    <h1>🏛️ مشروع حكاوي</h1>
+                    <p style="max-width: 600px; line-height: 1.8;">
+                        أول نظام بيئي متكامل بالذكاء الاصطناعي لحفظ وإحياء التراث اللامادي.
+                        <br>
+                        (يمكنك كتابة تفاصيل الـ Pitch الخاص بالمشروع هنا لتوضيح الرؤية للحكام).
+                    </p>
+                </div>
+            </section>
+
             <!-- 1️⃣ MAP VIEW (الخريطة + الشات) -->
-            <section id="view-map" class="app-view active">
+            <section id="view-map" class="app-view hidden">
                 
                 <!-- أ. شاشة الخريطة (SVG Map) -->
                 <div id="mapScreen" class="map-screen active">
