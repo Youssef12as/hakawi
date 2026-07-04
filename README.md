@@ -21,7 +21,7 @@ AI platform preserving Egyptian oral heritage through interactive cultural chara
 | Backend | FastAPI (Python) |
 | AI | Gemini 2.5 Flash |
 | Speech-to-Text | Speechmatics API |
-| Text-to-Speech | Gradio TTS (Voice Cloning) |
+| Text-to-Speech | Lahgtna: Omnivoice based fine tune (Voice cloning) |
 
 ---
 
