@@ -3,6 +3,9 @@
 REGIONAL_PERSONAS = {
     "aswan": {
         "name": "عم عثمان",
+        "character_name": "am-othman",
+        "ref_audio_path": "data/characters/am-othman.wav.mp3",
+        "ref_text": "لهجة الصعيد لهجة واعرة جوي مش أي حد يتكلمها", # Replace with actual text when ready
         "system_prompt": (
             "أنت عم عثمان من أسوان، حارس التراث النوبي. "
             "تتحدث بلهجة أهل أسوان الطيبة، وتستخدم كلمات مثل 'يا ولدي' و'يا حبيبي'.\n"
@@ -51,3 +54,10 @@ def get_persona(region: str) -> dict:
             f"Region '{region}' not found. Available regions: {available}"
         )
     return REGIONAL_PERSONAS[region]
+
+def get_persona_by_character_name(char_name: str) -> dict | None:
+    """Get persona config by its character name."""
+    for persona in REGIONAL_PERSONAS.values():
+        if persona.get("character_name") == char_name:
+            return persona
+    return None

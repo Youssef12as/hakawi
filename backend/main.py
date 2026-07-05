@@ -278,6 +278,37 @@ async def add_character(
             raise HTTPException(status_code=400, detail="Audio file is empty")
 
         filename = audio_file.filename or "reference.wav"
+        
+        # --- Save character permanently for lazy loading ---
+        import os
+        import json
+        char_dir = os.path.join("data", "characters")
+        os.makedirs(char_dir, exist_ok=True)
+        
+        safe_char_name = char_name.strip().replace(" ", "_")
+        local_audio_path = os.path.join(char_dir, f"{safe_char_name}.webm")
+        
+        with open(local_audio_path, "wb") as f:
+            f.write(audio_bytes)
+            
+        registry_path = os.path.join(char_dir, "registry.json")
+        registry = {}
+        if os.path.exists(registry_path):
+            with open(registry_path, "r", encoding="utf-8") as f:
+                try:
+                    registry = json.load(f)
+                except json.JSONDecodeError:
+                    pass
+                    
+        registry[char_name.strip()] = {
+            "ref_text": ref_text.strip(),
+            "ref_audio_path": local_audio_path
+        }
+        
+        with open(registry_path, "w", encoding="utf-8") as f:
+            json.dump(registry, f, ensure_ascii=False, indent=2)
+        # ---------------------------------------------------
+
         message, error = save_character(
             char_name=char_name.strip(),
             audio_bytes=audio_bytes,
