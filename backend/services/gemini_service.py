@@ -49,19 +49,24 @@ def generate_response(
                 contents=contents,
                 config=types.GenerateContentConfig(
                     system_instruction=system_prompt,
-                    temperature=0.4,
-                    max_output_tokens=1024,
+                    temperature=0.8,
+                    max_output_tokens=500,
                 ),
             )
             return response.text
 
         except Exception as e:
             last_error = e
-            logger.warning(
-                f"Gemini API error (attempt {attempt}/{MAX_RETRIES}): {e}"
-            )
+            error_str = str(e)
+            logger.warning(f"Gemini API error (attempt {attempt}/{MAX_RETRIES}): {error_str}")
+            
+            # If it's a rate limit, don't just quickly retry, it needs more time
+            if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                logger.error("Rate limit hit, stopping retries.")
+                raise ValueError("لقد تجاوزت الحد المسموح به من الرسائل. يرجى الانتظار دقيقة والمحاولة مرة أخرى.")
+                
             if attempt < MAX_RETRIES:
-                time.sleep(RETRY_DELAY * attempt)  # exponential-ish backoff
+                time.sleep(RETRY_DELAY * attempt)
 
     logger.error(f"Gemini API failed after {MAX_RETRIES} attempts: {last_error}")
     raise RuntimeError(f"Failed to generate response from Gemini: {last_error}")

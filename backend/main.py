@@ -4,7 +4,7 @@ from uuid import uuid4
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
+
 from pydantic import BaseModel
 
 from personas import get_persona
@@ -36,8 +36,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve frontend static files
-app.mount("/static", StaticFiles(directory="../frontend"), name="static")
+
 
 # ─── In-Memory Conversation Store ─────────────────────────────────────────────
 
@@ -72,10 +71,7 @@ class TTSRequest(BaseModel):
 # ─── Endpoints ─────────────────────────────────────────────────────────────────
 
 
-@app.get("/", include_in_schema=False)
-async def serve_frontend():
-    """Serve the frontend chatbot page."""
-    return FileResponse("../frontend/index.html")
+
 
 
 @app.get("/health")
@@ -313,4 +309,4 @@ async def list_characters():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

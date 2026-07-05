@@ -1,110 +1,17 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="حكاوي — شات بوت تفاعلي لحفظ التراث الشفوي المصري">
-    <title>حكاوي — Hikawi</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-
-    <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="حكاوي — منصة تفاعلية لحفظ التراث الشفوي المصري باستخدام الذكاء الاصطناعي" />
+  <title>حكاوي — Hikawi | صوت الماضي، حيّ في الحاضر</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="app-container">
-        <!-- Header -->
-        <header id="chat-header">
-            <div class="header-glow"></div>
-            <div class="header-content">
-                <h1 id="app-title">حكاوي</h1>
-                <p class="header-subtitle">Hikawi</p>
-                <div class="persona-badge">
-                    <span class="persona-icon">🏛️</span>
-                    <span class="persona-name">عم محمد — أسوان</span>
-                </div>
-            </div>
-        </header>
-
-        <!-- Voice Setup Toggle Bar -->
-        <div id="voice-bar">
-            <span id="voice-bar-text">⚠️ لم يتم إضافة صوت — اضغط هنا لإضافة شخصية</span>
-            <span id="voice-bar-arrow">▼</span>
-        </div>
-
-        <!-- Sliding Character Panel -->
-        <div id="character-panel" class="collapsed">
-            <!-- Character Selector -->
-            <div id="char-selector-section" class="hidden">
-                <label for="char-selector">🎭 اختر الشخصية النشطة:</label>
-                <select id="char-selector">
-                    <option value="" disabled selected>— اختر شخصية —</option>
-                </select>
-            </div>
-
-            <hr class="panel-divider">
-
-            <!-- Add New Character Form -->
-            <details id="add-char-details">
-                <summary>➕ إضافة شخصية جديدة</summary>
-                <form id="character-form">
-                    <div class="form-group">
-                        <label for="char-name">اسم الشخصية</label>
-                        <input type="text" id="char-name" placeholder="مثال: الحاج علي" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="ref-text">النص المرجعي (المنطوق في الملف الصوتي)</label>
-                        <textarea id="ref-text" rows="2" placeholder="اكتب النص الذي تم نطقه في الملف الصوتي..." required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="char-audio">المقطع الصوتي المرجعي</label>
-                        <input type="file" id="char-audio" accept="audio/*" required>
-                    </div>
-                    <div id="char-status" class="form-status hidden"></div>
-                    <button type="submit" id="save-char-btn" class="form-submit">
-                        💾 حفظ الشخصية
-                    </button>
-                </form>
-            </details>
-        </div>
-
-        <!-- Chat Messages Area -->
-        <main id="chat-messages">
-            <div class="message ai-message" id="welcome-message">
-                <div class="message-bubble">
-                    <p class="message-text">أهلاً يا ولدي! أنا عم محمد من أسوان. تعال احكيلك عن بلدنا الجميلة وتراثها النوبي العريق. اسألني عن أي حاجة تحب تعرفها! 🌅</p>
-                </div>
-            </div>
-        </main>
-
-        <!-- Recording Indicator -->
-        <div id="recording-indicator" class="hidden">
-            <div class="recording-dot"></div>
-            <span>جاري التسجيل...</span>
-        </div>
-
-        <!-- Chat Input Area -->
-        <div id="chat-input-area">
-            <button id="mic-btn" title="تسجيل صوتي" aria-label="تسجيل صوتي">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                    <line x1="12" y1="19" x2="12" y2="23"/>
-                    <line x1="8" y1="23" x2="16" y2="23"/>
-                </svg>
-            </button>
-            <input type="text" id="text-input" placeholder="اكتب رسالتك هنا..." autocomplete="off" autofocus>
-            <button id="send-btn" title="إرسال" aria-label="إرسال">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13"/>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                </svg>
-            </button>
-        </div>
-    </div>
-
-    <script src="/static/app.js"></script>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>
