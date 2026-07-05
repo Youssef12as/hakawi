@@ -7,7 +7,7 @@ We are implementing a separated UI/UX flow to optimize latency during the live d
 1. **User Input:** The user clicks a region on the frontend map (e.g., Aswan) and either sends a text message or records an audio message.
 2. **Text Flow:** `Text -> Gemini 2.5 Flash -> Text Response`
 3. **Audio Flow:** `Audio -> Speechmatics API (STT) -> Text -> Gemini 2.5 Flash -> Text Response`
-4. **Playback (TTS On-Demand):** The frontend displays the text response immediately. The user clicks a "Play" button, which sends the text to the `Lahgtna API` (an omnivoice-based fine-tune) to stream the voice-cloned audio.
+4. **Playback (TTS Pipeline):** The frontend uses a custom hook (`useTTSPipeline`) to handle playback synchronously. For hardcoded interactions, it types out the text immediately while playing static audio. For dynamic responses, it processes the text sentence-by-sentence, calling the TTS API and synchronizing the audio playback with a progressive typing effect to minimize perceived latency.
 
 ---
 
