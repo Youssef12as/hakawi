@@ -64,7 +64,7 @@ def generate_response(
             # If it's a rate limit, don't just quickly retry, it needs more time
             if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
                 logger.error("Rate limit hit, stopping retries.")
-                raise ValueError("لقد تجاوزت الحد المسموح به من الرسائل. يرجى الانتظار دقيقة والمحاولة مرة أخرى.")
+                raise ValueError("لقد تجاوزت الحد المسموح به من الرسائل. يرجي الانتظار دقيقة  والمحاولة مرة أخرى.")
                 
             if attempt < MAX_RETRIES:
                 time.sleep(RETRY_DELAY * attempt)
