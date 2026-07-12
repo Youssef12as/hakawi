@@ -9,9 +9,10 @@ AI platform preserving Egyptian oral heritage through interactive cultural chara
 
 - 🗺️ **Heritage Map** — 27 governorates, each with its own character and dialect
 - 🎤 **Voice Chat** — Speak with your voice, the character listens and responds
+- ⚡ **Low-Latency TTS Pipeline** — Synchronized sentence-by-sentence audio playback and typing effect
 - 𓀀 **Ancient Mode** — Switch to pharaonic characters speaking ancient Egyptian
 - 📚 **Kids Mode** — Heritage told as interactive stories for children
-- 👨‍👩‍👧‍👦 **Family Tree** — Preserve your grandparents' voice forever
+- 👨‍👩‍👧‍👦 **Family Tree** — Preserve your grandparents' voice forever by uploading voice samples for instant cloning
 
 ## 🛠️ Tech Stack
 

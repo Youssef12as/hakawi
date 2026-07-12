@@ -95,6 +95,53 @@ def synthesize_speech(text: str, character_name: str) -> tuple[str, None] | tupl
         (None, error_message) on failure.
     """
     try:
+        from personas import get_persona_by_character_name
+        
+        # Lazy load character if not already saved
+        if character_name and character_name not in saved_characters:
+            logger.info(f"Character '{character_name}' not in saved_characters. Attempting to load from local reference.")
+            
+            ref_path = None
+            ref_text = None
+            
+            # Check personas.py first (for built-in chars like am-othman)
+            persona = get_persona_by_character_name(character_name)
+            if persona and "ref_audio_path" in persona and "ref_text" in persona:
+                ref_path = persona["ref_audio_path"]
+                ref_text = persona["ref_text"]
+            else:
+                # Fallback to checking the dynamic characters registry
+                import json
+                registry_path = os.path.join("data", "characters", "registry.json")
+                if os.path.exists(registry_path):
+                    with open(registry_path, "r", encoding="utf-8") as f:
+                        try:
+                            registry = json.load(f)
+                            if character_name in registry:
+                                ref_path = registry[character_name].get("ref_audio_path")
+                                ref_text = registry[character_name].get("ref_text")
+                        except Exception as e:
+                            logger.error(f"Error reading registry.json: {e}")
+
+            if ref_path and ref_text:
+                if os.path.exists(ref_path):
+                    with open(ref_path, "rb") as f:
+                        audio_bytes = f.read()
+                    msg, err = save_character(
+                        char_name=character_name,
+                        audio_bytes=audio_bytes,
+                        audio_filename=os.path.basename(ref_path),
+                        ref_text=ref_text,
+                    )
+                    if err:
+                        logger.error(f"Lazy load failed for {character_name}: {err}")
+                    else:
+                        logger.info(f"Lazy load success for {character_name}: {msg}")
+                else:
+                    logger.warning(f"Reference audio not found at {ref_path} for character {character_name}")
+            else:
+                logger.warning(f"No reference info found in personas or registry for character {character_name}")
+
         client = _get_client()
 
         result = client.predict(

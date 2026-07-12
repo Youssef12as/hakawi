@@ -7,7 +7,7 @@ We are implementing a separated UI/UX flow to optimize latency during the live d
 1. **User Input:** The user clicks a region on the frontend map (e.g., Aswan) and either sends a text message or records an audio message.
 2. **Text Flow:** `Text -> Gemini 2.5 Flash -> Text Response`
 3. **Audio Flow:** `Audio -> Speechmatics API (STT) -> Text -> Gemini 2.5 Flash -> Text Response`
-4. **Playback (TTS On-Demand):** The frontend displays the text response immediately. The user clicks a "Play" button, which sends the text to the `ElevenLabs API` to stream the voice-cloned audio.
+4. **Playback (TTS Pipeline):** The frontend uses a custom hook (`useTTSPipeline`) to handle playback synchronously. For hardcoded interactions, it types out the text immediately while playing static audio. For dynamic responses, it processes the text sentence-by-sentence, calling the TTS API and synchronizing the audio playback with a progressive typing effect to minimize perceived latency.
 
 ---
 
@@ -15,7 +15,7 @@ We are implementing a separated UI/UX flow to optimize latency during the live d
 * **Framework:** FastAPI
 * **LLM / RAG:** Google GenAI SDK (`gemini-2.5-flash`), ChromaDB (for regional historical context).
 * **STT (Speech-to-Text):** Speechmatics API (via `requests`).
-* **TTS (Text-to-Speech):** ElevenLabs API (via `requests` or official SDK).
+* **TTS (Text-to-Speech):** Lahgtna API (omnivoice-based fine-tune). Note: Voice cloning requires a reference audio file (`ref audio`) and a reference text (`ref text`).
 * **Environment:** `python-dotenv`, `uvicorn`, `python-multipart`.
 
 ---
@@ -39,10 +39,10 @@ We are implementing a separated UI/UX flow to optimize latency during the live d
 * **Output:** JSON `{"transcribed_text": "ما قاله المستخدم", "response": "نرد جيميناي النصي"}`
 
 ### C. `POST /api/tts`
-* **Input:** JSON payload containing `text` (Gemini's answer) and `voice_id` (ElevenLabs specific ID).
+* **Input:** `multipart/form-data` or JSON containing `text` (Gemini's answer), and voice cloning requirements (`ref_audio` file and `ref_text`).
 * **Process:**
-  1. Send text to ElevenLabs API for synthesis.
-* **Output:** A `StreamingResponse` (media type: `audio/mpeg`) returning the raw audio bytes directly to the frontend.
+  1. Send text along with `ref_audio` and `ref_text` to Lahgtna API for synthesis using voice cloning.
+* **Output:** A `StreamingResponse` (media type: `audio/mpeg` or `audio/wav`) returning the raw audio bytes directly to the frontend.
 
 ---
 
@@ -53,12 +53,14 @@ Implement a dictionary to route prompts and Voice IDs dynamically based on the f
 REGIONAL_PERSONAS = {
     "aswan": {
         "name": "عم محمد",
-        "voice_id": "ELEVENLABS_ASWAN_VOICE_ID", 
+        "ref_audio_path": "path/to/aswan_ref_audio.wav",
+        "ref_text": "نص المرجع الصوتي لأسوان", 
         "system_prompt": "أنت عم محمد من أسوان، حارس التراث النوبي. تتحدث بلهجة أهل أسوان الطيبة، وتستخدم كلمات مثل 'يا ولدي'. إجابتك قصيرة ومبنية على المعلومات التاريخية المرفقة."
     },
     "cairo": {
         "name": "عم محمود",
-        "voice_id": "ELEVENLABS_CAIRO_VOICE_ID",
+        "ref_audio_path": "path/to/cairo_ref_audio.wav",
+        "ref_text": "نص المرجع الصوتي للقاهرة",
         "system_prompt": "أنت عم محمود، راوي حكايات القاهرة الفاطمية. تتحدث بلهجة قاهرية أصيلة وسريعة."
     }
 }
@@ -69,7 +71,7 @@ The `.env` file will contain:
 ```text
 GEMINI_API_KEY=...
 SPEECHMATICS_API_KEY=...
-ELEVENLABS_API_KEY=...
+LAHGTNA_API_KEY=...
 ```
 
 ## Task
