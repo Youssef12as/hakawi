@@ -1,0 +1,229 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Hikawi (حكاوي) — Design System
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Design Tokens ────────────────────────────────────────────────────────── */
+:root {
+  /* Legacy palette (kept for Landing/Map pages) */
+  --color-sand: #E8D1A7;
+  --color-olive: #9D9167;
+  --color-brown: #84592B;
+  --color-wine: #743014;
+  --color-espresso: #442D1C;
+
+  /* New Desert Night Theme */
+  --bg-deep: #0b0a08;
+  --bg-primary: #111010;
+  --bg-elevated: #1a1815;
+  --accent: #c4a06a;
+  --accent-soft: rgba(196, 160, 106, 0.15);
+  --accent-glow: rgba(196, 160, 106, 0.4);
+
+  --font-primary: 'Cairo', sans-serif;
+  --radius-soft: 12px;
+  --radius-lg: 20px;
+  --radius-round: 24px;
+  --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-hover: 0 8px 40px rgba(196, 160, 106, 0.15);
+  --shadow-glow: 0 0 40px rgba(196, 160, 106, 0.2);
+}
+
+/* ─── Base ─────────────────────────────────────────────────────────────────── */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-primary);
+  background-color: var(--color-sand);
+  color: var(--color-espresso);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* ─── Scrollbar ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-olive);
+  border-radius: 100px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brown);
+}
+
+/* ─── Focus ────────────────────────────────────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid var(--color-wine);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Leaflet Overrides ────────────────────────────────────────────────────── */
+.leaflet-popup-content-wrapper {
+  background-color: var(--color-sand) !important;
+  color: var(--color-espresso) !important;
+  border-radius: var(--radius-soft) !important;
+  border: 1px solid rgba(132, 89, 43, 0.25) !important;
+  box-shadow: var(--shadow-hover) !important;
+  font-family: var(--font-primary) !important;
+  padding: 4px 8px !important;
+}
+.leaflet-popup-content {
+  margin: 12px 16px !important;
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+}
+.leaflet-popup-tip {
+  background-color: var(--color-sand) !important;
+  border: 1px solid rgba(132, 89, 43, 0.25) !important;
+  border-top: none !important;
+  border-left: none !important;
+}
+.leaflet-container a.leaflet-popup-close-button {
+  color: var(--color-wine) !important;
+  font-size: 20px !important;
+  padding: 8px !important;
+}
+.leaflet-container a.leaflet-popup-close-button:hover {
+  color: var(--color-espresso) !important;
+}
+.leaflet-control-zoom a {
+  background-color: var(--color-sand) !important;
+  color: var(--color-espresso) !important;
+  border-color: rgba(132, 89, 43, 0.25) !important;
+  font-family: var(--font-primary) !important;
+}
+.leaflet-control-zoom a:hover {
+  background-color: var(--color-wine) !important;
+  color: var(--color-sand) !important;
+}
+
+/* ─── Animations ───────────────────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInFromEnd {
+  from { opacity: 0; transform: translateX(-40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.015); }
+}
+@keyframes recordingPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+  50%      { box-shadow: 0 0 0 14px rgba(220, 38, 38, 0); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes dots {
+  0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+  40%           { transform: scale(1); opacity: 1; }
+}
+@keyframes scrollHint {
+  0%, 100% { opacity: 0.3; transform: translateY(0); }
+  50%      { opacity: 1;   transform: translateY(8px); }
+}
+@keyframes campfire-flicker {
+  0%   { opacity: 0.8; transform: scale(1) translate(0, 0); }
+  25%  { opacity: 0.9; transform: scale(1.02) translate(1px, -1px); }
+  50%  { opacity: 0.7; transform: scale(0.98) translate(-1px, 2px); }
+  75%  { opacity: 0.95; transform: scale(1.03) translate(2px, 1px); }
+  100% { opacity: 0.8; transform: scale(1) translate(0, 0); }
+}
+@keyframes ember-float {
+  0%   { opacity: 0; transform: translateY(0) scale(1); }
+  20%  { opacity: 1; }
+  80%  { opacity: 0.8; }
+  100% { opacity: 0; transform: translateY(-100px) scale(0.5); }
+}
+@keyframes soundwave-bounce {
+  0%, 100% { height: 4px; }
+  50%      { height: 16px; }
+}
+
+/* ─── Utility Classes ──────────────────────────────────────────────────────── */
+.animate-fade-in     { animation: fadeIn 0.6s ease-out both; }
+.animate-fade-in-up  { animation: fadeInUp 0.7s ease-out both; }
+.animate-slide-in-end{ animation: slideInFromEnd 0.5s ease-out both; }
+.animate-scale-in    { animation: scaleIn 0.4s ease-out both; }
+.animate-breathe     { animation: breathe 4s ease-in-out infinite; }
+.animate-recording-pulse { animation: recordingPulse 1.5s ease-in-out infinite; }
+.animate-float       { animation: float 3s ease-in-out infinite; }
+
+/* Stagger children */
+.stagger > *:nth-child(1) { animation-delay: 0.1s; }
+.stagger > *:nth-child(2) { animation-delay: 0.2s; }
+.stagger > *:nth-child(3) { animation-delay: 0.3s; }
+.stagger > *:nth-child(4) { animation-delay: 0.4s; }
+
+/* Loading dots */
+.loading-dots span {
+  display: inline-block;
+  width: 8px; height: 8px;
+  margin: 0 3px;
+  background: var(--color-olive);
+  border-radius: 50%;
+  animation: dots 1.4s ease-in-out infinite both;
+}
+.loading-dots span:nth-child(1) { animation-delay: 0s; }
+.loading-dots span:nth-child(2) { animation-delay: 0.16s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.32s; }
+
+/* ─── Glass Effects ────────────────────────────────────────────────────────── */
+.glass {
+  background: rgba(232, 209, 167, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(132, 89, 43, 0.15);
+}
+.glass-dark {
+  background: rgba(17, 16, 16, 0.85); /* --bg-primary with opacity */
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(196, 160, 106, 0.1); /* --accent */
+}
+
+/* ─── Map Container ────────────────────────────────────────────────────────── */
+.map-container {
+  border-radius: var(--radius-soft);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+  border: 1px solid rgba(132, 89, 43, 0.12);
+}
+.map-container .leaflet-container {
+  border-radius: var(--radius-soft);
+}
