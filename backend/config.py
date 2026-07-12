@@ -6,7 +6,7 @@ class Settings(BaseSettings):
 
     GEMINI_API_KEY: str = ""
     SPEECHMATICS_API_KEY: str = ""
-    GRADIO_TTS_URL: str = ""
+    VOICE_API_URL: str = ""
 
     model_config = {
         "env_file": ".env",

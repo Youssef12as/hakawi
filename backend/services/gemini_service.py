@@ -11,7 +11,8 @@ logger = logging.getLogger(__name__)
 # Initialize the Gemini client
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
-MODEL_ID = "gemini-2.5-flash"
+MODEL_ID = "gemini-3.1-flash-lite"
+
 
 MAX_RETRIES = 3
 RETRY_DELAY = 2  # seconds
@@ -63,7 +64,7 @@ def generate_response(
             # If it's a rate limit, don't just quickly retry, it needs more time
             if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
                 logger.error("Rate limit hit, stopping retries.")
-                raise ValueError("لقد تجاوزت الحد المسموح به من الرسائل. يرجى الانتظار دقيقة والمحاولة مرة أخرى.")
+                raise ValueError("لقد تجاوزت الحد المسموح به من الرسائل. يرجي الانتظار دقيقة  والمحاولة مرة أخرى.")
                 
             if attempt < MAX_RETRIES:
                 time.sleep(RETRY_DELAY * attempt)
