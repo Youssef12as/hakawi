@@ -1,603 +1,535 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Sparkles, Mic, Heart, ChevronDown } from 'lucide-react';
-import PageShell from '../components/layout/PageShell';
 
-// ─── Region Data ───────────────────────────────────────────────────────────────
-const REGIONS = [
-  {
-    key: 'aswan',
-    name: 'أسوان والنوبة',
-    nameEn: 'Aswan & Nubia',
-    elderName: 'عم عثمان',
-    elderTitle: 'حارس أسرار النوبة',
-    quote: 'الكليم مش بس نسيج، ده لغة. كل رمز فيه بيحكي حكاية من جداتنا.',
-    image: '/assets/char-aswan.png',
-    accent: '#e8a87d',
-    glow: 'rgba(232,168,125,0.35)',
-    bg: 'linear-gradient(135deg, #1a0a00 0%, #3d1f00 40%, #7a4000 70%, #c4853a 100%)',
-    tag: 'سجادة نوبية',
-    symbol: '△',
-    mapPos: { top: '72%', left: '54%' },
-  },
-  {
-    key: 'luxor',
-    name: 'الأقصر',
-    nameEn: 'Luxor',
-    elderName: 'حكيم الأقصر',
-    elderTitle: 'راوي المعابد الفرعونية',
-    quote: 'عنخ — مفتاح الحياة. أجدادنا نقشوه على كل باب ليحمي البيت من الأبد.',
-    image: '/assets/char-luxor.png',
-    accent: '#c4a847',
-    glow: 'rgba(196,168,71,0.35)',
-    bg: 'linear-gradient(135deg, #0a0600 0%, #2a1800 40%, #6b3d00 70%, #c4920a 100%)',
-    tag: 'معبد الأقصر',
-    symbol: '𓂀',
-    mapPos: { top: '65%', left: '54%' },
-  },
-  {
-    key: 'cairo',
-    name: 'القاهرة',
-    nameEn: 'Cairo',
-    elderName: 'الشيخ محمود',
-    elderTitle: 'عالم الأزهر الشريف',
-    quote: 'الأرابيسك هو فن إسلامي خالص — خطوط بلا نهاية ترمز لاستمرارية الوجود.',
-    image: '/assets/char-cairo.png',
-    accent: '#5aa0c4',
-    glow: 'rgba(90,160,196,0.35)',
-    bg: 'linear-gradient(135deg, #00080f 0%, #001525 40%, #002d4a 70%, #1a5a80 100%)',
-    tag: 'باب زويلة',
-    symbol: '✦',
-    mapPos: { top: '42%', left: '52%' },
-  },
-  {
-    key: 'alexandria',
-    name: 'الإسكندرية',
-    nameEn: 'Alexandria',
-    elderName: 'عم سيد البحري',
-    elderTitle: 'ابن البحر المتوسط',
-    quote: 'الإسكندرية مدينة بتتنفس من البحر. الإغريق والمصريين كلهم خلوا أثر هنا.',
-    image: '/assets/char-alexandria.png',
-    accent: '#4a9fc4',
-    glow: 'rgba(74,159,196,0.35)',
-    bg: 'linear-gradient(135deg, #00050a 0%, #001020 40%, #001e38 70%, #0a4a6e 100%)',
-    tag: 'فنار الإسكندرية',
-    symbol: '🔱',
-    mapPos: { top: '28%', left: '46%' },
-  },
+/* ─────────────────────────────────────────────────────────────────────────────
+   HIKAWI — Landing Page
+   Aesthetic: dark cinematic Egyptian — CSS-art only, no image dependencies
+───────────────────────────────────────────────────────────────────────────── */
+
+const PLACES = {
+  القاهرة:    'هنا تبدأ حكايات الشوارع، المقاهي، والأصوات التي صنعت ذاكرة المدينة.',
+  الإسكندرية: 'بحر، ترام قديم، وصوت المدينة التي استقبلت العالم.',
+  الأقصر:    'حكايات المعابد والحرفيين الذين عاشوا بجوار التاريخ.',
+  أسوان:     'لون نوبي، موسيقى، ونهر يحمل الذاكرة من الجنوب.',
+};
+
+const MAP_PINS = [
+  { place: 'القاهرة',    cx: 124, cy: 112 },
+  { place: 'الإسكندرية', cx: 95,  cy: 58  },
+  { place: 'الأقصر',    cx: 140, cy: 320 },
+  { place: 'أسوان',     cx: 129, cy: 425 },
 ];
 
-// ─── Particle Component ────────────────────────────────────────────────────────
-function Particles({ color }) {
-  const particles = Array.from({ length: 18 }, (_, i) => ({
-    id: i,
-    left: `${Math.random() * 100}%`,
-    delay: `${Math.random() * 4}s`,
-    duration: `${3 + Math.random() * 4}s`,
-    size: `${2 + Math.random() * 3}px`,
-    opacity: 0.3 + Math.random() * 0.5,
-  }));
+/* ── Wave bars ────────────────────────────────────────────────────────────── */
+const BARS = Array.from({ length: 42 }, (_, i) => ({
+  i,
+  h: 10 + Math.random() * 46,
+}));
 
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {particles.map((p) => (
-        <div
-          key={p.id}
-          className="absolute rounded-full"
-          style={{
-            left: p.left,
-            bottom: '-10px',
-            width: p.size,
-            height: p.size,
-            backgroundColor: color,
-            opacity: p.opacity,
-            animation: `floatUp ${p.duration} ${p.delay} ease-in infinite`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-// ─── Egypt SVG Map ─────────────────────────────────────────────────────────────
-function EgyptMap({ activeKey, onHover }) {
-  return (
-    <div className="relative w-full h-full flex items-center justify-center select-none">
-      {/* Simplified Egypt outline */}
-      <svg viewBox="0 0 200 300" className="w-48 h-72 md:w-64 md:h-96 opacity-40" fill="none">
-        <path
-          d="M80,10 L120,10 L145,30 L155,60 L160,100 L165,140 L160,180 L130,220 L100,280 L70,220 L40,180 L35,140 L40,100 L45,60 L55,30 Z"
-          stroke="#c4a06a"
-          strokeWidth="1.5"
-          fill="rgba(196,160,106,0.05)"
-        />
-        {/* Nile line */}
-        <path
-          d="M100,280 L98,220 L100,160 L102,100 L100,60 L100,30"
-          stroke="#c4a06a"
-          strokeWidth="0.8"
-          strokeDasharray="4 4"
-          opacity="0.4"
-        />
-      </svg>
-
-      {/* Region dots on map */}
-      {REGIONS.map((r) => (
-        <button
-          key={r.key}
-          onMouseEnter={() => onHover(r.key)}
-          onClick={() => onHover(r.key)}
-          className="absolute group"
-          style={{ top: r.mapPos.top, left: r.mapPos.left, transform: 'translate(-50%,-50%)' }}
-        >
-          {/* Outer pulse */}
-          <div
-            className="absolute inset-0 rounded-full animate-ping"
-            style={{
-              backgroundColor: r.accent,
-              opacity: activeKey === r.key ? 0.5 : 0.2,
-              width: '24px',
-              height: '24px',
-            }}
-          />
-          {/* Dot */}
-          <div
-            className="relative w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs transition-all duration-300"
-            style={{
-              backgroundColor: activeKey === r.key ? r.accent : 'transparent',
-              borderColor: r.accent,
-              boxShadow: activeKey === r.key ? `0 0 20px ${r.glow}` : 'none',
-              color: activeKey === r.key ? '#000' : r.accent,
-              transform: activeKey === r.key ? 'scale(1.3)' : 'scale(1)',
-            }}
-          >
-            <span className="text-[8px]">{r.symbol}</span>
-          </div>
-          {/* Label */}
-          <span
-            className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] whitespace-nowrap font-bold"
-            style={{ color: r.accent, opacity: activeKey === r.key ? 1 : 0.5 }}
-          >
-            {r.name}
-          </span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ─── Main Landing ──────────────────────────────────────────────────────────────
-export default function Landing() {
-  const [activeRegion, setActiveRegion] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const intervalRef = useRef(null);
-
-  // Auto-cycle regions
+/* ── Reveal hook ──────────────────────────────────────────────────────────── */
+function useReveal(ref) {
   useEffect(() => {
-    intervalRef.current = setInterval(() => {
-      setIsTransitioning(true);
-      setTimeout(() => {
-        setActiveRegion((prev) => (prev + 1) % REGIONS.length);
-        setIsTransitioning(false);
-      }, 400);
-    }, 4000);
-    return () => clearInterval(intervalRef.current);
+    if (!ref.current) return;
+    const els = ref.current.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver(
+      (entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add('visible'); }),
+      { threshold: 0.16 }
+    );
+    els.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [ref]);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+export default function Landing() {
+  const pageRef = useRef(null);
+  useReveal(pageRef);
+
+  /* nav scroll */
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const handleRegionHover = (key) => {
-    clearInterval(intervalRef.current);
-    const idx = REGIONS.findIndex((r) => r.key === key);
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setActiveRegion(idx);
-      setIsTransitioning(false);
-    }, 200);
+  /* map pin */
+  const [activePin, setActivePin] = useState('القاهرة');
+
+  /* waveform player */
+  const [playing, setPlaying] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const timerRef = useRef(null);
+  const TOTAL = 18;
+
+  const togglePlay = () => {
+    setPlaying((prev) => {
+      const next = !prev;
+      if (next) {
+        timerRef.current = setInterval(() => {
+          setElapsed((e) => {
+            if (e >= TOTAL - 1) {
+              clearInterval(timerRef.current);
+              setPlaying(false);
+              return 0;
+            }
+            return e + 1;
+          });
+        }, 1000);
+      } else {
+        clearInterval(timerRef.current);
+      }
+      return next;
+    });
   };
 
-  const region = REGIONS[activeRegion];
+  const fmt = (s) => `00:${String(s).padStart(2, '0')}`;
 
   return (
-    <div className="min-h-screen font-cairo overflow-x-hidden" dir="rtl">
+    <div ref={pageRef} dir="rtl" style={{ fontFamily: '"Segoe UI", Tahoma, Arial, sans-serif', overflowX: 'hidden' }}>
 
-      {/* ══════════════════════════════════════════════════════════════
-          HERO SECTION — Full screen cinematic
-      ══════════════════════════════════════════════════════════════ */}
-      <section
-        className="relative min-h-screen flex items-center justify-center overflow-hidden"
-        style={{ background: '#050302' }}
-      >
-        {/* Hero background image */}
-        <div
-          className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
-          style={{
-            backgroundImage: 'url(/assets/hero-egypt-night.png)',
-            opacity: 0.45,
-          }}
-        />
-        {/* Dark gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-black/90" />
+      {/* ── Global styles ───────────────────────────────────────────────────── */}
+      <style>{`
+        :root{
+          --bg:#110d0b; --bg-soft:#18110d;
+          --ink:#f8ecd3; --muted:#bcae99;
+          --gold:#d9ad63; --gold-soft:#8f6b36;
+          --red:#9b4435; --green:#365a49; --blue:#325b67;
+          --line:rgba(248,236,211,.14);
+          --shadow:0 30px 80px rgba(0,0,0,.42);
+        }
+        *{box-sizing:border-box;margin:0;padding:0}
+        html{scroll-behavior:smooth}
 
-        {/* Floating hieroglyph symbols */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          {['𓂀', '𓋹', '𓆣', '△', '✦', '〰'].map((sym, i) => (
-            <span
-              key={i}
-              className="absolute text-2xl select-none"
-              style={{
-                left: `${10 + i * 15}%`,
-                top: `${15 + (i % 3) * 25}%`,
-                color: '#c4a06a',
-                opacity: 0.08 + (i % 3) * 0.04,
-                animation: `floatDrift ${6 + i * 1.5}s ease-in-out ${i * 0.8}s infinite alternate`,
-                fontSize: `${1.2 + (i % 3) * 0.6}rem`,
-              }}
-            >
-              {sym}
-            </span>
-          ))}
+        /* grain overlay */
+        .hk-grain{
+          position:fixed;inset:-50%;z-index:100;pointer-events:none;opacity:.055;
+          background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+          animation:hkGrain .25s steps(2) infinite;
+        }
+        @keyframes hkGrain{
+          0%{transform:translate(0,0)}25%{transform:translate(2%,-3%)}
+          50%{transform:translate(-3%,2%)}75%{transform:translate(3%,3%)}
+          100%{transform:translate(-2%,-2%)}
+        }
+
+        /* reveal */
+        .reveal{opacity:0;transform:translateY(40px);transition:opacity .8s ease,transform .8s cubic-bezier(.2,.75,.2,1)}
+        .reveal.visible{opacity:1;transform:none}
+
+        /* eyebrow */
+        .eyebrow{
+          display:inline-flex;align-items:center;gap:10px;
+          color:var(--gold);font-size:13px;font-weight:800;
+          letter-spacing:.16em;text-transform:uppercase;margin-bottom:20px;
+        }
+        .eyebrow::before{content:"";width:36px;height:1px;background:var(--gold)}
+
+        /* quote block */
+        .hk-quote{
+          margin-top:28px;padding:20px 22px;
+          border-right:3px solid var(--gold);
+          background:linear-gradient(90deg,rgba(217,173,99,.08),transparent);
+          color:#ead8b9;font-size:18px;line-height:1.8;border-radius:0 12px 12px 0;
+        }
+
+        /* buttons */
+        .btn{border:0;padding:15px 24px;border-radius:999px;cursor:pointer;transition:.25s ease;font-family:inherit;font-size:16px}
+        .btn-primary{background:var(--gold);color:#24180e;font-weight:800;box-shadow:0 14px 34px rgba(217,173,99,.18);text-decoration:none;display:inline-block}
+        .btn-primary:hover{transform:translateY(-3px)}
+        .btn-secondary{background:transparent;border:1px solid var(--line);color:var(--ink);text-decoration:none;display:inline-block}
+
+        /* orb */
+        @keyframes floatOrb{0%,100%{transform:translateY(-8px) scale(.97)}50%{transform:translateY(10px) scale(1.02)}}
+
+        /* nile */
+        @keyframes river{to{stroke-dashoffset:-190}}
+
+        /* scroll mark */
+        @keyframes scrollPulse{
+          0%,100%{transform:scaleY(.25);opacity:.25;transform-origin:top}
+          50%{transform:scaleY(1);opacity:1;transform-origin:top}
+        }
+
+        /* floating notes */
+        @keyframes noteFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+
+        /* wave bars */
+        @keyframes waveMove{from{transform:scaleY(.24)}to{transform:scaleY(1)}}
+
+        /* portrait hover */
+        .hk-portrait{transition:.45s ease;cursor:pointer}
+        .hk-portrait:hover{z-index:5;transform:translateX(0) rotate(0) scale(1.04)!important}
+        .hk-portrait.center:hover{transform:translateX(-50%) scale(1.1)!important}
+
+        /* story cards */
+        .story-card{transition:.25s ease}
+        .story-card:hover{transform:translateY(-6px)}
+
+        /* map pin */
+        .hk-pin{cursor:pointer;transform-box:fill-box;transform-origin:center;transition:.25s ease}
+        .hk-pin:hover{transform:scale(1.45)}
+        .hk-pin.active{transform:scale(1.45)}
+        .hk-pin text{opacity:0;transition:.2s ease;pointer-events:none;fill:#f8ecd3;font-size:9px}
+        .hk-pin:hover text,.hk-pin.active text{opacity:1}
+
+        /* nav cta */
+        .nav-cta{border:1px solid rgba(217,173,99,.45);background:rgba(217,173,99,.08);color:var(--gold);padding:10px 18px;border-radius:999px;cursor:pointer;text-decoration:none;font-size:14px}
+
+        @media(prefers-reduced-motion:reduce){*{animation:none!important;scroll-behavior:auto!important}.reveal{opacity:1;transform:none}}
+        @media(max-width:900px){
+          .hk-grid-hero,.hk-grid-section{grid-template-columns:1fr!important}
+          .hk-float-note{display:none}
+        }
+      `}</style>
+
+      {/* ── Film grain ────────────────────────────────────────────────────── */}
+      <div className="hk-grain" />
+
+      {/* ── Navbar ────────────────────────────────────────────────────────── */}
+      <nav style={{
+        position: 'fixed', top: 0, right: 0, left: 0, zIndex: 30, height: 76,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 clamp(22px,5vw,76px)',
+        borderBottom: `1px solid ${scrolled ? 'var(--line)' : 'transparent'}`,
+        background: scrolled ? 'rgba(17,13,11,.82)' : 'transparent',
+        backdropFilter: scrolled ? 'blur(16px)' : 'none',
+        transition: '.35s ease',
+      }}>
+        <Link to="/" style={{ fontSize: 24, fontWeight: 900, letterSpacing: '-.04em', color: 'var(--ink)', textDecoration: 'none' }}>
+          حكاوي<span style={{ color: 'var(--gold)' }}>.</span>
+        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 28, color: 'rgba(248,236,211,.72)', fontSize: 14 }}>
+          <a href="#characters" style={{ color: 'inherit', textDecoration: 'none', transition: '.2s' }}>الشخصيات</a>
+          <a href="#voice"      style={{ color: 'inherit', textDecoration: 'none', transition: '.2s' }}>صوت حبايبك</a>
+          <a href="#learn"      style={{ color: 'inherit', textDecoration: 'none', transition: '.2s' }}>التعلّم</a>
+        </div>
+        <Link to="/map" className="nav-cta">ابدأ رحلتك</Link>
+      </nav>
+
+      {/* ════════════════════════════════════════════════════════════════════
+          HERO
+      ════════════════════════════════════════════════════════════════════ */}
+      <header className="hk-grid-hero" style={{
+        position: 'relative', minHeight: '100svh',
+        display: 'grid', gridTemplateColumns: '1.05fr .95fr',
+        alignItems: 'center',
+        padding: '110px clamp(24px,7vw,110px) 55px',
+        isolation: 'isolate',
+        background: 'radial-gradient(circle at 20% 45%,rgba(217,173,99,.12),transparent 33%), linear-gradient(145deg,#1a120d 0%,#100d0b 58%,#090807 100%)',
+      }} id="top">
+
+        {/* Copy */}
+        <div className="reveal visible" style={{ position: 'relative', zIndex: 3, maxWidth: 660 }}>
+          <div className="eyebrow">مصر كما يرويها أهلها</div>
+          <h1 style={{ fontSize: 'clamp(54px,7.2vw,108px)', lineHeight: .95, letterSpacing: '-.065em', fontWeight: 900 }}>
+            كل مكان عنده{' '}
+            <em style={{ display: 'block', color: 'var(--gold)', fontStyle: 'normal' }}>حكاية.</em>
+          </h1>
+          <p style={{ maxWidth: 580, marginTop: 26, color: 'var(--muted)', fontSize: 'clamp(17px,1.35vw,21px)', lineHeight: 1.85 }}>
+            خريطة تفاعلية للذاكرة المصرية. اختر مكانًا، قابل شخصياته، اسمع أصوات أهله، واكتشف كيف تعيش الحكاية من جيل إلى جيل.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 32 }}>
+            <Link to="/map"    className="btn btn-primary">اكتشف الشخصيات</Link>
+            <Link to="/family" className="btn btn-secondary">اسمع حكاية</Link>
+          </div>
         </div>
 
-        {/* Hero Content */}
-        <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border mb-8"
-            style={{ borderColor: '#c4a06a40', backgroundColor: '#c4a06a10', color: '#c4a06a' }}>
-            <Sparkles className="w-3.5 h-3.5" />
-            <span className="text-xs font-bold">منصة التراث المصري الشفوي</span>
+        {/* Visual — orb + SVG map + notes */}
+        <div className="reveal visible" style={{ position: 'relative', minHeight: 600, display: 'grid', placeItems: 'center' }}>
+          {/* Orb */}
+          <div style={{
+            position: 'absolute', width: 'min(36vw,520px)', aspectRatio: '1',
+            borderRadius: '50%',
+            background: 'radial-gradient(circle at 38% 35%,#f0d494 0 7%,#d7a65f 30%,#9b5732 68%,#5c2d20 100%)',
+            opacity: .88, boxShadow: '0 0 110px rgba(217,173,99,.18)',
+            animation: 'floatOrb 7s ease-in-out infinite',
+          }} />
+
+          {/* Egypt SVG map */}
+          <svg viewBox="0 0 260 500" style={{ position: 'relative', zIndex: 2, width: 'min(44vw,500px)', filter: 'drop-shadow(0 30px 30px rgba(0,0,0,.3))' }}>
+            <path d="M88 17L162 35L166 112L184 145L169 199L203 269L177 335L148 409L136 481L103 466L85 390L70 315L76 239L62 177L79 111L73 58Z"
+              fill="rgba(17,13,11,.72)" stroke="#f1d69f" strokeWidth="1.8" />
+            <path d="M124 49C151 96 101 126 134 171C166 215 112 257 144 301C169 336 118 379 128 447"
+              fill="none" stroke="#7eb7c4" strokeWidth="3" strokeLinecap="round"
+              strokeDasharray="7 12" style={{ animation: 'river 7s linear infinite' }} />
+            {MAP_PINS.map(({ place, cx, cy }) => (
+              <g key={place} className={`hk-pin${activePin === place ? ' active' : ''}`}
+                onClick={() => setActivePin(place)}>
+                <circle cx={cx} cy={cy} r={7} fill="var(--gold)" stroke="#2a1b12" strokeWidth="3" />
+                <text x={cx + 13} y={cy + 3}>{place}</text>
+              </g>
+            ))}
+          </svg>
+
+          {/* Floating notes */}
+          <div className="hk-float-note" style={{
+            position: 'absolute', zIndex: 4, left: '2%', top: '18%',
+            width: 210, padding: '16px 18px', border: '1px solid rgba(248,236,211,.16)',
+            borderRadius: 16, background: 'rgba(24,17,13,.72)', backdropFilter: 'blur(13px)',
+            boxShadow: 'var(--shadow)', animation: 'noteFloat 5s ease-in-out infinite',
+          }}>
+            <strong style={{ display: 'block', marginBottom: 5, color: 'var(--ink)' }}>{activePin}</strong>
+            <small style={{ color: 'var(--muted)', lineHeight: 1.55, fontSize: 13 }}>{PLACES[activePin]}</small>
           </div>
 
-          {/* Main title */}
-          <h1
-            className="font-extrabold mb-4 leading-none"
-            style={{
-              fontSize: 'clamp(5rem, 20vw, 12rem)',
-              color: '#f5e6c8',
-              textShadow: '0 0 80px rgba(196,160,106,0.3), 0 4px 20px rgba(0,0,0,0.8)',
-              animation: 'fadeSlideUp 1s ease forwards',
-            }}
-          >
-            حكاوي
-          </h1>
-
-          <p className="text-xl text-white/50 mb-2 font-light" style={{ animation: 'fadeSlideUp 1s 0.2s ease forwards', opacity: 0 }}>
-            صوت الماضي، حيّ في الحاضر
-          </p>
-          <p className="text-sm text-white/25 mb-12 tracking-widest uppercase" style={{ animation: 'fadeSlideUp 1s 0.35s ease forwards', opacity: 0 }}>
-            The voice of the past, alive in the present
-          </p>
-
-          {/* CTA */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center" style={{ animation: 'fadeSlideUp 1s 0.5s ease forwards', opacity: 0 }}>
-            <Link
-              to="/map"
-              className="group flex items-center gap-3 px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 hover:scale-105"
-              style={{ backgroundColor: '#c4853a', color: '#fff', boxShadow: '0 0 40px rgba(196,133,58,0.4)' }}
-              id="hero-cta-map"
-            >
-              استكشف الخريطة
-              <ArrowLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
-            </Link>
-            <Link
-              to="/family"
-              className="flex items-center gap-3 px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 hover:scale-105 border"
-              style={{ borderColor: '#c4a06a40', color: '#c4a06a', backgroundColor: 'transparent' }}
-              id="hero-cta-family"
-            >
-              <Mic className="w-5 h-5" />
-              سجّل صوت عيلتك
-            </Link>
+          <div className="hk-float-note" style={{
+            position: 'absolute', zIndex: 4, right: '2%', bottom: '18%',
+            width: 210, padding: '16px 18px', border: '1px solid rgba(248,236,211,.16)',
+            borderRadius: 16, background: 'rgba(24,17,13,.72)', backdropFilter: 'blur(13px)',
+            boxShadow: 'var(--shadow)', animation: 'noteFloat 5s ease-in-out -2s infinite',
+          }}>
+            <strong style={{ display: 'block', marginBottom: 5, color: 'var(--ink)' }}>اضغط على أي مكان</strong>
+            <small style={{ color: 'var(--muted)', lineHeight: 1.55, fontSize: 13 }}>لتظهر لك الشخصيات والحكايات المرتبطة به.</small>
           </div>
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-40">
-          <span className="text-white text-xs">اكتشف أكثر</span>
-          <ChevronDown className="w-5 h-5 text-white animate-bounce" />
+        <div style={{ position: 'absolute', right: '50%', bottom: 26, transform: 'translateX(50%)', color: 'rgba(248,236,211,.5)', fontSize: 12, letterSpacing: '.12em', textAlign: 'center' }}>
+          اسحب للأسفل
+          <div style={{ width: 1, height: 34, margin: '9px auto 0', background: 'linear-gradient(var(--gold),transparent)', animation: 'scrollPulse 1.6s ease-in-out infinite' }} />
         </div>
-      </section>
+      </header>
 
-      {/* ══════════════════════════════════════════════════════════════
-          SECTION 1 — شخصيات من كل ركن (Scroll Storytelling)
-      ══════════════════════════════════════════════════════════════ */}
-      <section
-        className="relative min-h-screen flex items-center overflow-hidden transition-all duration-700"
-        style={{ background: region.bg }}
-        id="characters-section"
-      >
-        <Particles color={region.accent} />
+      {/* ════════════════════════════════════════════════════════════════════
+          SECTION 1 — الشخصيات
+      ════════════════════════════════════════════════════════════════════ */}
+      <section className="hk-grid-section" id="characters" style={{
+        position: 'relative', minHeight: '100svh',
+        display: 'grid', gridTemplateColumns: '.9fr 1.1fr',
+        alignItems: 'center', gap: 'clamp(34px,7vw,100px)',
+        padding: '110px clamp(24px,7vw,110px)',
+        borderTop: '1px solid var(--line)',
+        background: 'radial-gradient(circle at 80% 45%,rgba(155,68,53,.13),transparent 32%), linear-gradient(145deg,#110d0b,#17100d)',
+      }}>
+        <div className="reveal" style={{ maxWidth: 560 }}>
+          <div className="eyebrow">01 — شخصيات من كل ركن</div>
+          <h2 style={{ fontSize: 'clamp(40px,5.2vw,76px)', lineHeight: 1.04, letterSpacing: '-.05em', fontWeight: 900 }}>
+            قابل الناس قبل أن تقرأ التاريخ.
+          </h2>
+          <p style={{ color: 'var(--muted)', fontSize: 'clamp(16px,1.3vw,20px)', lineHeight: 1.9, marginTop: 22 }}>
+            كل محافظة تظهر من خلال أصواتها وشخصياتها: حرفي، حكّاء، فنانة، بحّار، أو جدة تعرف تفاصيل لا تجدها في أي كتاب.
+          </p>
+          <div className="hk-quote">"أنا ألواني من الجبل، وكل لون عنده معنى."</div>
+          <Link to="/map" className="btn btn-primary" style={{ marginTop: 32, display: 'inline-block' }}>استكشف الشخصيات</Link>
+        </div>
 
-        {/* Background glow */}
-        <div
-          className="absolute inset-0 pointer-events-none transition-all duration-700"
-          style={{ background: `radial-gradient(ellipse at 30% 50%, ${region.glow} 0%, transparent 70%)` }}
-        />
-
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-6 py-20 grid lg:grid-cols-2 gap-12 items-center">
-
-          {/* ── Left: Text + Map ── */}
-          <div className="flex flex-col gap-8">
-            {/* Section label */}
-            <div className="flex items-center gap-3">
-              <div className="w-px h-12 opacity-60" style={{ backgroundColor: region.accent }} />
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest" style={{ color: region.accent }}>
-                  شخصيات من كل ركن
-                </p>
-                <p className="text-white/30 text-xs">Interactive Heritage Characters</p>
-              </div>
+        {/* CSS portrait stack */}
+        <div className="reveal" style={{ position: 'relative', minHeight: 520, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          {/* Portrait 1 — Pharaonic gold */}
+          <div className="hk-portrait" style={{
+            position: 'absolute', width: 230, height: 350,
+            borderRadius: '120px 120px 20px 20px',
+            border: '1px solid rgba(248,236,211,.18)', boxShadow: 'var(--shadow)',
+            background: 'radial-gradient(circle at 50% 28%,rgba(255,232,186,.42) 0 12%,transparent 13%), linear-gradient(155deg,#c4920a,#3d1e00)',
+            right: '2%', bottom: 30, transform: 'rotate(8deg) scale(.88)',
+          }}>
+            <div style={{ position: 'absolute', width: 108, height: 130, borderRadius: '50% 50% 46% 46%', top: 62, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(#a76d47,#6d3e2d)', boxShadow: '0 78px 0 38px #865040, 0 -13px 0 8px #e0c97a' }} />
+            <div style={{ position: 'absolute', right: 20, bottom: 24, zIndex: 2 }}>
+              <b style={{ display: 'block', fontSize: 18, color: '#f8ecd3' }}>ذهبي فرعوني</b>
+              <small style={{ color: '#d8c6aa' }}>الأقصر</small>
             </div>
-
-            {/* Region name — transitions */}
-            <div className={`transition-all duration-400 ${isTransitioning ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}>
-              <h2
-                className="text-5xl md:text-6xl font-extrabold mb-2 leading-tight"
-                style={{ color: region.accent, textShadow: `0 0 40px ${region.glow}` }}
-              >
-                {region.name}
-              </h2>
-              <p className="text-white/40 text-lg mb-6">{region.nameEn}</p>
-
-              {/* Quote */}
-              <blockquote
-                className="text-white/80 text-xl leading-relaxed border-r-4 pr-5 italic mb-8"
-                style={{ borderColor: region.accent }}
-              >
-                "{region.quote}"
-              </blockquote>
-
-              <p className="text-white/50 text-sm font-bold">
-                — {region.elderName}، {region.elderTitle}
-              </p>
-            </div>
-
-            {/* Region selector tabs */}
-            <div className="flex gap-3 flex-wrap">
-              {REGIONS.map((r, i) => (
-                <button
-                  key={r.key}
-                  onClick={() => handleRegionHover(r.key)}
-                  className="px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300"
-                  style={{
-                    backgroundColor: activeRegion === i ? r.accent : 'rgba(255,255,255,0.06)',
-                    color: activeRegion === i ? '#000' : 'rgba(255,255,255,0.5)',
-                    border: `1px solid ${activeRegion === i ? r.accent : 'rgba(255,255,255,0.1)'}`,
-                    boxShadow: activeRegion === i ? `0 0 20px ${r.glow}` : 'none',
-                  }}
-                >
-                  {r.symbol} {r.name}
-                </button>
-              ))}
-            </div>
-
-            {/* CTA */}
-            <Link
-              to="/map"
-              className="self-start flex items-center gap-2 font-bold transition-all duration-300 hover:gap-3"
-              style={{ color: region.accent }}
-              id="characters-cta"
-            >
-              تحدث مع الشخصية
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
           </div>
 
-          {/* ── Right: Character Image + Map ── */}
-          <div className="relative flex items-center justify-center gap-6">
-
-            {/* Character portrait */}
-            <div
-              className={`relative transition-all duration-500 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}
-            >
-              {/* Glow ring */}
-              <div
-                className="absolute inset-0 rounded-3xl blur-2xl -z-10 scale-110 transition-colors duration-700"
-                style={{ backgroundColor: region.glow }}
-              />
-              <img
-                src={region.image}
-                alt={region.elderName}
-                className="w-64 h-80 md:w-80 md:h-96 object-cover rounded-3xl shadow-2xl"
-                style={{
-                  border: `2px solid ${region.accent}40`,
-                  boxShadow: `0 0 60px ${region.glow}, 0 20px 60px rgba(0,0,0,0.6)`,
-                }}
-              />
-              {/* Tag badge */}
-              <div
-                className="absolute -top-4 -right-4 px-3 py-1.5 rounded-xl text-xs font-bold"
-                style={{ backgroundColor: region.accent, color: '#000' }}
-              >
-                {region.tag}
-              </div>
-              {/* AI badge */}
-              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs"
-                style={{ backgroundColor: 'rgba(0,0,0,0.7)', border: `1px solid ${region.accent}30`, color: 'rgba(255,255,255,0.5)' }}>
-                <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: region.accent }} />
-                ذكاء اصطناعي — ليس شخصًا حقيقيًا
-              </div>
+          {/* Portrait 2 — Alexandrian blue */}
+          <div className="hk-portrait" style={{
+            position: 'absolute', width: 230, height: 350,
+            borderRadius: '120px 120px 20px 20px',
+            border: '1px solid rgba(248,236,211,.18)', boxShadow: 'var(--shadow)',
+            background: 'radial-gradient(circle at 50% 28%,rgba(186,232,255,.42) 0 12%,transparent 13%), linear-gradient(155deg,#1a5a7a,#05111a)',
+            left: '2%', bottom: 26, transform: 'rotate(-8deg) scale(.88)',
+          }}>
+            <div style={{ position: 'absolute', width: 108, height: 130, borderRadius: '50% 50% 46% 46%', top: 62, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(#a0826a,#6d4e3d)', boxShadow: '0 78px 0 38px #3a6a7a, 0 -13px 0 8px #ddddd0' }} />
+            <div style={{ position: 'absolute', right: 20, bottom: 24, zIndex: 2 }}>
+              <b style={{ display: 'block', fontSize: 18, color: '#f8ecd3' }}>أزرق إسكندراني</b>
+              <small style={{ color: '#d8c6aa' }}>الإسكندرية</small>
             </div>
+          </div>
 
-            {/* Mini Egypt map */}
-            <div className="hidden md:block w-48 h-72 opacity-80">
-              <EgyptMap activeKey={region.key} onHover={handleRegionHover} />
+          {/* Portrait 3 — Nubian red (center, front) */}
+          <div className="hk-portrait center" style={{
+            position: 'absolute', width: 230, height: 350,
+            borderRadius: '120px 120px 20px 20px',
+            border: '1px solid rgba(248,236,211,.22)', boxShadow: '0 0 60px rgba(155,68,53,.4), var(--shadow)',
+            background: 'radial-gradient(circle at 50% 28%,rgba(255,210,186,.38) 0 12%,transparent 13%), linear-gradient(155deg,#7a3822,#190a07)',
+            left: '50%', bottom: 16, zIndex: 2, transform: 'translateX(-50%) scale(1.06)',
+          }}>
+            <div style={{ position: 'absolute', width: 108, height: 130, borderRadius: '50% 50% 46% 46%', top: 62, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(#b07050,#703828)', boxShadow: '0 78px 0 38px #6a2820, 0 -13px 0 8px #1a100c' }} />
+            <div style={{ position: 'absolute', right: 20, bottom: 24, zIndex: 2 }}>
+              <b style={{ display: 'block', fontSize: 18, color: '#f8ecd3' }}>أحمر نوبي</b>
+              <small style={{ color: '#d8c6aa' }}>أسوان</small>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════════════════════════
+      {/* ════════════════════════════════════════════════════════════════════
           SECTION 2 — صوت حبايبك
-      ══════════════════════════════════════════════════════════════ */}
-      <section
-        className="relative min-h-screen flex items-center overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #080308 0%, #150a15 40%, #1f0a0a 100%)' }}
-        id="voice-section"
-      >
-        {/* Subtle red/wine glow */}
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse at 70% 50%, rgba(120,30,30,0.3) 0%, transparent 65%)' }} />
+      ════════════════════════════════════════════════════════════════════ */}
+      <section className="hk-grid-section" id="voice" style={{
+        position: 'relative', minHeight: '100svh',
+        display: 'grid', gridTemplateColumns: '1.1fr .9fr',
+        alignItems: 'center', gap: 'clamp(34px,7vw,100px)',
+        padding: '110px clamp(24px,7vw,110px)',
+        borderTop: '1px solid var(--line)',
+        background: 'radial-gradient(circle at 22% 55%,rgba(217,173,99,.14),transparent 30%), linear-gradient(135deg,#17100c,#0d0a09)',
+      }}>
+        {/* Visual */}
+        <div className="reveal" style={{ position: 'relative', minHeight: 540, display: 'grid', placeItems: 'center' }}>
+          {/* Memory card */}
+          <div style={{
+            position: 'relative', width: 'min(90%,640px)', aspectRatio: '1.28',
+            borderRadius: 26, overflow: 'hidden',
+            border: '1px solid rgba(248,236,211,.16)', boxShadow: 'var(--shadow)',
+            background: 'linear-gradient(180deg,transparent 40%,rgba(0,0,0,.78)), radial-gradient(circle at 55% 30%,rgba(237,213,170,.42),transparent 20%), linear-gradient(135deg,#8b6844,#2a1b13 68%)',
+            filter: 'sepia(.25)',
+          }}>
+            {/* CSS person */}
+            <div style={{ position: 'absolute', width: 160, height: 200, borderRadius: '50% 50% 44% 44%', top: 85, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(#a97452,#70442f)', boxShadow: '0 116px 0 64px #493128, 0 -18px 0 11px #d7c5a2' }} />
+            <div style={{ position: 'absolute', right: 30, bottom: 28, left: 30, zIndex: 3 }}>
+              <span style={{ display: 'block', color: 'var(--gold)', fontSize: 13, marginBottom: 7 }}>ذاكرة عائلية — 1978</span>
+              <strong style={{ fontSize: 'clamp(18px,2.2vw,30px)', lineHeight: 1.45, color: '#f8ecd3' }}>
+                "كان كل بيت له حكاية، وكل حكاية تبدأ من القعدة."
+              </strong>
+            </div>
+          </div>
 
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-6 py-20 grid lg:grid-cols-2 gap-16 items-center">
-
-          {/* Mock voice recorder card */}
-          <div className="relative">
-            <div
-              className="rounded-3xl p-8 border"
-              style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(180,60,60,0.2)' }}
-            >
-              {/* Waveform visual */}
-              <div className="flex items-center justify-center gap-1 mb-8 h-16">
-                {Array.from({ length: 32 }, (_, i) => (
-                  <div
-                    key={i}
-                    className="rounded-full"
-                    style={{
-                      width: '4px',
-                      backgroundColor: '#b03030',
-                      height: `${10 + Math.sin(i * 0.5) * 30 + Math.random() * 20}px`,
-                      opacity: 0.4 + Math.sin(i * 0.3) * 0.4,
-                      animation: `waveBar ${0.5 + (i % 5) * 0.15}s ease-in-out ${i * 0.05}s infinite alternate`,
-                    }}
-                  />
+          {/* Audio panel */}
+          <div style={{
+            position: 'absolute', right: -24, top: '50%', transform: 'translateY(-50%)',
+            width: 'min(78%,420px)', padding: 18,
+            border: '1px solid rgba(248,236,211,.18)', borderRadius: 20,
+            background: 'rgba(15,11,9,.8)', backdropFilter: 'blur(14px)',
+            boxShadow: 'var(--shadow)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <button onClick={togglePlay} style={{
+                flexShrink: 0, width: 48, height: 48, borderRadius: '50%', border: 0,
+                background: 'var(--gold)', color: '#24180e', fontWeight: 900,
+                cursor: 'pointer', display: 'grid', placeItems: 'center', fontSize: 16,
+              }}>
+                {playing ? '❚❚' : '▶'}
+              </button>
+              <div style={{ flex: 1, height: 62, display: 'flex', alignItems: 'center', gap: 3, overflow: 'hidden' }}>
+                {BARS.map(({ i, h }) => (
+                  <div key={i} style={{
+                    width: 4, minHeight: 8, borderRadius: 10,
+                    background: 'linear-gradient(var(--gold),rgba(217,173,99,.28))',
+                    transform: `scaleY(${playing ? 1 : 0.4})`,
+                    transformOrigin: 'center',
+                    height: h,
+                    animation: playing ? `waveMove ${0.5 + (i % 7) * 0.1}s ease-in-out ${-i * 0.05}s infinite alternate` : 'none',
+                  }} />
                 ))}
               </div>
-
-              {/* Mic button */}
-              <div className="flex justify-center mb-6">
-                <div
-                  className="w-24 h-24 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-105"
-                  style={{
-                    backgroundColor: '#8b1a1a',
-                    boxShadow: '0 0 40px rgba(139,26,26,0.5), 0 0 80px rgba(139,26,26,0.2)',
-                  }}
-                >
-                  <Mic className="w-10 h-10 text-white" />
-                </div>
-              </div>
-
-              <p className="text-center text-white/40 text-sm mb-4">اضغط وابدأ التسجيل</p>
-
-              {/* Sample member */}
-              <div className="flex items-center gap-4 p-4 rounded-2xl" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
-                <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl" style={{ backgroundColor: 'rgba(180,60,60,0.2)' }}>👵</div>
-                <div>
-                  <p className="text-white font-bold text-sm">تيتا فاطمة</p>
-                  <p className="text-white/30 text-xs">تسجيل ٣ دقائق و٤٢ ثانية</p>
-                </div>
-                <div className="mr-auto flex items-center gap-1 px-3 py-1 rounded-lg" style={{ backgroundColor: 'rgba(180,60,60,0.2)' }}>
-                  <Heart className="w-3.5 h-3.5 text-red-400" />
-                  <span className="text-red-400 text-xs font-bold">محفوظ</span>
-                </div>
-              </div>
             </div>
-          </div>
-
-          {/* Text */}
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#b03030' }}>
-              صوت شجرة العيلة
-            </p>
-            <h2 className="text-5xl font-extrabold text-white mb-6 leading-tight">
-              سجّل صوت
-              <br />
-              <span style={{ color: '#c46060', textShadow: '0 0 30px rgba(180,60,60,0.5)' }}>
-                حبايبك
-              </span>
-            </h2>
-            <p className="text-white/50 text-lg leading-relaxed mb-8">
-              قبل ما يرحلوا، خليهم يفضلوا معاك. سجّل أصوات أجدادك وحبايبك — حكاياتهم، أغانيهم، وصاياهم.
-              الـ AI هيبني نموذج من صوتهم يتكلم معاك في المناسبات.
-            </p>
-            <div className="space-y-4 mb-10">
-              {['سجّل صوت أي شخص بأي لغة أو لهجة', 'الـ AI بيحفظ طريقة كلامه وشخصيته', 'بيتكلم معاك في الأعياد والمناسبات'].map((item, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#b03030' }} />
-                  <span className="text-white/60 text-sm">{item}</span>
-                </div>
-              ))}
+            <div style={{ marginTop: 12, color: 'var(--muted)', fontSize: 13, display: 'flex', justifyContent: 'space-between' }}>
+              <span>صوت محفوظ من ذاكرة الأسرة</span>
+              <span>{fmt(elapsed)} / {fmt(TOTAL)}</span>
             </div>
-            <Link
-              to="/family"
-              className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 hover:scale-105"
-              style={{ backgroundColor: '#8b1a1a', color: '#fff', boxShadow: '0 0 30px rgba(139,26,26,0.4)' }}
-              id="voice-cta"
-            >
-              ابدأ التسجيل
-              <Mic className="w-5 h-5" />
-            </Link>
           </div>
         </div>
-      </section>
 
-      {/* ══════════════════════════════════════════════════════════════
-          SECTION 3 — التعليم والأطفال
-      ══════════════════════════════════════════════════════════════ */}
-      <section
-        className="relative min-h-[70vh] flex items-center overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #030812 0%, #061525 50%, #0a2040 100%)' }}
-        id="education-section"
-      >
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse at 30% 50%, rgba(20,80,140,0.4) 0%, transparent 65%)' }} />
-
-        <div className="relative z-10 w-full max-w-5xl mx-auto px-6 py-20 text-center">
-          <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#4a9fc4' }}>
-            تعليم وأطفال
-          </p>
-          <h2 className="text-5xl font-extrabold text-white mb-6">
-            حكايات لكل
-            <span style={{ color: '#4a9fc4', textShadow: '0 0 30px rgba(74,159,196,0.5)' }}> عمر</span>
+        {/* Copy */}
+        <div className="reveal" style={{ maxWidth: 560 }}>
+          <div className="eyebrow">02 — صوت حبايبك</div>
+          <h2 style={{ fontSize: 'clamp(40px,5.2vw,76px)', lineHeight: 1.04, letterSpacing: '-.05em', fontWeight: 900 }}>
+            الصوت الذي تحبه لا يختفي.
           </h2>
-          <p className="text-white/50 text-lg max-w-2xl mx-auto mb-12 leading-relaxed">
-            اكتشف التراث المصري مع أطفالك بطريقة ممتعة وتفاعلية. قصص، ألغاز، ورسومات مستوحاة من عمق التاريخ المصري.
+          <p style={{ color: 'var(--muted)', fontSize: 'clamp(16px,1.3vw,20px)', lineHeight: 1.9, marginTop: 22 }}>
+            نسجّل صوت شخص عزيز، ثم نحفظ نبرته ولهجته داخل تجربة تسمح للعائلة أن تسمع حكاياته مرة أخرى.
           </p>
-          <div className="flex flex-wrap gap-4 justify-center mb-12">
-            {['قصص الأقصر', 'رموز النوبة', 'الأبجدية الهيروغليفية', 'أساطير الإسكندرية'].map((tag, i) => (
-              <span key={i} className="px-4 py-2 rounded-xl text-sm font-bold"
-                style={{ backgroundColor: 'rgba(74,159,196,0.15)', border: '1px solid rgba(74,159,196,0.3)', color: '#4a9fc4' }}>
-                {tag}
-              </span>
-            ))}
-          </div>
-          <Link to="/map" id="education-cta"
-            className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 hover:scale-105"
-            style={{ backgroundColor: '#1a4a6e', color: '#fff', border: '1px solid rgba(74,159,196,0.4)' }}>
-            <Sparkles className="w-5 h-5" />
-            استكشف الآن
-          </Link>
+          <div className="hk-quote">"سجّل صوت جدك قبل ما يختفي للأبد."</div>
+          <Link to="/family" className="btn btn-primary" style={{ marginTop: 32, display: 'inline-block' }}>ابدأ التسجيل</Link>
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════════════════════════
-          FOOTER
-      ══════════════════════════════════════════════════════════════ */}
-      <footer className="py-10 px-4" style={{ backgroundColor: '#030201' }}>
-        <div className="max-w-5xl mx-auto text-center">
-          <h3 className="text-3xl font-extrabold mb-2" style={{ color: '#c4a06a' }}>حكاوي</h3>
-          <p className="text-white/20 text-sm mb-1">حفظ التراث الشفوي المصري بالذكاء الاصطناعي</p>
-          <p className="text-white/10 text-xs">Cairo University × AI Nexus Hackathon 2026</p>
+      {/* ════════════════════════════════════════════════════════════════════
+          SECTION 3 — التعليم والأطفال
+      ════════════════════════════════════════════════════════════════════ */}
+      <section className="hk-grid-section" id="learn" style={{
+        position: 'relative', minHeight: '100svh',
+        display: 'grid', gridTemplateColumns: '.9fr 1.1fr',
+        alignItems: 'center', gap: 'clamp(34px,7vw,100px)',
+        padding: '110px clamp(24px,7vw,110px)',
+        borderTop: '1px solid var(--line)',
+        background: 'radial-gradient(circle at 75% 30%,rgba(50,91,103,.19),transparent 30%), radial-gradient(circle at 20% 80%,rgba(155,68,53,.14),transparent 28%), linear-gradient(145deg,#100d0b,#16100d)',
+      }}>
+        <div className="reveal" style={{ maxWidth: 560 }}>
+          <div className="eyebrow">03 — التعليم والأطفال</div>
+          <h2 style={{ fontSize: 'clamp(40px,5.2vw,76px)', lineHeight: 1.04, letterSpacing: '-.05em', fontWeight: 900 }}>
+            التاريخ يتحول إلى مغامرة.
+          </h2>
+          <p style={{ color: 'var(--muted)', fontSize: 'clamp(16px,1.3vw,20px)', lineHeight: 1.9, marginTop: 22 }}>
+            الطفل لا يشاهد معلومة فقط؛ يختار طريقًا، يفتح بوابة، يقابل شخصية، ويكتشف تراث كل منطقة بطريقة تفاعلية.
+          </p>
+          <div className="hk-quote">"اكتشف تراثك عن طريق قصة ممتعة."</div>
+          <Link to="/map" className="btn btn-primary" style={{ marginTop: 32, display: 'inline-block' }}>استكشف الآن</Link>
+        </div>
+
+        {/* CSS learning world */}
+        <div className="reveal" style={{ position: 'relative', width: 'min(100%,700px)', minHeight: 560, borderRadius: 38, border: '1px solid rgba(248,236,211,.14)', overflow: 'hidden', boxShadow: 'var(--shadow)', background: 'radial-gradient(circle at 50% 17%,rgba(217,173,99,.2),transparent 22%), linear-gradient(#274954 0 48%,#8d6b3f 49% 58%,#2c4d3e 59%)' }}>
+          {/* Ground */}
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '42%', background: 'linear-gradient(165deg,#2d5844,#19362d)', clipPath: 'polygon(0 30%,100% 0,100% 100%,0 100%)' }} />
+          {/* Sun */}
+          <div style={{ position: 'absolute', width: 120, aspectRatio: '1', borderRadius: '50%', left: 48, top: 42, background: 'radial-gradient(circle at 35% 35%,#ffe8ad,#dba758 68%,#9a5a34)', boxShadow: '0 0 50px rgba(255,221,156,.3)' }} />
+          {/* CSS children */}
+          {[
+            { right: '22%', shirt: '#a54736', pants: '#492a22', scale: 1 },
+            { right: '48%', shirt: '#d2a24f', pants: '#324c57', scale: .9 },
+            { right: '70%', shirt: '#3f6e5a', pants: '#402d27', scale: .82 },
+          ].map((c, i) => (
+            <div key={i} style={{
+              position: 'absolute', bottom: 75, right: c.right,
+              width: 126, height: 220,
+              borderRadius: '70px 70px 25px 25px',
+              background: `linear-gradient(${c.shirt},${c.pants})`,
+              boxShadow: '0 18px 40px rgba(0,0,0,.25)',
+              transform: `scale(${c.scale})`,
+              transformOrigin: 'bottom center',
+            }}>
+              <div style={{ position: 'absolute', width: 76, height: 76, borderRadius: '50%', background: '#9a6543', left: '50%', top: -46, transform: 'translateX(-50%)', boxShadow: '0 -12px 0 6px #2a1a14' }} />
+            </div>
+          ))}
+          {/* Story cards */}
+          <div className="story-card" style={{ position: 'absolute', width: 190, padding: 16, borderRadius: 18, background: 'rgba(15,11,9,.8)', border: '1px solid rgba(248,236,211,.15)', backdropFilter: 'blur(12px)', left: 28, bottom: 36 }}>
+            <b style={{ display: 'block', marginBottom: 5, color: 'var(--ink)' }}>مهمة اليوم</b>
+            <small style={{ color: 'var(--muted)', lineHeight: 1.55 }}>ابحث عن رمز السجاد النوبي واكتشف قصته.</small>
+          </div>
+          <div className="story-card" style={{ position: 'absolute', width: 190, padding: 16, borderRadius: 18, background: 'rgba(15,11,9,.8)', border: '1px solid rgba(248,236,211,.15)', backdropFilter: 'blur(12px)', right: 24, top: 32 }}>
+            <b style={{ display: 'block', marginBottom: 5, color: 'var(--ink)' }}>رحلة جديدة</b>
+            <small style={{ color: 'var(--muted)', lineHeight: 1.55 }}>من القاهرة الفاطمية إلى بيوت النوبة.</small>
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════════════════════════
+          FOOTER CTA
+      ════════════════════════════════════════════════════════════════════ */}
+      <footer style={{
+        position: 'relative', minHeight: '72svh', display: 'grid', placeItems: 'center',
+        padding: '100px 24px', textAlign: 'center',
+        borderTop: '1px solid var(--line)', overflow: 'hidden',
+        background: 'radial-gradient(circle at 50% 52%,rgba(217,173,99,.14),transparent 32%), #0d0a09',
+      }}>
+        {/* Big ghost text */}
+        <div style={{ position: 'absolute', fontSize: 'min(30vw,420px)', fontWeight: 900, color: 'rgba(248,236,211,.025)', letterSpacing: '-.08em', userSelect: 'none', pointerEvents: 'none', whiteSpace: 'nowrap' }}>
+          حكاوي
+        </div>
+        <div className="reveal" style={{ position: 'relative', zIndex: 2, maxWidth: 900 }}>
+          <div className="eyebrow" style={{ justifyContent: 'center' }}>جاهز تبدأ؟</div>
+          <h2 style={{ fontSize: 'clamp(48px,7vw,104px)', lineHeight: 1.04, letterSpacing: '-.05em', fontWeight: 900, marginBottom: 24 }}>
+            ابدأ رحلتك.
+          </h2>
+          <p style={{ color: 'var(--muted)', fontSize: 20, marginBottom: 32 }}>
+            اختر مكانًا على الخريطة، ودع أول حكاية تقودك إلى الباقي.
+          </p>
+          <Link to="/map" className="btn btn-primary" style={{ fontSize: 18, padding: '18px 32px' }}>ادخل إلى حكاوي</Link>
+          <p style={{ color: 'rgba(248,236,211,.15)', fontSize: 12, marginTop: 48 }}>
+            Cairo University × AI Nexus Hackathon 2026
+          </p>
         </div>
       </footer>
-
-      {/* CSS Animations */}
-      <style>{`
-        @keyframes floatUp {
-          0% { transform: translateY(0) scale(1); opacity: 0.4; }
-          100% { transform: translateY(-100vh) scale(0.3); opacity: 0; }
-        }
-        @keyframes floatDrift {
-          0% { transform: translateY(0px) rotate(0deg); }
-          100% { transform: translateY(-15px) rotate(5deg); }
-        }
-        @keyframes fadeSlideUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes waveBar {
-          from { transform: scaleY(0.4); }
-          to { transform: scaleY(1); }
-        }
-      `}</style>
     </div>
   );
 }
