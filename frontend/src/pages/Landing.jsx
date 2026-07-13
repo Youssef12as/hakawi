@@ -242,8 +242,8 @@ export default function Landing() {
           backgroundSize: '100% auto',
           backgroundPosition: 'center bottom',
           backgroundRepeat: 'no-repeat',
-          opacity: .45,
-          filter: 'sepia(.3) brightness(.8) saturate(1.6)',
+          opacity: .85,
+          filter: 'sepia(.4) brightness(.4) contrast(.85) saturate(.8)',
           transform: `translateY(${scrollY * 0.25}px)`,
         }} />
 
@@ -255,7 +255,7 @@ export default function Landing() {
         <img src="/image/ship.png" alt="" style={{
           position: 'absolute', right: '5%', bottom: '14%',
           width: 'clamp(130px,14vw,220px)',
-          opacity: .5, filter: 'sepia(.2) brightness(.9) saturate(1.5)',
+          opacity: .9, filter: 'sepia(.3) brightness(.5) contrast(.9) saturate(.8)',
           animation: 'floatImg 8s ease-in-out infinite',
           pointerEvents: 'none',
           transform: `translateY(${scrollY * -0.1}px)`,
@@ -322,7 +322,7 @@ export default function Landing() {
         <img src="/image/mamar.png" alt="" style={{
           position: 'absolute', left: 0, bottom: 0,
           width: 'clamp(200px,32vw,500px)',
-          opacity: .5, filter: 'sepia(.15) brightness(1.1) saturate(1.6)',
+          opacity: .9, filter: 'sepia(.2) brightness(.5) contrast(.9) saturate(.8)',
           transform: `translateY(${(scrollY - 700) * -0.08}px)`,
           pointerEvents: 'none',
         }} />
@@ -460,7 +460,7 @@ export default function Landing() {
         <img src="/image/noqush.png" alt="" style={{
           position: 'absolute', right: '-4%', top: '8%',
           width: 'clamp(220px,32vw,480px)',
-          opacity: .32, filter: 'sepia(.15) brightness(.85) saturate(1.6)',
+          opacity: .85, filter: 'sepia(.2) brightness(.5) contrast(.9) saturate(.8)',
           transform: `translateY(${(scrollY - 1500) * -0.07}px)`,
           pointerEvents: 'none',
           animation: 'floatImg 11s ease-in-out infinite',
@@ -566,7 +566,7 @@ export default function Landing() {
         <img src="/image/ramz.png" alt="" style={{
           position: 'absolute', left: '2%', bottom: '6%',
           width: 'clamp(150px,20vw,300px)',
-          opacity: .35, filter: 'sepia(.15) brightness(.88) saturate(1.6)',
+          opacity: .9, filter: 'sepia(.2) brightness(.5) contrast(.9) saturate(.8)',
           transform: `translateY(${(scrollY - 2400) * -0.06}px)`,
           pointerEvents: 'none',
           animation: 'floatImg 10s ease-in-out 1.5s infinite',
@@ -614,7 +614,7 @@ export default function Landing() {
         <img src="/image/ship.png" alt="" style={{
           position: 'absolute', left: '3%', bottom: '6%',
           width: 'clamp(100px,13vw,190px)',
-          opacity: .28, filter: 'sepia(.2) brightness(.85)',
+          opacity: .85, filter: 'sepia(.3) brightness(.5) contrast(.9) saturate(.8)',
           pointerEvents: 'none',
           animation: 'floatImg 7s ease-in-out infinite',
         }} />
