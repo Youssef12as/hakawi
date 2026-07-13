@@ -1,6 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import Navbar from './components/layout/Navbar'
-import LivingWall from './pages/LivingWall'
+import Landing from './pages/Landing'
 import MapInteract from './pages/MapInteract'
 import FamilyTree from './pages/FamilyTree'
 import AncientMode from './pages/AncientMode'
@@ -12,7 +12,7 @@ export default function App() {
       <Navbar />
       <main>
         <Routes>
-          <Route path="/" element={<LivingWall />} />
+          <Route path="/" element={<Landing />} />
           <Route path="/map" element={<MapInteract />} />
           <Route path="/ancient/:regionId" element={<AncientMode />} />
           <Route path="/family" element={<FamilyTree />} />

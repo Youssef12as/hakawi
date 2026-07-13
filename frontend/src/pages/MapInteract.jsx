@@ -8,7 +8,7 @@ import CharacterStage from '../components/character/CharacterStage';
 import CharacterCard from '../components/character/CharacterCard';
 import ChatPanel from '../components/chat/ChatPanel';
 import AIBadge from '../components/consent/AIBadge';
-import { useTTSPipeline } from '../hooks/useTTSPipeline';
+import { useCharacterState } from '../hooks/useCharacterState';
 import { useChatApi } from '../hooks/useChatApi';
 
 const REGIONS = [
@@ -57,7 +57,7 @@ export default function MapInteract() {
   const [sessionId, setSessionId] = useState(null);
   const [chatHistory, setChatHistory] = useState([]);
   const [isAncientMode, setIsAncientMode] = useState(false);
-  const { isSpeaking, playSentencePipeline, playStaticAudio, stopAudio } = useTTSPipeline();
+  const { isSpeaking, playResponseAudio, stopAudio } = useCharacterState();
   const { sendTextMessage, sendAudioMessage, fetchTTS, isLoading } = useChatApi();
 
   // ── Region Selection ─────────────────────────────────────────────
@@ -93,22 +93,18 @@ export default function MapInteract() {
 
       try {
         let aiResponseText = '';
-        let staticAudioUrl = null;
 
         if (isHardcoded) {
           // Hardcoded responses bypass Gemini
           switch (text) {
             case 'حكايات الصحراء':
               aiResponseText = 'الصحراء يا ولدي كتاب مفتوح للي يعرف يقرأ رمالها. كل كُثبان رملية ليها قصة، والرياح بتحمل أصوات اللي مروا من هنا قبلينا. زمان، كانت القوافل تمشي أسابيع مفيش دليل ليها غير النجوم والخبرة.';
-              staticAudioUrl = '/audio/desert.dat';
               break;
             case 'النجوم والملاحة':
               aiResponseText = 'النجوم دي بوصلة البدوي. نجم القطب الشمالي ثابت ميتغيرش، ومنه نعرف طريقنا في ليل الصحرا العتمة. كل نجم ليه اسم وحكاية، وهم رفقائنا في السفر الطويل.';
-              staticAudioUrl = '/audio/stars.dat';
               break;
             case 'رموز الكليم':
               aiResponseText = 'الكليم مش بس نسيج، ده لغة. كل رمز فيه بيحكي حاجة: المثلثات للحماية من الحسد، والخطوط المتعرجة بتمثل الميه، والشجر بيمثل الحياة والخصوبة. دي رسايل من جداتنا.';
-              staticAudioUrl = '/audio/rug.dat';
               break;
             default:
               aiResponseText = 'أهلاً بك يا ولدي. اسألني عما شئت من تراثنا.';
@@ -120,27 +116,25 @@ export default function MapInteract() {
           aiResponseText = data.response;
         }
 
+        // Add message without audio first (so it appears immediately)
         const msgId = Date.now();
         setChatHistory((prev) => [
           ...prev,
-          { id: msgId, sender: 'ai', text: '', timestamp: msgId },
+          { id: msgId, sender: 'ai', text: aiResponseText, timestamp: msgId },
         ]);
 
+        // TTS — separate second call
         const characterName = selectedRegion?.characterName || 'am-othman';
-
-        if (staticAudioUrl) {
-          // Type out immediately and play static audio
-          setChatHistory((prev) => prev.map((msg) => msg.id === msgId ? { ...msg, text: aiResponseText } : msg));
-          await playStaticAudio(staticAudioUrl);
-        } else {
-          // Pipeline TTS
-          await playSentencePipeline(aiResponseText, characterName, null, (currentTypedText) => {
-            setChatHistory((prev) =>
-              prev.map((msg) =>
-                msg.id === msgId ? { ...msg, text: currentTypedText } : msg
-              )
-            );
-          });
+        const audioBlob = await fetchTTS(aiResponseText, characterName);
+        
+        if (audioBlob) {
+          // Update the message with the audio blob for later replay
+          setChatHistory((prev) =>
+            prev.map((msg) =>
+              msg.id === msgId ? { ...msg, audioBlob } : msg
+            )
+          );
+          await playResponseAudio(audioBlob);
         }
       } catch {
         setChatHistory((prev) => [
@@ -154,7 +148,7 @@ export default function MapInteract() {
         ]);
       }
     },
-    [sessionId, selectedRegion, sendTextMessage, fetchTTS, playSentencePipeline, playStaticAudio],
+    [sessionId, selectedRegion, sendTextMessage, fetchTTS, playResponseAudio],
   );
 
   // ── Audio Chat ───────────────────────────────────────────────────
@@ -168,17 +162,20 @@ export default function MapInteract() {
         setChatHistory((prev) => [
           ...prev,
           { sender: 'user', text: data.transcribed_text, timestamp: msgId - 1 },
-          { id: msgId, sender: 'ai', text: '', timestamp: msgId },
+          { id: msgId, sender: 'ai', text: data.response, timestamp: msgId },
         ]);
 
         const characterName = selectedRegion?.characterName || 'am-othman';
-        await playSentencePipeline(data.response, characterName, null, (currentTypedText) => {
+        const audioBlob = await fetchTTS(data.response, characterName);
+        if (audioBlob) {
+          // Store the blob for replay
           setChatHistory((prev) =>
             prev.map((msg) =>
-              msg.id === msgId ? { ...msg, text: currentTypedText } : msg
+              msg.id === msgId ? { ...msg, audioBlob } : msg
             )
           );
-        });
+          await playResponseAudio(audioBlob);
+        }
       } catch {
         setChatHistory((prev) => [
           ...prev,
@@ -191,7 +188,7 @@ export default function MapInteract() {
         ]);
       }
     },
-    [sessionId, selectedRegion, sendAudioMessage, fetchTTS, playSentencePipeline],
+    [sessionId, selectedRegion, sendAudioMessage, fetchTTS, playResponseAudio],
   );
 
   // ── Render ───────────────────────────────────────────────────────

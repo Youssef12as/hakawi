@@ -1,7 +1,5 @@
 import { useState, useCallback } from 'react';
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
-
 export function useChatApi() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -10,7 +8,7 @@ export function useChatApi() {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/chat/text`, {
+      const res = await fetch('/api/chat/text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, session_id: sessionId }),
@@ -36,7 +34,7 @@ export function useChatApi() {
       formData.append('file', blob, 'recording.webm');
       if (sessionId) formData.append('session_id', sessionId);
 
-      const res = await fetch(`${API_BASE}/api/chat/audio`, {
+      const res = await fetch('/api/chat/audio', {
         method: 'POST',
         body: formData,
       });
@@ -55,7 +53,7 @@ export function useChatApi() {
 
   const fetchTTS = useCallback(async (text, characterName) => {
     try {
-      const res = await fetch(`${API_BASE}/api/tts`, {
+      const res = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, character_name: characterName }),
