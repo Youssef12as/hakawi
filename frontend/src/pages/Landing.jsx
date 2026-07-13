@@ -242,8 +242,8 @@ export default function Landing() {
           backgroundSize: '100% auto',
           backgroundPosition: 'center bottom',
           backgroundRepeat: 'no-repeat',
-          opacity: .22,
-          filter: 'sepia(.6) brightness(.65) saturate(1.4)',
+          opacity: .45,
+          filter: 'sepia(.3) brightness(.8) saturate(1.6)',
           transform: `translateY(${scrollY * 0.25}px)`,
         }} />
 
@@ -255,7 +255,7 @@ export default function Landing() {
         <img src="/image/ship.png" alt="" style={{
           position: 'absolute', right: '5%', bottom: '14%',
           width: 'clamp(130px,14vw,220px)',
-          opacity: .18, filter: 'sepia(.5) brightness(.75) saturate(1.3)',
+          opacity: .5, filter: 'sepia(.2) brightness(.9) saturate(1.5)',
           animation: 'floatImg 8s ease-in-out infinite',
           pointerEvents: 'none',
           transform: `translateY(${scrollY * -0.1}px)`,
@@ -280,12 +280,12 @@ export default function Landing() {
           </div>
           <h1 style={{
             fontSize: 'clamp(5rem,18vw,12rem)', fontWeight: 900, lineHeight: .88,
-            letterSpacing: '-.07em', color: '#f0ddb8',
-            textShadow: '0 0 100px rgba(200,152,48,.2), 0 4px 30px rgba(0,0,0,.8)',
+            letterSpacing: '-.07em', color: '#fff8ee',
+            textShadow: '0 0 100px rgba(200,152,48,.3), 0 4px 30px rgba(0,0,0,.8)',
           }}>
             حكاوي
           </h1>
-          <p style={{ color: 'rgba(240,210,160,.55)', fontSize: 'clamp(15px,1.5vw,19px)', marginTop: 16 }}>
+          <p style={{ color: 'rgba(255,230,180,.75)', fontSize: 'clamp(15px,1.5vw,19px)', marginTop: 16 }}>
             صوت الماضي، حيّ في الحاضر
           </p>
           <p style={{ color: 'rgba(200,152,48,.3)', fontSize: 11, marginTop: 6, letterSpacing: '.2em', textTransform: 'uppercase' }}>
@@ -322,7 +322,7 @@ export default function Landing() {
         <img src="/image/mamar.png" alt="" style={{
           position: 'absolute', left: 0, bottom: 0,
           width: 'clamp(200px,32vw,500px)',
-          opacity: .14, filter: 'sepia(.4) brightness(.7) saturate(1.5)',
+          opacity: .5, filter: 'sepia(.15) brightness(1.1) saturate(1.6)',
           transform: `translateY(${(scrollY - 700) * -0.08}px)`,
           pointerEvents: 'none',
         }} />
@@ -340,22 +340,22 @@ export default function Landing() {
 
           {/* ── Left: Copy ─────────────────────────────────────────── */}
           <div>
-            <div className="rv ey" style={{ color: region.accent }}>01 — شخصيات من كل ركن</div>
+            <div className="rv ey" style={{ color: region.tagColor }}>01 — شخصيات من كل ركن</div>
 
             {/* Animated content — slides up when region changes */}
             <div key={`name-${animKey}`} className="slide-up">
               <h2 style={{
                 fontSize: 'clamp(38px,5vw,70px)', fontWeight: 900, lineHeight: 1.02,
-                letterSpacing: '-.05em', color: region.accent,
+                letterSpacing: '-.05em', color: region.tagColor,
                 textShadow: `0 0 60px ${region.accentDim}`,
               }}>{region.name}</h2>
-              <p style={{ color: 'rgba(240,210,160,.45)', fontSize: 13, marginTop: 4 }}>{region.nameEn}</p>
+              <p style={{ color: 'rgba(255,230,180,.6)', fontSize: 13, marginTop: 4 }}>{region.nameEn}</p>
             </div>
 
             <div key={`quote-${animKey}`} className="slide-up" style={{ animationDelay: '.08s' }}>
-              <blockquote className="qt" style={{ color: 'rgba(240,210,160,.8)', borderColor: region.accent, background: `linear-gradient(90deg, ${region.accentDim}, transparent)` }}>
+              <blockquote className="qt" style={{ color: 'rgba(255,235,200,.9)', borderColor: region.tagColor, background: `linear-gradient(90deg, ${region.accentDim}, transparent)` }}>
                 "{region.quote}"
-                <small style={{ display: 'block', marginTop: 10, fontStyle: 'normal', color: 'rgba(240,210,160,.45)', fontSize: 12 }}>
+                <small style={{ display: 'block', marginTop: 10, fontStyle: 'normal', color: 'rgba(255,220,160,.65)', fontSize: 12 }}>
                   — {region.elderName}، {region.elderTitle}
                 </small>
               </blockquote>
@@ -367,8 +367,8 @@ export default function Landing() {
                 <button key={r.key} onClick={() => goTo(i)} style={{
                   padding: '8px 16px', borderRadius: 999, fontSize: 13, fontWeight: 700,
                   cursor: 'pointer', border: 'none', fontFamily: 'inherit', transition: '.25s ease',
-                  background: activeIdx === i ? r.accent : 'rgba(255,255,255,.06)',
-                  color: activeIdx === i ? '#0e0b08' : 'rgba(240,210,160,.5)',
+                  background: activeIdx === i ? r.tagColor : 'rgba(255,255,255,.08)',
+                  color: activeIdx === i ? '#0e0b08' : 'rgba(255,225,170,.65)',
                   boxShadow: activeIdx === i ? `0 0 24px ${r.accentDim}` : 'none',
                   transform: activeIdx === i ? 'scale(1.05)' : 'scale(1)',
                 }}>{r.name}</button>
@@ -376,7 +376,7 @@ export default function Landing() {
             </div>
 
             <div className="rv d3" style={{ marginTop: 28 }}>
-              <Link to="/map" className="btn" style={{ background: region.accent, color: '#0e0b08', boxShadow: `0 8px 28px ${region.accentDim}` }}>
+              <Link to="/map" className="btn" style={{ background: region.tagColor, color: '#0e0b08', boxShadow: `0 8px 28px ${region.accentDim}` }}>
                 تحدث مع الشخصية <ArrowLeft size={14} />
               </Link>
             </div>
@@ -402,9 +402,9 @@ export default function Landing() {
                   aspectRatio: '3/4',
                   objectFit: 'cover',
                   borderRadius: 22,
-                  border: `2px solid ${region.accent}40`,
-                  boxShadow: `0 0 70px ${region.accentDim}, 0 24px 60px rgba(0,0,0,.7)`,
-                  filter: 'saturate(.9) brightness(.95)',
+                  border: `2px solid ${region.accent}60`,
+                  boxShadow: `0 0 80px ${region.accentDim}, 0 24px 60px rgba(0,0,0,.6)`,
+                  filter: 'none',
                 }}
               />
               {/* Name tag */}
@@ -412,8 +412,8 @@ export default function Landing() {
                 position: 'absolute', bottom: -14, left: '50%', transform: 'translateX(-50%)',
                 whiteSpace: 'nowrap', zIndex: 2,
                 background: 'rgba(14,11,8,.92)', backdropFilter: 'blur(12px)',
-                border: `1px solid ${region.accent}35`, borderRadius: 999,
-                padding: '6px 14px', fontSize: 12, color: region.tagColor,
+                border: `1px solid ${region.accent}50`, borderRadius: 999,
+                padding: '6px 14px', fontSize: 12, color: region.tagColor, fontWeight: 700,
                 display: 'flex', alignItems: 'center', gap: 6,
               }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: region.accent, display: 'inline-block', animation: 'scrollPulse 2s ease-in-out infinite' }} />
@@ -460,7 +460,7 @@ export default function Landing() {
         <img src="/image/noqush.png" alt="" style={{
           position: 'absolute', right: '-4%', top: '8%',
           width: 'clamp(220px,32vw,480px)',
-          opacity: .12, filter: 'sepia(.3) brightness(.7) saturate(1.5)',
+          opacity: .32, filter: 'sepia(.15) brightness(.85) saturate(1.6)',
           transform: `translateY(${(scrollY - 1500) * -0.07}px)`,
           pointerEvents: 'none',
           animation: 'floatImg 11s ease-in-out infinite',
@@ -525,27 +525,27 @@ export default function Landing() {
 
           {/* Copy */}
           <div>
-            <div className="rv ey" style={{ color: '#b05040' }}>02 — صوت حبايبك</div>
-            <h2 className="rv d1" style={{ fontSize: 'clamp(36px,5vw,68px)', fontWeight: 900, lineHeight: 1.04, letterSpacing: '-.05em' }}>
+            <div className="rv ey" style={{ color: '#e06050' }}>02 — صوت حبايبك</div>
+            <h2 className="rv d1" style={{ fontSize: 'clamp(36px,5vw,68px)', fontWeight: 900, lineHeight: 1.04, letterSpacing: '-.05em', color: '#fff8ee' }}>
               الصوت الذي تحبه<br />
-              <span style={{ color: '#c04040' }}>لا يختفي.</span>
+              <span style={{ color: '#e05050' }}>لا يختفي.</span>
             </h2>
-            <p className="rv d2" style={{ color: 'rgba(240,210,160,.55)', fontSize: 'clamp(14px,1.2vw,17px)', lineHeight: 1.9, marginTop: 18 }}>
+            <p className="rv d2" style={{ color: 'rgba(255,225,190,.75)', fontSize: 'clamp(14px,1.2vw,17px)', lineHeight: 1.9, marginTop: 18 }}>
               نسجّل صوت شخص عزيز، ثم نحفظ نبرته ولهجته داخل تجربة تسمح للعائلة أن تسمع حكاياته مرة أخرى.
             </p>
-            <div className="rv d2 qt" style={{ color: 'rgba(240,210,160,.75)', borderColor: '#b05040', background: 'linear-gradient(90deg, rgba(176,80,64,.1), transparent)' }}>
+            <div className="rv d2 qt" style={{ color: 'rgba(255,230,200,.9)', borderColor: '#e06050', background: 'linear-gradient(90deg, rgba(224,96,80,.12), transparent)' }}>
               "سجّل صوت جدك قبل ما يختفي للأبد."
             </div>
             <div className="rv d3" style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 9 }}>
               {['سجّل صوت أي شخص بأي لهجة', 'الـ AI يحفظ نبرته وشخصيته', 'يتكلم مع عيلتك في المناسبات'].map((t, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, color: 'rgba(240,210,160,.45)', fontSize: 13 }}>
-                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#c04040', flexShrink: 0 }} />
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, color: 'rgba(255,220,180,.7)', fontSize: 13 }}>
+                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#e06050', flexShrink: 0 }} />
                   {t}
                 </div>
               ))}
             </div>
             <div className="rv d3" style={{ marginTop: 26 }}>
-              <Link to="/family" className="btn" style={{ background: '#b05040', color: '#fff', boxShadow: '0 8px 28px rgba(176,80,64,.3)' }}>
+              <Link to="/family" className="btn" style={{ background: '#e06050', color: '#fff', boxShadow: '0 8px 28px rgba(224,96,80,.35)' }}>
                 <Mic size={14} /> ابدأ التسجيل
               </Link>
             </div>
@@ -566,23 +566,23 @@ export default function Landing() {
         <img src="/image/ramz.png" alt="" style={{
           position: 'absolute', left: '2%', bottom: '6%',
           width: 'clamp(150px,20vw,300px)',
-          opacity: .14, filter: 'sepia(.3) brightness(.7) saturate(1.5)',
+          opacity: .35, filter: 'sepia(.15) brightness(.88) saturate(1.6)',
           transform: `translateY(${(scrollY - 2400) * -0.06}px)`,
           pointerEvents: 'none',
           animation: 'floatImg 10s ease-in-out 1.5s infinite',
         }} />
 
         <div style={{ width: '100%', maxWidth: 940, margin: '0 auto', padding: '88px clamp(20px,6vw,80px)', textAlign: 'center', position: 'relative', zIndex: 2 }}>
-          <div className="rv ey" style={{ justifyContent: 'center', color: '#3a90c0' }}>03 — التعليم والأطفال</div>
-          <h2 className="rv d1" style={{ fontSize: 'clamp(36px,5vw,68px)', fontWeight: 900, letterSpacing: '-.05em', lineHeight: 1.04 }}>
-            التاريخ يتحول إلى <span style={{ color: '#3a90c0' }}>مغامرة.</span>
+          <div className="rv ey" style={{ justifyContent: 'center', color: '#50b8e0' }}>03 — التعليم والأطفال</div>
+          <h2 className="rv d1" style={{ fontSize: 'clamp(36px,5vw,68px)', fontWeight: 900, letterSpacing: '-.05em', lineHeight: 1.04, color: '#fff8ee' }}>
+            التاريخ يتحول إلى <span style={{ color: '#50b8e0' }}>مغامرة.</span>
           </h2>
-          <p className="rv d2" style={{ color: 'rgba(240,210,160,.5)', fontSize: 'clamp(14px,1.2vw,17px)', lineHeight: 1.9, maxWidth: 560, margin: '16px auto 28px' }}>
+          <p className="rv d2" style={{ color: 'rgba(255,225,190,.72)', fontSize: 'clamp(14px,1.2vw,17px)', lineHeight: 1.9, maxWidth: 560, margin: '16px auto 28px' }}>
             الطفل لا يشاهد معلومة فقط؛ يختار طريقًا، يفتح بوابة، يقابل شخصية، ويكتشف تراث كل منطقة بطريقة تفاعلية.
           </p>
           <div className="rv d2" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 28 }}>
             {['قصص الأقصر', 'رموز النوبة', 'الأبجدية الهيروغليفية', 'أساطير الإسكندرية', 'حكايات القاهرة'].map(tag => (
-              <span key={tag} style={{ padding: '7px 15px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: 'rgba(58,144,192,.12)', border: '1px solid rgba(58,144,192,.25)', color: '#5ab0d8' }}>{tag}</span>
+              <span key={tag} style={{ padding: '7px 15px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: 'rgba(80,184,224,.1)', border: '1px solid rgba(80,184,224,.3)', color: '#70c8ee' }}>{tag}</span>
             ))}
           </div>
           <div className="rv d3">
@@ -614,17 +614,17 @@ export default function Landing() {
         <img src="/image/ship.png" alt="" style={{
           position: 'absolute', left: '3%', bottom: '6%',
           width: 'clamp(100px,13vw,190px)',
-          opacity: .1, filter: 'sepia(.4) brightness(.7)',
+          opacity: .28, filter: 'sepia(.2) brightness(.85)',
           pointerEvents: 'none',
           animation: 'floatImg 7s ease-in-out infinite',
         }} />
 
         <div className="rv" style={{ position: 'relative', zIndex: 2, maxWidth: 700 }}>
           <div className="ey" style={{ justifyContent: 'center', color: '#c89830' }}>جاهز تبدأ؟</div>
-          <h2 style={{ fontSize: 'clamp(44px,7.5vw,98px)', fontWeight: 900, letterSpacing: '-.068em', lineHeight: .9, marginBottom: 18, color: '#f0ddb8' }}>
+          <h2 style={{ fontSize: 'clamp(44px,7.5vw,98px)', fontWeight: 900, letterSpacing: '-.068em', lineHeight: .9, marginBottom: 18, color: '#fff8ee' }}>
             ابدأ رحلتك.
           </h2>
-          <p style={{ color: 'rgba(240,210,160,.45)', fontSize: 16, marginBottom: 30, lineHeight: 1.75 }}>
+          <p style={{ color: 'rgba(255,225,185,.7)', fontSize: 16, marginBottom: 30, lineHeight: 1.75 }}>
             اختر مكانًا على الخريطة، ودع أول حكاية تقودك إلى الباقي.
           </p>
           <Link to="/map" className="btn" style={{ fontSize: 16, padding: '14px 30px', background: '#c89830', color: '#0e0b08', boxShadow: '0 10px 36px rgba(200,152,48,.28)' }}>
