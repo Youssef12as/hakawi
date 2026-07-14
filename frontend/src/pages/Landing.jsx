@@ -12,10 +12,11 @@ const REGIONS = [
     key: 'aswan',
     name: 'أسوان والنوبة',
     nameEn: 'Aswan & Nubia',
-    elderName: 'عم عثمان',
-    elderTitle: 'حارس أسرار النوبة',
+    elderName: 'الجدة حليمة',
+    elderTitle: 'حارسة التراث النوبي',
     quote: 'الكليم مش بس نسيج، ده لغة. كل رمز فيه بيحكي حكاية من جداتنا.',
-    image: '/new photos/woman_aswan.png',
+    image: '/new photos/new_aswan.png',
+    bgImage: '/new photos/aswan_background.png',
     accent: '#d4853a',
     accentDim: 'rgba(212,133,58,0.18)',
     bg: 'linear-gradient(135deg, #1a0c04 0%, #2d1608 50%, #1a0c04 100%)',
@@ -30,6 +31,7 @@ const REGIONS = [
     elderTitle: 'راوي المعابد الفرعونية',
     quote: 'عنخ — مفتاح الحياة. أجدادنا نقشوه على كل باب ليحمي البيت من الأبد.',
     image: '/new photos/man_auxor.png',
+    bgImage: '/new photos/auxor_background.png',
     accent: '#c8a020',
     accentDim: 'rgba(200,160,32,0.18)',
     bg: 'linear-gradient(135deg, #160f00 0%, #2a1e04 50%, #160f00 100%)',
@@ -43,7 +45,8 @@ const REGIONS = [
     elderName: 'الشيخ محمود',
     elderTitle: 'عالم الأزهر الشريف',
     quote: 'الأرابيسك هو فن إسلامي خالص — خطوط بلا نهاية ترمز لاستمرارية الوجود.',
-    image: '/new photos/man_giza.png',
+    image: '/new photos/cairo_man_new.png',
+    bgImage: '/new photos/cairo_background.png',
     accent: '#4a9ab8',
     accentDim: 'rgba(74,154,184,0.18)',
     bg: 'linear-gradient(135deg, #030c12 0%, #071828 50%, #030c12 100%)',
@@ -54,10 +57,11 @@ const REGIONS = [
     key: 'alexandria',
     name: 'الإسكندرية',
     nameEn: 'Alexandria',
-    elderName: 'عم سيد البحري',
-    elderTitle: 'ابن البحر المتوسط',
-    quote: 'الإسكندرية مدينة بتتنفس من البحر. الإغريق والمصريين كلهم خلوا أثر هنا.',
-    image: '/new photos/man_alex.png',
+    elderName: 'كليوباترا',
+    elderTitle: 'ملكة مصر الأسطورية',
+    quote: 'الإسكندرية لم تكن مجرد مدينة، بل كانت منارة العالم القديم وملتقى كل الثقافات.',
+    image: '/new photos/alex_man_new.png',
+    bgImage: '/new photos/alex_background.png',
     accent: '#3a90a0',
     accentDim: 'rgba(58,144,160,0.18)',
     bg: 'linear-gradient(135deg, #020c10 0%, #051520 50%, #020c10 100%)',
@@ -71,40 +75,64 @@ const BARS = Array.from({ length: 36 }, (_, i) => ({ i, h: 10 + Math.random() * 
 /* ─── Living Wall Symbols ──────────────────────────────────────────────────── */
 const WALL_SYMBOLS = [
   {
-    id: 'ankh',
-    symbol: '𓋹',
-    name: 'عنخ — مفتاح الحياة',
-    description: 'رمز الخلود عند الفراعنة. كان يُحمل كتعويذة حماية، ويُنقش على جدران المعابد ليمنح الملوك حياة أبدية.',
-    narrator: 'عم عثمان — أسوان',
-    color: '#d4853a',
-    top: '22%', left: '25%',
+    id: 'nubian-baskets',
+    name: 'السلال النوبية',
+    description:
+      'كانت هذه السلال تُنسج يدويًا من سعف النخيل، وتُستخدم لحفظ الخبز والتمر والمحاصيل. ومع مرور الزمن أصبحت رمزًا للحياة اليومية في النوبة وللمهارة التي انتقلت بين الأجيال.',
+    narrator: 'حكاية من أسوان والنوبة',
+    color: '#d6a62a',
+    top: '66%',
+    left: '12%',
   },
   {
-    id: 'eye',
-    symbol: '𓂀',
-    name: 'عين حورس — عين القمر',
-    description: 'رمز الحماية والشفاء. تقول الأسطورة إن حورس فقد عينه في معركة مع ست، فأعادها تحوت كاملة — رمزًا للاكتمال.',
-    narrator: 'حكيم الأقصر',
-    color: '#c8a020',
-    top: '35%', left: '65%',
+    id: 'nubian-tray',
+    name: 'الطبق النوبي',
+    description:
+      'يحمل كل طبق زخارف هندسية مستوحاة من النيل والبيئة المحيطة. لم يكن مجرد أداة منزلية، بل قطعة فنية تزيّن البيوت وترافق المناسبات.',
+    narrator: 'حكاية من أسوان والنوبة',
+    color: '#d6a62a',
+    top: '61%',
+    left: '32%',
   },
   {
-    id: 'scarab',
-    symbol: '𓆣',
-    name: 'الجعران — خنفساء الشمس',
-    description: 'الجعران المقدس يرمز للبعث والتجدد. كان المصريون يرون فيه صورة الإله خبري الذي يدفع الشمس كل صباح.',
-    narrator: 'الشيخ محمود — القاهرة',
-    color: '#4a9ab8',
-    top: '60%', left: '30%',
+    id: 'clay-jar',
+    name: 'الجرة الفخارية',
+    description:
+      'كانت الجرار تحفظ الماء باردًا حتى في أشد أيام الصيف حرارة. صُنعت من طين النيل وأصبحت جزءًا من تفاصيل الحياة اليومية في صعيد مصر.',
+    narrator: 'حكاية من جنوب مصر',
+    color: '#d6a62a',
+    top: '54%',
+    left: '43%',
   },
   {
-    id: 'lotus',
-    symbol: '❋',
-    name: 'زهرة اللوتس — رمز الخلق',
-    description: 'زهرة اللوتس تنبت من الطين وتتفتح في النور — رمز الولادة من العدم. كانت الزهرة المقدسة لمصر العليا.',
-    narrator: 'عم سيد البحري — الإسكندرية',
-    color: '#3a90a0',
-    top: '48%', left: '72%',
+    id: 'hand-loom',
+    name: 'النول اليدوي',
+    description:
+      'على هذا النول كانت تُنسج المفروشات والسجاد خيطًا بعد خيط. تعلّمت الأجيال هذه الحرفة داخل البيوت، فصار النول رمزًا لاستمرار التراث.',
+    narrator: 'حكاية من صُنّاع النسيج',
+    color: '#d6a62a',
+    top: '56%',
+    left: '51%',
+  },
+  {
+    id: 'woven-textile',
+    name: 'قطعة نسيج يدوية',
+    description:
+      'كل لون ونقشة يحملان دلالة خاصة ترتبط بالمكان والمناسبة. لذلك لا توجد قطعتان متطابقتان تمامًا، فلكل واحدة بصمتها الخاصة.',
+    narrator: 'حكاية من ذاكرة البيت',
+    color: '#d6a62a',
+    top: '81%',
+    left: '74%',
+  },
+  {
+    id: 'luxor-carpet',
+    name: 'سجادة الأقصر',
+    description:
+      'استُلهمت زخارفها من المعابد وأعمدة الكرنك والطبيعة المحيطة بالنيل. كانت تُهدى في المناسبات وتبقى مع العائلة سنوات طويلة.',
+    narrator: 'حكاية من الأقصر',
+    color: '#d6a62a',
+    top: '42%',
+    left: '90%',
   },
 ];
 
@@ -407,30 +435,41 @@ export default function Landing() {
       <section id="chars" style={{
         position: 'relative', overflow: 'hidden',
         minHeight: '100svh', display: 'flex', alignItems: 'center',
-        background: region.bg,
-        transition: 'background .8s ease',
+        backgroundColor: '#0e0b08',
         borderTop: '1px solid rgba(255,220,140,.06)',
       }}>
 
-        {/* Temple illustration */}
-        <img src="/image/mamar.png" alt="" style={{
-          position: 'absolute', left: 0, bottom: 0,
-          width: 'clamp(200px,32vw,500px)',
-          opacity: .85, filter: 'sepia(.2) brightness(.5) contrast(.9) saturate(.8)',
-          transform: `translateY(${(scrollY - 700) * -0.08}px)`,
+        {/* Dynamic Background Images */}
+        {REGIONS.map((r, i) => (
+          <div key={`bgimg-${r.key}`} style={{
+            position: 'absolute', inset: 0, zIndex: 0,
+            backgroundImage: r.bgImage ? `url("${r.bgImage}")` : 'none',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            opacity: activeIdx === i && r.bgImage ? 0.85 : 0,
+            filter: 'sepia(0.3) saturate(1.2) contrast(1.1)',
+            transition: 'opacity 1s cubic-bezier(.16,1,.3,1), transform 1s cubic-bezier(.16,1,.3,1)',
+            transform: activeIdx === i ? 'translateX(0) scale(1.02)' : 'translateX(80px) scale(1)',
+          }} />
+        ))}
+
+        {/* Unified Hakawi Overlay */}
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 1,
+          background: 'linear-gradient(135deg, rgba(14,11,8,0.95) 0%, rgba(26,14,4,0.4) 50%, rgba(14,11,8,0.95) 100%)',
           pointerEvents: 'none',
         }} />
 
         {/* Accent glow */}
         <div style={{
-          position: 'absolute', top: '20%', right: '5%',
+          position: 'absolute', top: '20%', right: '5%', zIndex: 2,
           width: '40%', height: '60%',
           background: `radial-gradient(ellipse, ${region.accentDim} 0%, transparent 70%)`,
           transition: 'background .8s ease',
           pointerEvents: 'none',
         }} />
 
-        <div style={{ width: '100%', position: 'relative', zIndex: 2, display: 'grid', gridTemplateColumns: '1.1fr 1fr', alignItems: 'center', gap: 'clamp(20px,4vw,40px)', padding: '70px clamp(20px,5vw,80px)' }}>
+        <div style={{ width: '100%', position: 'relative', zIndex: 3, display: 'grid', gridTemplateColumns: '1.1fr 1fr', alignItems: 'center', gap: 'clamp(20px,4vw,40px)', padding: '70px clamp(20px,5vw,80px)' }}>
 
           {/* ── LEFT: Big Map ─────────────────────────────────────── */}
           <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
@@ -492,7 +531,7 @@ export default function Landing() {
 
           {/* ── RIGHT: Character Card ────────────────────────────── */}
           <div>
-            <div className="rv-l ey" style={{ color: region.tagColor }}>01 — شخصيات من كل ركن</div>
+            <div className="rv-l ey" style={{ color: '#c89830' }}>01 — شخصيات من كل ركن</div>
 
             {/* Photo + name */}
             <div key={`photo-${animKey}`} className="slide-up" style={{
@@ -538,15 +577,15 @@ export default function Landing() {
             <div key={`name-${animKey}`} className="slide-up">
               <h2 style={{
                 fontSize: 'clamp(28px,3.5vw,48px)', fontWeight: 900, lineHeight: 1.05,
-                color: region.tagColor,
-                textShadow: `0 0 60px ${region.accentDim}`,
+                color: '#f0dfc0',
+                textShadow: `0 0 60px rgba(240,223,192,0.15)`,
                 fontFamily: FONT_HEADING,
               }}>{region.name}</h2>
               <p style={{ color: 'rgba(255,230,180,.55)', fontSize: 11, marginTop: 2, fontFamily: FONT_BODY }}>{region.nameEn}</p>
             </div>
 
             <div key={`quote-${animKey}`} className="slide-up" style={{ animationDelay: '.08s' }}>
-              <blockquote className="qt" style={{ color: 'rgba(255,235,200,.9)', borderColor: region.tagColor, background: `linear-gradient(90deg, ${region.accentDim}, transparent)`, marginTop: 12, padding: '12px 16px', fontSize: 14 }}>
+              <blockquote className="qt" style={{ color: 'rgba(255,235,200,.9)', borderColor: '#c89830', background: `linear-gradient(90deg, rgba(200,152,48,.12), transparent)`, marginTop: 12, padding: '12px 16px', fontSize: 14 }}>
                 "{region.quote}"
               </blockquote>
             </div>
@@ -603,55 +642,42 @@ export default function Landing() {
 
         <div className="g2" style={{ width: '100%', position: 'relative', zIndex: 2 }}>
 
-          {/* Visual — Family Tree Nodes */}
+          {/* Visual — Teta Fatma Memory Card */}
           <div style={{ position: 'relative', minHeight: 460, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
-            {/* Tree visualization */}
-            <div className="rv" style={{ position: 'relative', width: 'min(100%, 420px)' }}>
-              {/* Connection lines SVG */}
-              <svg viewBox="0 0 420 300" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}>
-                {/* Top line connecting first two */}
-                <line x1="110" y1="100" x2="210" y2="100" stroke="rgba(224,96,80,.3)" strokeWidth="2" strokeDasharray="6 4"
-                  style={{ animation: 'drawLine 2s ease-out forwards' }} />
-                <line x1="210" y1="100" x2="310" y2="100" stroke="rgba(224,96,80,.3)" strokeWidth="2" strokeDasharray="6 4"
-                  style={{ animation: 'drawLine 2s ease-out .3s forwards' }} />
-                {/* Vertical connectors */}
-                <line x1="210" y1="100" x2="210" y2="200" stroke="rgba(224,96,80,.2)" strokeWidth="2" strokeDasharray="6 4"
-                  style={{ animation: 'drawLine 2s ease-out .6s forwards' }} />
-              </svg>
+            
+            <div className="rv" style={{
+              background: 'rgba(14,11,8,.85)',
+              border: '1px solid rgba(200,152,48,.3)',
+              borderRadius: 24,
+              padding: 16,
+              width: 'min(100%, 380px)',
+              boxShadow: '0 30px 60px rgba(0,0,0,.6), 0 0 40px rgba(200,152,48,.1)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+            }}>
+              {/* Photo */}
+              <div style={{
+                width: '100%', aspectRatio: '4/3',
+                borderRadius: 16, overflow: 'hidden',
+                position: 'relative',
+              }}>
+                <img src="/new photos/teta_fatma.png" alt="تيتا فاطمة" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'sepia(0.2) saturate(1.1) brightness(0.95)' }} />
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(0deg, rgba(0,0,0,.6) 0%, transparent 40%)' }} />
+              </div>
 
-              {/* Member cards */}
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 'clamp(16px,4vw,40px)', flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
-                {FAMILY_DEMO.map((m, i) => (
-                  <div key={i} className="rv" style={{
-                    transitionDelay: `${i * 0.15}s`,
-                    background: 'rgba(14,11,8,.9)',
-                    border: `1px solid ${m.status === 'محفوظ' ? 'rgba(80,200,120,.3)' : 'rgba(224,96,80,.3)'}`,
-                    borderRadius: 18,
-                    padding: '20px 18px',
-                    textAlign: 'center',
-                    width: 'clamp(110px,14vw,130px)',
-                    backdropFilter: 'blur(12px)',
-                    transition: 'transform .3s ease, box-shadow .3s ease',
-                    cursor: 'pointer',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.boxShadow = '0 16px 40px rgba(0,0,0,.5)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
-                  >
-                    <div style={{ fontSize: 40, marginBottom: 8 }}>{m.emoji}</div>
-                    <p style={{ fontWeight: 700, fontSize: 14, color: '#f0e0c8', fontFamily: FONT_HEADING, marginBottom: 2 }}>{m.name}</p>
-                    <p style={{ fontSize: 11, color: 'rgba(240,224,200,.5)', marginBottom: 8 }}>{m.relation} · {m.dialect}</p>
-                    <span style={{
-                      display: 'inline-block',
-                      fontSize: 10, fontWeight: 600,
-                      padding: '3px 10px', borderRadius: 999,
-                      background: m.status === 'محفوظ' ? 'rgba(80,200,120,.15)' : 'rgba(224,96,80,.15)',
-                      color: m.status === 'محفوظ' ? '#60c880' : '#e06050',
-                      border: `1px solid ${m.status === 'محفوظ' ? 'rgba(80,200,120,.3)' : 'rgba(224,96,80,.3)'}`,
-                    }}>
-                      {m.status === 'محفوظ' ? `✅ ${m.memories} ذكرى` : '🔄 جاري التسجيل'}
-                    </span>
-                  </div>
-                ))}
+              {/* Memory Text */}
+              <div style={{ padding: '24px 10px 10px', textAlign: 'center' }}>
+                <span style={{ color: '#c89830', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', fontFamily: FONT_BODY }}>
+                  ذكرى مختارة من شجرة العائلة
+                </span>
+                <h3 style={{
+                  color: '#fff8ee', fontSize: 'clamp(20px, 2.5vw, 24px)', fontWeight: 800, marginTop: 8, marginBottom: 8,
+                  fontFamily: FONT_HEADING
+                }}>
+                  ضحكتها التي لا نريد أن ننساها
+                </h3>
+                <p style={{ color: 'rgba(255,230,180,.6)', fontSize: 13, fontFamily: FONT_BODY }}>
+                  تيتا فاطمة · العيد في بيت العيلة · 2025
+                </p>
               </div>
             </div>
 
@@ -690,30 +716,30 @@ export default function Landing() {
 
           {/* Copy */}
           <div>
-            <div className="rv-l ey" style={{ color: '#e06050' }}>02 — شجرة العيلة</div>
+            <div className="rv-l ey" style={{ color: '#c89830' }}>02 — شجرة العيلة</div>
             <h2 className="rv-l d1 font-heading" style={{ fontSize: 'clamp(36px,5vw,68px)', fontWeight: 900, lineHeight: 1.04, color: '#fff8ee', fontFamily: FONT_HEADING }}>
               أصوات لا تنتهي<br />
-              <span style={{ color: '#e05050' }}>ذكريات تعيش.</span>
+              <span style={{ color: '#d4853a' }}>ذكريات تعيش.</span>
             </h2>
             <p className="rv-l d2" style={{ color: 'rgba(255,225,190,.75)', fontSize: 'clamp(14px,1.2vw,17px)', lineHeight: 1.9, marginTop: 18, fontFamily: FONT_BODY }}>
               نسجّل صوت شخص عزيز، ثم نحفظ نبرته ولهجته داخل تجربة تسمح للعائلة أن تسمع حكاياته مرة أخرى — في الأعياد، في المناسبات، وفي كل لحظة تشتاق فيها لصوته.
             </p>
-            <div className="rv-l d2 qt" style={{ color: 'rgba(255,230,200,.9)', borderColor: '#e06050', background: 'linear-gradient(90deg, rgba(224,96,80,.12), transparent)' }}>
+            <div className="rv-l d2 qt" style={{ color: 'rgba(255,230,200,.9)', borderColor: '#c89830', background: 'linear-gradient(90deg, rgba(200,152,48,.12), transparent)' }}>
               "سجّل صوت جدك قبل ما يختفي للأبد."
             </div>
             <div className="rv-l d3" style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 9 }}>
               {['سجّل صوت أي شخص بأي لهجة', 'الـ AI يحفظ نبرته وشخصيته', 'يتكلم مع عيلتك في المناسبات'].map((t, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, color: 'rgba(255,220,180,.7)', fontSize: 13, fontFamily: FONT_BODY }}>
-                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#e06050', flexShrink: 0 }} />
+                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#c89830', flexShrink: 0 }} />
                   {t}
                 </div>
               ))}
             </div>
             <div className="rv-l d3" style={{ marginTop: 26, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <Link to="/family" className="btn" style={{ background: '#e06050', color: '#fff', boxShadow: '0 8px 28px rgba(224,96,80,.35)' }}>
+              <Link to="/family" className="btn" style={{ background: '#c89830', color: '#0e0b08', boxShadow: '0 8px 28px rgba(200,152,48,.35)' }}>
                 <Mic size={14} /> ابدأ التسجيل
               </Link>
-              <Link to="/family" className="btn" style={{ background: 'transparent', border: '1px solid rgba(224,96,80,.25)', color: '#e06050' }}>
+              <Link to="/family" className="btn" style={{ background: 'transparent', border: '1px solid rgba(200,152,48,.25)', color: '#c89830' }}>
                 <Users size={14} /> شاهد الشجرة
               </Link>
             </div>
@@ -722,156 +748,371 @@ export default function Landing() {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════════
-          SECTION 3 — الجدار الحي (Living Wall) — Interactive Heritage Tapestry
+          SECTION 3 — الجدار الحي
       ══════════════════════════════════════════════════════════════════ */}
-      <section id="living-wall" ref={wallRef} style={{
-        position: 'relative', overflow: 'hidden',
-        minHeight: '100svh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        padding: '60px clamp(20px,4vw,60px)',
-        background: 'linear-gradient(135deg, #100a04 0%, #1c1208 50%, #100a04 100%)',
-        borderTop: '1px solid rgba(255,220,140,.06)',
-      }}>
+      <section
+        id="living-wall"
+        ref={wallRef}
+        style={{
+          position: 'relative',
+          overflow: 'hidden',
+          minHeight: '100svh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '40px clamp(20px,4vw,60px)',
+          background:
+            'linear-gradient(135deg, #100a04 0%, #1c1208 50%, #100a04 100%)',
+          borderTop: '1px solid rgba(255,220,140,.06)',
+        }}
+      >
+        {/* Header */}
+        <div
+          className="rv"
+          style={{
+            textAlign: 'center',
+            marginBottom: 16,
+            maxWidth: 760,
+          }}
+        >
+          <div
+            className="ey"
+            style={{
+              justifyContent: 'center',
+              color: '#c89830',
+            }}
+          >
+            03 — الجدار الحي
+          </div>
 
-        {/* Section header */}
-        <div className="rv" style={{ textAlign: 'center', marginBottom: 20, maxWidth: 700 }}>
-          <div className="ey" style={{ justifyContent: 'center', color: '#c89830' }}>03 — الجدار الحي</div>
-          <h2 className="font-heading" style={{ fontSize: 'clamp(32px,5vw,60px)', fontWeight: 900, lineHeight: 1.08, color: '#fff8ee', fontFamily: FONT_HEADING }}>
-            كل رمز يحكي <span style={{ color: '#c89830' }}>حكاية</span>
+          <h2
+            className="font-heading"
+            style={{
+              fontSize: 'clamp(34px,5vw,62px)',
+              fontWeight: 900,
+              lineHeight: 1.08,
+              color: '#fff8ee',
+              fontFamily: FONT_HEADING,
+            }}
+          >
+            كل قطعة تحكي{' '}
+            <span style={{ color: '#c89830' }}>حكاية</span>
           </h2>
-          <p style={{ color: 'rgba(255,225,180,.65)', fontSize: 'clamp(13px,1.2vw,16px)', lineHeight: 1.8, marginTop: 14, fontFamily: FONT_BODY }}>
-            الجدار الحي — اضغط على أي رمز متوهج لتكتشف قصته المخبأة في نسيج التراث المصري
+
+          <p
+            style={{
+              color: 'rgba(255,225,180,.68)',
+              fontSize: 'clamp(13px,1.2vw,16px)',
+              lineHeight: 1.9,
+              marginTop: 14,
+              fontFamily: FONT_BODY,
+            }}
+          >
+            اضغط على أي علامة متوهجة لتكتشف قصة السجاد والمفروشات
+            والمنسوجات التي حملت ذاكرة أسوان والأقصر عبر الأجيال.
           </p>
         </div>
 
-        {/* Carpet / Tapestry interactive area */}
-        <div className="rv d1" style={{
-          position: 'relative',
-          width: 'min(90vw, 700px)',
-          aspectRatio: '2',
-          borderRadius: 22,
-          overflow: 'hidden',
-          border: '2px solid rgba(200,152,48,.2)',
-          boxShadow: '0 30px 80px rgba(0,0,0,.7), 0 0 120px rgba(200,152,48,.08)',
-          animation: wallVisible ? 'unfoldCarpet 1.2s cubic-bezier(.16,1,.3,1) forwards' : 'none',
-          opacity: wallVisible ? 1 : 0,
-        }}>
-          {/* Carpet background gradient (representing the tapestry) */}
-          <div style={{
-            position: 'absolute', inset: 0,
-            background: 'linear-gradient(145deg, #2a1a0a, #1a0e04 30%, #2a1806 60%, #1c0e04)',
-          }} />
-          {/* Geometric pattern overlay */}
-          <div style={{
-            position: 'absolute', inset: 0, opacity: .15,
-            backgroundImage: `
-              repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(200,152,48,.3) 40px, rgba(200,152,48,.3) 41px),
-              repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(200,152,48,.3) 40px, rgba(200,152,48,.3) 41px),
-              repeating-linear-gradient(45deg, transparent, transparent 56px, rgba(200,120,60,.2) 56px, rgba(200,120,60,.2) 57px),
-              repeating-linear-gradient(-45deg, transparent, transparent 56px, rgba(200,120,60,.2) 56px, rgba(200,120,60,.2) 57px)
-            `,
-          }} />
-          {/* Diamond pattern center */}
-          <div style={{
-            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
-            width: '60%', height: '60%',
-            border: '2px solid rgba(200,152,48,.15)',
-            borderRadius: 8,
-            transform: 'translate(-50%,-50%) rotate(45deg)',
-          }} />
+        {/* Main image */}
+        <div
+          className="rv d1"
+          style={{
+            position: 'relative',
+            width: 'min(92vw, 1080px)',
+            aspectRatio: '2.2 / 1',
+            minHeight: 360,
+            borderRadius: 26,
+            overflow: 'hidden',
+            border: '1px solid rgba(200,152,48,.32)',
+            boxShadow:
+              '0 34px 90px rgba(0,0,0,.72), 0 0 120px rgba(200,152,48,.08)',
+            animation: wallVisible
+              ? 'unfoldCarpet 1.2s cubic-bezier(.16,1,.3,1) forwards'
+              : 'none',
+            opacity: wallVisible ? 1 : 0,
 
-          {/* Glowing hotspots */}
-          {WALL_SYMBOLS.map((ws) => (
-            <button
-              key={ws.id}
-              onClick={() => setActiveSymbol(activeSymbol?.id === ws.id ? null : ws)}
-              style={{
-                position: 'absolute',
-                top: ws.top,
-                left: ws.left,
-                width: 48, height: 48,
-                borderRadius: '50%',
-                border: `2px solid ${activeSymbol?.id === ws.id ? ws.color : 'rgba(200,152,48,.4)'}`,
-                background: activeSymbol?.id === ws.id ? `${ws.color}30` : 'rgba(200,152,48,.08)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 20,
-                color: activeSymbol?.id === ws.id ? ws.color : '#c89830',
-                animation: activeSymbol?.id === ws.id ? 'none' : 'hotspotPulse 2.5s ease-in-out infinite',
-                animationDelay: `${WALL_SYMBOLS.indexOf(ws) * 0.5}s`,
-                transition: 'all .35s ease',
-                transform: activeSymbol?.id === ws.id ? 'scale(1.2)' : 'scale(1)',
-                zIndex: 3,
-              }}
-            >
-              {ws.symbol}
-            </button>
-          ))}
-        </div>
+            backgroundImage: 'url("/new photos/wall.png")',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
 
-        {/* Symbol info card — appears on click */}
-        <div style={{
-          marginTop: 16,
-          width: 'min(90vw, 600px)',
-          minHeight: 80,
-          transition: 'all .5s cubic-bezier(.16,1,.3,1)',
-          opacity: activeSymbol ? 1 : 0,
-          transform: activeSymbol ? 'translateY(0)' : 'translateY(20px)',
-        }}>
-          {activeSymbol && (
-            <div key={activeSymbol.id} className="slide-up" style={{
-              background: 'rgba(14,11,8,.92)',
-              backdropFilter: 'blur(20px)',
-              border: `1px solid ${activeSymbol.color}40`,
-              borderRadius: 18,
-              padding: '16px 20px',
-              display: 'flex',
-              gap: 16,
-              alignItems: 'flex-start',
-            }}>
-              <div style={{
-                width: 50, height: 50, borderRadius: 12,
-                background: `${activeSymbol.color}18`,
-                border: `1px solid ${activeSymbol.color}40`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 28, flexShrink: 0,
-                color: activeSymbol.color,
-              }}>
-                {activeSymbol.symbol}
-              </div>
-              <div>
-                <h3 style={{ fontFamily: FONT_HEADING, fontWeight: 800, fontSize: 16, color: activeSymbol.color, marginBottom: 4 }}>
+            isolation: 'isolate',
+          }}
+        >
+          {/* Dark overlay */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: activeSymbol
+                ? 'linear-gradient(to top, rgba(10,6,4,.72), rgba(10,6,4,.14) 55%, rgba(10,6,4,.2))'
+                : 'linear-gradient(to top, rgba(10,6,4,.52), rgba(10,6,4,.06) 60%, rgba(10,6,4,.14))',
+              transition: 'background .35s ease',
+              zIndex: 1,
+              pointerEvents: 'none',
+            }}
+          />
+
+          {/* Small label */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 20,
+              right: 20,
+              zIndex: 5,
+              padding: '8px 13px',
+              borderRadius: 999,
+              border: '1px solid rgba(200,152,48,.26)',
+              background: 'rgba(14,11,8,.7)',
+              backdropFilter: 'blur(12px)',
+              color: '#c89830',
+              fontSize: 11,
+              fontWeight: 700,
+              fontFamily: FONT_BODY,
+            }}
+          >
+            منسوجات من الذاكرة المصرية
+          </div>
+
+          {/* Markers */}
+          {WALL_SYMBOLS.map((ws, index) => {
+            const isActive = activeSymbol?.id === ws.id;
+
+            return (
+              <button
+                key={ws.id}
+                onClick={() =>
+                  setActiveSymbol(isActive ? null : ws)
+                }
+                aria-label={ws.name}
+                title={ws.name}
+                style={{
+                  position: 'absolute',
+                  top: ws.top,
+                  left: ws.left,
+
+                  transform: `translate(-50%, -50%) ${
+                    isActive ? 'scale(1.16)' : 'scale(1)'
+                  }`,
+
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+
+                  border: `1px solid ${
+                    isActive
+                      ? '#fff4d4'
+                      : 'rgba(255,240,190,.72)'
+                  }`,
+
+                  background: isActive
+                    ? '#c89830'
+                    : 'rgba(24,15,9,.8)',
+
+                  color: isActive
+                    ? '#140d08'
+                    : '#f4d889',
+
+                  cursor: 'pointer',
+                  zIndex: 4,
+
+                  display: 'grid',
+                  placeItems: 'center',
+
+                  fontFamily: FONT_HEADING,
+                  fontSize: 11,
+                  fontWeight: 900,
+
+                  boxShadow: isActive
+                    ? '0 0 0 10px rgba(200,152,48,.14), 0 0 28px rgba(200,152,48,.8)'
+                    : '0 0 0 7px rgba(200,152,48,.08), 0 0 20px rgba(200,152,48,.55)',
+
+                  animation: isActive
+                    ? 'none'
+                    : 'hotspotPulse 2.5s ease-in-out infinite',
+
+                  animationDelay: `${index * 0.35}s`,
+                  transition:
+                    'all .3s cubic-bezier(.16,1,.3,1)',
+                }}
+              >
+                {index + 1}
+              </button>
+            );
+          })}
+
+          {/* Story card */}
+          <div
+            style={{
+              position: 'absolute',
+              left: (!activeSymbol || parseInt(activeSymbol.left) > 50) ? 'clamp(16px,3vw,30px)' : 'auto',
+              right: (activeSymbol && parseInt(activeSymbol.left) <= 50) ? 'clamp(16px,3vw,30px)' : 'auto',
+              bottom: 'clamp(16px,3vw,28px)',
+              zIndex: 5,
+
+              width: 'min(430px, calc(100% - 32px))',
+
+              opacity: activeSymbol ? 1 : 0,
+
+              transform: activeSymbol
+                ? 'translateY(0)'
+                : 'translateY(18px)',
+
+              pointerEvents: activeSymbol
+                ? 'auto'
+                : 'none',
+
+              transition:
+                'all .45s cubic-bezier(.16,1,.3,1)',
+            }}
+          >
+            {activeSymbol && (
+              <div
+                key={activeSymbol.id}
+                className="slide-up"
+                style={{
+                  padding: '20px 22px',
+                  borderRadius: 20,
+
+                  border:
+                    '1px solid rgba(200,152,48,.3)',
+
+                  background:
+                    'rgba(14,10,8,.96)',
+
+                  backdropFilter: 'blur(18px)',
+
+                  boxShadow:
+                    '0 22px 60px rgba(0,0,0,.46)',
+                }}
+              >
+                <div
+                  style={{
+                    color: '#c89830',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    marginBottom: 7,
+                    fontFamily: FONT_BODY,
+                  }}
+                >
+                  القطعة المختارة
+                </div>
+
+                <h3
+                  style={{
+                    fontFamily: FONT_HEADING,
+                    fontWeight: 900,
+                    fontSize: 'clamp(18px,2vw,24px)',
+                    color: '#fff8ee',
+                    marginBottom: 8,
+                  }}
+                >
                   {activeSymbol.name}
                 </h3>
-                <p style={{ fontFamily: FONT_BODY, fontSize: 13, lineHeight: 1.7, color: 'rgba(255,230,200,.8)', marginBottom: 8 }}>
+
+                <p
+                  style={{
+                    fontFamily: FONT_BODY,
+                    fontSize: 13,
+                    lineHeight: 1.85,
+                    color: 'rgba(255,230,200,.82)',
+                    marginBottom: 12,
+                  }}
+                >
                   {activeSymbol.description}
                 </p>
-                <span style={{ fontSize: 11, color: 'rgba(200,152,48,.5)', fontFamily: FONT_BODY }}>
-                  الراوي: {activeSymbol.narrator}
-                </span>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+
+                    color: 'rgba(200,152,48,.58)',
+                    fontSize: 11,
+                    fontFamily: FONT_BODY,
+                  }}
+                >
+                  <span>{activeSymbol.narrator}</span>
+
+                  <span dir="ltr">
+                    {String(
+                      WALL_SYMBOLS.findIndex(
+                        item =>
+                          item.id === activeSymbol.id
+                      ) + 1
+                    ).padStart(2, '0')}
+                    {' / '}
+                    {String(
+                      WALL_SYMBOLS.length
+                    ).padStart(2, '0')}
+                  </span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* 3-step flow */}
-        <div className="rv-l d2" style={{ display: 'flex', gap: 'clamp(16px,4vw,40px)', justifyContent: 'center', marginTop: 20, flexWrap: 'wrap' }}>
+        {/* Bottom steps */}
+        <div
+          className="rv-l d2"
+          style={{
+            display: 'flex',
+            gap: 'clamp(16px,4vw,40px)',
+            justifyContent: 'center',
+            marginTop: 16,
+            flexWrap: 'wrap',
+          }}
+        >
           {[
-            { icon: <Sparkles size={18} />, text: 'اختار رمز' },
-            { icon: '→', text: 'اكتشف حكايته' },
-            { icon: <Heart size={18} />, text: 'اسمع الراوي' },
+            {
+              icon: <Sparkles size={18} />,
+              text: 'اختر قطعة',
+            },
+            {
+              icon: '→',
+              text: 'اكتشف حكايتها',
+            },
+            {
+              icon: <Heart size={18} />,
+              text: 'احفظها في ذاكرتك',
+            },
           ].map((step, i) => (
-            <div key={i} style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              color: 'rgba(200,152,48,.6)', fontSize: 13, fontFamily: FONT_BODY,
-            }}>
-              <span style={{
-                width: 32, height: 32, borderRadius: '50%',
-                background: 'rgba(200,152,48,.08)', border: '1px solid rgba(200,152,48,.2)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 14, color: '#c89830',
-              }}>{typeof step.icon === 'string' ? step.icon : step.icon}</span>
+            <div
+              key={i}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                color: 'rgba(200,152,48,.66)',
+                fontSize: 13,
+                fontFamily: FONT_BODY,
+              }}
+            >
+              <span
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+
+                  background:
+                    'rgba(200,152,48,.08)',
+
+                  border:
+                    '1px solid rgba(200,152,48,.22)',
+
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+
+                  color: '#c89830',
+                }}
+              >
+                {step.icon}
+              </span>
+
               {step.text}
             </div>
           ))}
@@ -883,21 +1124,29 @@ export default function Landing() {
       ══════════════════════════════════════════════════════════════════ */}
       <section id="kids" style={{
         position: 'relative', overflow: 'hidden',
-        minHeight: '80svh', display: 'flex', alignItems: 'center',
-        background: 'linear-gradient(135deg, #060a10 0%, #0a1220 50%, #060a10 100%)',
+        display: 'flex', alignItems: 'center',
+        backgroundColor: '#060a10',
         borderTop: '1px solid rgba(255,220,140,.06)',
       }}>
-        {/* Ramz scroll */}
-        <img src="/image/ramz.png" alt="" style={{
-          position: 'absolute', left: '2%', bottom: '6%',
-          width: 'clamp(150px,20vw,300px)',
-          opacity: .85, filter: 'sepia(.2) brightness(.5) contrast(.9) saturate(.8)',
-          transform: `translateY(${(scrollY - 3400) * -0.06}px)`,
-          pointerEvents: 'none',
-          animation: 'floatImg 10s ease-in-out 1.5s infinite',
+        
+        {/* Background Image */}
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 0,
+          backgroundImage: 'url("/new photos/child.png")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          opacity: 0.6,
+          filter: 'sepia(0.1) saturate(1.1) brightness(0.9)',
         }} />
 
-        <div style={{ width: '100%', maxWidth: 940, margin: '0 auto', padding: '88px clamp(20px,6vw,80px)', textAlign: 'center', position: 'relative', zIndex: 2 }}>
+        {/* Dark Overlay */}
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 1,
+          background: 'linear-gradient(135deg, rgba(6,10,16,0.95) 0%, rgba(10,18,32,0.7) 50%, rgba(6,10,16,0.95) 100%)',
+          pointerEvents: 'none',
+        }} />
+
+        <div style={{ width: '100%', maxWidth: 940, margin: '0 auto', padding: '60px clamp(20px,6vw,80px)', textAlign: 'center', position: 'relative', zIndex: 2 }}>
           <div className="rv-l ey" style={{ justifyContent: 'center', color: '#50b8e0' }}>04 — التعليم والأطفال</div>
           <h2 className="rv-l d1 font-heading" style={{ fontSize: 'clamp(36px,5vw,68px)', fontWeight: 900, letterSpacing: '-.03em', lineHeight: 1.04, color: '#fff8ee', fontFamily: FONT_HEADING }}>
             التاريخ يتحول إلى <span style={{ color: '#50b8e0' }}>مغامرة.</span>
@@ -922,7 +1171,7 @@ export default function Landing() {
           FOOTER
       ══════════════════════════════════════════════════════════════════ */}
       <footer style={{
-        position: 'relative', minHeight: '60svh', display: 'grid', placeItems: 'center',
+        position: 'relative', minHeight: '80svh', display: 'grid', placeItems: 'center',
         padding: '80px 22px', textAlign: 'center',
         borderTop: '1px solid rgba(255,220,140,.06)',
         background: 'linear-gradient(to bottom, #0a0806, #0e0b08)',
@@ -946,11 +1195,16 @@ export default function Landing() {
         }} />
 
         <div className="rv-l" style={{ position: 'relative', zIndex: 2, maxWidth: 700 }}>
-          <div className="ey" style={{ justifyContent: 'center', color: '#c89830' }}>جاهز تبدأ؟</div>
-          <h2 className="font-heading" style={{ fontSize: 'clamp(44px,7.5vw,98px)', fontWeight: 900, letterSpacing: '-.04em', lineHeight: .9, marginBottom: 18, color: '#fff8ee', fontFamily: FONT_HEADING }}>
+          <div style={{
+            fontSize: 'clamp(18px,2vw,24px)', fontWeight: 800, color: '#c89830',
+            marginTop: 12, marginBottom: 16, fontFamily: FONT_HEADING,
+          }}>
+            حكاوي عشان صوت الماضي يفضل في الحاضر ويكمل في المستقبل
+          </div>
+          <h2 className="font-heading" style={{ fontSize: 'clamp(44px,7.5vw,98px)', fontWeight: 900, letterSpacing: '-.04em', lineHeight: .9, marginBottom: 20, color: '#fff8ee', fontFamily: FONT_HEADING }}>
             ابدأ رحلتك.
           </h2>
-          <p style={{ color: 'rgba(255,225,185,.7)', fontSize: 16, marginBottom: 30, lineHeight: 1.75, fontFamily: FONT_BODY }}>
+          <p style={{ color: 'rgba(255,225,185,.7)', fontSize: 16, marginBottom: 36, lineHeight: 1.75, fontFamily: FONT_BODY }}>
             اختر مكانًا على الخريطة، ودع أول حكاية تقودك إلى الباقي.
           </p>
           <Link to="/map" className="btn" style={{ fontSize: 16, padding: '14px 30px', background: '#c89830', color: '#0e0b08', boxShadow: '0 10px 36px rgba(200,152,48,.28)' }}>
