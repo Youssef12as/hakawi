@@ -146,10 +146,16 @@ function useReveal(ref) {
   useEffect(() => {
     if (!ref.current) return;
     const io = new IntersectionObserver(
-      (entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add('in'); }),
+      (entries) => entries.forEach((e) => { 
+        if (e.isIntersecting) {
+          e.target.classList.add('in'); 
+        } else {
+          e.target.classList.remove('in');
+        }
+      }),
       { threshold: 0.1 }
     );
-    ref.current.querySelectorAll('.rv').forEach((el) => io.observe(el));
+    ref.current.querySelectorAll('.rv, .rv-l').forEach((el) => io.observe(el));
     return () => io.disconnect();
   }, [ref]);
 }
@@ -246,13 +252,15 @@ export default function Landing() {
           100%{ transform: translate(-3%,-3%); }
         }
 
-        /* scroll reveal */
-        .rv { opacity: 0; transform: translateY(36px); transition: opacity .85s cubic-bezier(.16,1,.3,1), transform .85s cubic-bezier(.16,1,.3,1); }
-        .rv.in { opacity: 1; transform: none; }
-        .rv.d1 { transition-delay: .1s; }
-        .rv.d2 { transition-delay: .22s; }
-        .rv.d3 { transition-delay: .34s; }
-        .rv.d4 { transition-delay: .46s; }
+        /* scroll reveal horizontal (left/right) */
+        .rv, .rv-l { opacity: 0; transition: opacity .85s cubic-bezier(.16,1,.3,1), transform .85s cubic-bezier(.16,1,.3,1); }
+        .rv { transform: translateX(60px); }
+        .rv-l { transform: translateX(-60px); }
+        .rv.in, .rv-l.in { opacity: 1; transform: none; }
+        .rv.d1, .rv-l.d1 { transition-delay: .1s; }
+        .rv.d2, .rv-l.d2 { transition-delay: .22s; }
+        .rv.d3, .rv-l.d3 { transition-delay: .34s; }
+        .rv.d4, .rv-l.d4 { transition-delay: .46s; }
 
         /* slide-up for region content switch */
         @keyframes slideUp {
@@ -484,7 +492,7 @@ export default function Landing() {
 
           {/* ── RIGHT: Character Card ────────────────────────────── */}
           <div>
-            <div className="rv ey" style={{ color: region.tagColor }}>01 — شخصيات من كل ركن</div>
+            <div className="rv-l ey" style={{ color: region.tagColor }}>01 — شخصيات من كل ركن</div>
 
             {/* Photo + name */}
             <div key={`photo-${animKey}`} className="slide-up" style={{
@@ -544,7 +552,7 @@ export default function Landing() {
             </div>
 
             {/* Region tabs */}
-            <div className="rv d2" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 16 }}>
+            <div className="rv-l d2" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 16 }}>
               {REGIONS.map((r, i) => (
                 <button key={r.key} onClick={() => goTo(i)} style={{
                   padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 700,
@@ -557,7 +565,7 @@ export default function Landing() {
               ))}
             </div>
 
-            <div className="rv d3" style={{ marginTop: 20 }}>
+            <div className="rv-l d3" style={{ marginTop: 20 }}>
               <Link to="/map" className="btn" style={{ background: region.tagColor, color: '#0e0b08', boxShadow: `0 8px 28px ${region.accentDim}`, padding: '10px 18px', fontSize: 13 }}>
                 تحدث مع الشخصية <ArrowLeft size={14} />
               </Link>
@@ -682,18 +690,18 @@ export default function Landing() {
 
           {/* Copy */}
           <div>
-            <div className="rv ey" style={{ color: '#e06050' }}>02 — شجرة العيلة</div>
-            <h2 className="rv d1 font-heading" style={{ fontSize: 'clamp(36px,5vw,68px)', fontWeight: 900, lineHeight: 1.04, color: '#fff8ee', fontFamily: FONT_HEADING }}>
+            <div className="rv-l ey" style={{ color: '#e06050' }}>02 — شجرة العيلة</div>
+            <h2 className="rv-l d1 font-heading" style={{ fontSize: 'clamp(36px,5vw,68px)', fontWeight: 900, lineHeight: 1.04, color: '#fff8ee', fontFamily: FONT_HEADING }}>
               أصوات لا تنتهي<br />
               <span style={{ color: '#e05050' }}>ذكريات تعيش.</span>
             </h2>
-            <p className="rv d2" style={{ color: 'rgba(255,225,190,.75)', fontSize: 'clamp(14px,1.2vw,17px)', lineHeight: 1.9, marginTop: 18, fontFamily: FONT_BODY }}>
+            <p className="rv-l d2" style={{ color: 'rgba(255,225,190,.75)', fontSize: 'clamp(14px,1.2vw,17px)', lineHeight: 1.9, marginTop: 18, fontFamily: FONT_BODY }}>
               نسجّل صوت شخص عزيز، ثم نحفظ نبرته ولهجته داخل تجربة تسمح للعائلة أن تسمع حكاياته مرة أخرى — في الأعياد، في المناسبات، وفي كل لحظة تشتاق فيها لصوته.
             </p>
-            <div className="rv d2 qt" style={{ color: 'rgba(255,230,200,.9)', borderColor: '#e06050', background: 'linear-gradient(90deg, rgba(224,96,80,.12), transparent)' }}>
+            <div className="rv-l d2 qt" style={{ color: 'rgba(255,230,200,.9)', borderColor: '#e06050', background: 'linear-gradient(90deg, rgba(224,96,80,.12), transparent)' }}>
               "سجّل صوت جدك قبل ما يختفي للأبد."
             </div>
-            <div className="rv d3" style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 9 }}>
+            <div className="rv-l d3" style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 9 }}>
               {['سجّل صوت أي شخص بأي لهجة', 'الـ AI يحفظ نبرته وشخصيته', 'يتكلم مع عيلتك في المناسبات'].map((t, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, color: 'rgba(255,220,180,.7)', fontSize: 13, fontFamily: FONT_BODY }}>
                   <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#e06050', flexShrink: 0 }} />
@@ -701,7 +709,7 @@ export default function Landing() {
                 </div>
               ))}
             </div>
-            <div className="rv d3" style={{ marginTop: 26, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div className="rv-l d3" style={{ marginTop: 26, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <Link to="/family" className="btn" style={{ background: '#e06050', color: '#fff', boxShadow: '0 8px 28px rgba(224,96,80,.35)' }}>
                 <Mic size={14} /> ابدأ التسجيل
               </Link>
@@ -848,7 +856,7 @@ export default function Landing() {
         </div>
 
         {/* 3-step flow */}
-        <div className="rv d2" style={{ display: 'flex', gap: 'clamp(16px,4vw,40px)', justifyContent: 'center', marginTop: 20, flexWrap: 'wrap' }}>
+        <div className="rv-l d2" style={{ display: 'flex', gap: 'clamp(16px,4vw,40px)', justifyContent: 'center', marginTop: 20, flexWrap: 'wrap' }}>
           {[
             { icon: <Sparkles size={18} />, text: 'اختار رمز' },
             { icon: '→', text: 'اكتشف حكايته' },
@@ -890,19 +898,19 @@ export default function Landing() {
         }} />
 
         <div style={{ width: '100%', maxWidth: 940, margin: '0 auto', padding: '88px clamp(20px,6vw,80px)', textAlign: 'center', position: 'relative', zIndex: 2 }}>
-          <div className="rv ey" style={{ justifyContent: 'center', color: '#50b8e0' }}>04 — التعليم والأطفال</div>
-          <h2 className="rv d1 font-heading" style={{ fontSize: 'clamp(36px,5vw,68px)', fontWeight: 900, letterSpacing: '-.03em', lineHeight: 1.04, color: '#fff8ee', fontFamily: FONT_HEADING }}>
+          <div className="rv-l ey" style={{ justifyContent: 'center', color: '#50b8e0' }}>04 — التعليم والأطفال</div>
+          <h2 className="rv-l d1 font-heading" style={{ fontSize: 'clamp(36px,5vw,68px)', fontWeight: 900, letterSpacing: '-.03em', lineHeight: 1.04, color: '#fff8ee', fontFamily: FONT_HEADING }}>
             التاريخ يتحول إلى <span style={{ color: '#50b8e0' }}>مغامرة.</span>
           </h2>
           <p className="rv d2" style={{ color: 'rgba(255,225,190,.72)', fontSize: 'clamp(14px,1.2vw,17px)', lineHeight: 1.9, maxWidth: 560, margin: '16px auto 28px', fontFamily: FONT_BODY }}>
             الطفل لا يشاهد معلومة فقط؛ يختار طريقًا، يفتح بوابة، يقابل شخصية، ويكتشف تراث كل منطقة بطريقة تفاعلية.
           </p>
-          <div className="rv d2" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 28 }}>
+          <div className="rv-l d2" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 28 }}>
             {['قصص الأقصر', 'رموز النوبة', 'الأبجدية الهيروغليفية', 'أساطير الإسكندرية', 'حكايات القاهرة'].map(tag => (
               <span key={tag} style={{ padding: '7px 15px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: 'rgba(80,184,224,.1)', border: '1px solid rgba(80,184,224,.3)', color: '#70c8ee', fontFamily: FONT_HEADING }}>{tag}</span>
             ))}
           </div>
-          <div className="rv d3">
+          <div className="rv-l d3">
             <Link to="/map" className="btn" style={{ background: '#2a6080', color: '#f0e8d8', boxShadow: '0 8px 28px rgba(42,96,128,.35)' }}>
               استكشف الآن
             </Link>
@@ -937,7 +945,7 @@ export default function Landing() {
           animation: 'floatImg 7s ease-in-out infinite',
         }} />
 
-        <div className="rv" style={{ position: 'relative', zIndex: 2, maxWidth: 700 }}>
+        <div className="rv-l" style={{ position: 'relative', zIndex: 2, maxWidth: 700 }}>
           <div className="ey" style={{ justifyContent: 'center', color: '#c89830' }}>جاهز تبدأ؟</div>
           <h2 className="font-heading" style={{ fontSize: 'clamp(44px,7.5vw,98px)', fontWeight: 900, letterSpacing: '-.04em', lineHeight: .9, marginBottom: 18, color: '#fff8ee', fontFamily: FONT_HEADING }}>
             ابدأ رحلتك.
