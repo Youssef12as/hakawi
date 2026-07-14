@@ -14,7 +14,8 @@ export default {
         espresso: '#442D1C',
       },
       fontFamily: {
-        cairo: ['Cairo', 'sans-serif'],
+        cairo: ['IBM Plex Sans Arabic', 'Cairo', 'sans-serif'],
+        kufi: ['Noto Kufi Arabic', 'Cairo', 'sans-serif'],
       },
     },
   },

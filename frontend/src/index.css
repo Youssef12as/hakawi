@@ -23,7 +23,8 @@
   --accent-soft: rgba(196, 160, 106, 0.15);
   --accent-glow: rgba(196, 160, 106, 0.4);
 
-  --font-primary: 'Cairo', sans-serif;
+  --font-primary: 'IBM Plex Sans Arabic', 'Cairo', sans-serif;
+  --font-heading: 'Noto Kufi Arabic', 'Cairo', sans-serif;
   --radius-soft: 12px;
   --radius-lg: 20px;
   --radius-round: 24px;
@@ -45,6 +46,7 @@ html {
 
 body {
   font-family: var(--font-primary);
+  direction: rtl;
   background-color: var(--color-sand);
   color: var(--color-espresso);
   line-height: 1.7;
