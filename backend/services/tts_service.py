@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 # Pre-populate saved characters from the on-disk registry so we don't
 # re-save them to the TTS model on every server restart.
 def _load_saved_characters() -> list[str]:
-    """Read character names from the local registry and built-in personas."""
+    """Read character names from the local registry and built-in voices."""
     names: list[str] = []
     # 1. From the local characters registry
     registry_path = os.path.join("data", "characters", "registry.json")
@@ -23,13 +23,12 @@ def _load_saved_characters() -> list[str]:
                 names.extend(registry.keys())
         except Exception:
             pass
-    # 2. From the built-in personas (e.g. am-othman)
+    # 2. From the built-in voices (e.g. am-othman)
     try:
-        from personas import REGIONAL_PERSONAS
-        for persona in REGIONAL_PERSONAS.values():
-            cname = persona.get("character_name")
-            if cname and cname not in names:
-                names.append(cname)
+        from personas import list_voices
+        for vname in list_voices():
+            if vname not in names:
+                names.append(vname)
     except Exception:
         pass
     return names
@@ -47,12 +46,19 @@ def get_api_url() -> str:
 
 
 def _resolve_character_ref(character_name: str) -> tuple[str | None, str | None]:
-    from personas import get_persona_by_character_name
+    """Resolve a character's reference audio path and text.
 
-    persona = get_persona_by_character_name(character_name)
-    if persona and persona.get("ref_audio_path") and persona.get("ref_text"):
-        return persona["ref_audio_path"], persona["ref_text"]
+    Lookup order:
+        1. VOICES dict in personas.py (primary source)
+        2. data/characters/registry.json (runtime-added characters)
+    """
+    from personas import get_voice
 
+    voice = get_voice(character_name)
+    if voice and voice.get("ref_audio_path") and voice.get("ref_text"):
+        return voice["ref_audio_path"], voice["ref_text"]
+
+    # Fallback: check the runtime registry
     registry_path = os.path.join("data", "characters", "registry.json")
     if os.path.exists(registry_path):
         with open(registry_path, "r", encoding="utf-8") as f:

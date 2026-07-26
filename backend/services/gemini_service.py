@@ -27,7 +27,7 @@ def _generate_with_retry(
     thinking_budget: int = 0,
 ) -> str:
     """
-    Shared retry wrapper around `client.models.generate_content`.
+    Shared retry wrapper around ``client.models.generate_content``.
 
     Raises:
         ValueError  — when the API rate-limits us (surfaced to the user
@@ -78,61 +78,55 @@ def _generate_with_retry(
     raise RuntimeError(f"Failed to generate response from Gemini: {last_error}")
 
 
-def generate_response(
+def generate(
     user_text: str,
     system_prompt: str,
-    history: list[dict],
+    history: list[dict] | None = None,
+    temperature: float = 0.4,
+    max_output_tokens: int = 400,
+    thinking_budget: int = 0,
 ) -> str:
     """
-    Generate a persona response from Gemini with conversation history.
+    Generate a response from Gemini.
 
-    Used by the regional-dialect chat endpoints (text + audio).
+    This is the single entry point for ALL Gemini text generation in Hikawi.
+    It handles both use cases:
+
+    **Regional dialect chat** (``/api/chat/text``, ``/api/chat/audio``):
+        Called with conversation ``history``, higher ``temperature=0.8``
+        for natural dialect flow, and ``max_output_tokens=500``.
+        The ``system_prompt`` comes from ``personas_historical.py``
+        persona instructions.
+
+    **RAG-backed Ancient Mode** (``/api/chat/ancient``):
+        Called WITHOUT history (single-turn), lower ``temperature=0.4``
+        for factual grounding, ``max_output_tokens=400``, and
+        ``thinking_budget=0`` for speed.  The ``system_prompt`` and
+        ``user_text`` are assembled by ``rag_service.build_rag_prompt``
+        with the retrieved context baked in.
 
     Args:
-        user_text: The user's current message (Arabic text).
-        system_prompt: The persona's system prompt from personas.py.
-        history: List of previous messages in Gemini's format:
-                 [{"role": "user",     "parts": [{"text": "..."}]},
-                  {"role": "model",    "parts": [{"text": "..."}]}]
+        user_text: The user's current message or the fully-assembled
+                   RAG prompt (persona + context + question).
+        system_prompt: System instructions (persona rules / anti-hallucination).
+        history: Optional list of previous messages in Gemini's format:
+                 [{"role": "user", "parts": [{"text": "..."}]},
+                  {"role": "model", "parts": [{"text": "..."}]}]
+                 Pass None for single-turn (RAG) calls.
+        temperature: Sampling temperature (0.0–2.0).
+        max_output_tokens: Maximum response length.
+        thinking_budget: Gemini thinking budget (0 = disabled).
 
     Returns:
-        The generated text response in the regional dialect.
+        The generated text response.
     """
-    contents = list(history) + [{"role": "user", "parts": [{"text": user_text}]}]
+    contents = list(history or []) + [
+        {"role": "user", "parts": [{"text": user_text}]}
+    ]
     return _generate_with_retry(
         contents=contents,
         system_instruction=system_prompt,
-        temperature=0.8,
-        max_output_tokens=500,
-    )
-
-
-def generate_rag_response(
-    user_prompt: str,
-    system_prompt: str,
-) -> str:
-    """
-    Generate a RAG-grounded historical-character response.
-
-    Used by the Ancient Mode endpoint.  Temperature is intentionally low
-    to minimize hallucination, and `thinking_budget=0` keeps latency down
-    for the live demo.
-
-    Args:
-        user_prompt: The fully-assembled user turn (persona + retrieved
-                     context + question), produced by
-                     `rag_service.build_rag_prompt`.
-        system_prompt: The strict anti-hallucination system instructions
-                       from `rag_service.build_rag_prompt`.
-
-    Returns:
-        The character's reply in Arabic (≈90–120 words, 2 paragraphs).
-    """
-    contents = [{"role": "user", "parts": [{"text": user_prompt}]}]
-    return _generate_with_retry(
-        contents=contents,
-        system_instruction=system_prompt,
-        temperature=0.4,
-        max_output_tokens=400,
-        thinking_budget=0,
+        temperature=temperature,
+        max_output_tokens=max_output_tokens,
+        thinking_budget=thinking_budget,
     )

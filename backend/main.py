@@ -10,9 +10,9 @@ from fastapi.responses import FileResponse
 
 from pydantic import BaseModel
 
-from personas import get_persona
+from personas import get_voice, list_voices
 from monuments_registry import get_all_governorates, get_monument_by_key
-from services.gemini_service import generate_response, generate_rag_response
+from services.gemini_service import generate
 from services.rag_service import is_ready as rag_is_ready, retrieve_and_build
 from services.stt_service import transcribe_audio
 from services.tts_service import synthesize_speech, save_character, saved_characters
@@ -149,13 +149,19 @@ async def chat_text(request: TextChatRequest):
     """
     try:
         session_id = request.session_id or str(uuid4())
-        persona = get_persona(request.region)
         history = get_history(session_id)
 
-        ai_response = generate_response(
+        # Regional dialect chat uses higher temperature for natural flow
+        from services.personas_historical import get_historical_persona, format_persona_instructions
+        persona, _ = get_historical_persona(request.region)
+        system_prompt = format_persona_instructions(persona)
+
+        ai_response = generate(
             user_text=request.text,
-            system_prompt=persona["system_prompt"],
+            system_prompt=system_prompt,
             history=history,
+            temperature=0.8,
+            max_output_tokens=500,
         )
 
         history.append({"role": "user", "parts": [{"text": request.text}]})
@@ -237,13 +243,19 @@ async def chat_audio(
             )
 
         session_id = session_id or str(uuid4())
-        persona = get_persona(region)
         history = get_history(session_id)
 
-        ai_response = generate_response(
+        # Regional dialect chat uses higher temperature for natural flow
+        from services.personas_historical import get_historical_persona, format_persona_instructions
+        persona, _ = get_historical_persona(region)
+        system_prompt = format_persona_instructions(persona)
+
+        ai_response = generate(
             user_text=transcribed_text,
-            system_prompt=persona["system_prompt"],
+            system_prompt=system_prompt,
             history=history,
+            temperature=0.8,
+            max_output_tokens=500,
         )
 
         history.append({"role": "user", "parts": [{"text": transcribed_text}]})
@@ -319,9 +331,12 @@ async def chat_ancient(request: AncientChatRequest):
             monument_name=monument_name_filter,
         )
 
-        ai_response = generate_rag_response(
-            user_prompt=payload["user_prompt"],
+        ai_response = generate(
+            user_text=payload["user_prompt"],
             system_prompt=payload["system_prompt"],
+            temperature=0.4,
+            max_output_tokens=400,
+            thinking_budget=0,
         )
 
         # If the monument was explicitly selected, prefer the registry's

@@ -1,69 +1,58 @@
+"""
+Voice and identity registry for Hikawi characters.
+
+VOICES maps each voice name to its reference audio and display metadata.
+All historical persona instructions (tone, vocabulary, etc.) live in
+``services/personas_historical.py`` — this file only holds identity and
+voice-cloning data used by the TTS service.
+
+To add a new voice:
+    1. Place the reference audio clip in ``data/characters/{voice_name}.mp3``
+    2. Add an entry to VOICES below with ``ref_audio_path`` and ``ref_text``
+    3. Assign the voice to monuments in ``monuments_registry.py``
+       by setting their ``character_name`` to the new voice key
+    4. Add matching video files in ``frontend/public/character/``
+       (``{voice_name}-idle.mp4`` and ``{voice_name}-talking.mp4``)
+"""
+
 import logging
 
+logger = logging.getLogger(__name__)
 
-REGIONAL_PERSONAS = {
-    "aswan": {
+# ─── Voices ─────────────────────────────────────────────────────────────────
+# Key: voice identifier (used as ``character_name`` in monuments_registry.py
+#      and sent to the Lightning TTS server for voice cloning).
+# ref_audio_path: Path (relative to backend/) to the reference audio clip.
+# ref_text:       The exact Arabic text spoken in the reference audio.
+
+VOICES = {
+    "am-othman": {
         "name": "عم عثمان",
-        "character_name": "am-othman",
         "ref_audio_path": "data/characters/am-othman.wav.mp3",
         "ref_text": "لهجة الصعيد لهجة واعرة جوي مش أي حد يتكلمها",
-        "system_prompt": (
-            "أنت عم عثمان، حارس التراث النوبي من أسوان. "
-            "بتتكلم بلهجة أهل أسوان وبتستخدم كلمات زي 'يا ولدي' و'يا حبيبي'. "
-            "شخص كبير في السن وحكيم، عندك حكايات عن أسوان وتاريخها والنوبة.\n\n"
-
-            "─── قواعد الرد ───\n"
-            "• إجابتك لازم تكون من ٩٠ إلى ١٢٠ كلمة. ممنوع تتجاوز ١٢٠ كلمة أبداً.\n"
-            "• لو حد سألك عن حاجة مش متعلقة بأسوان أو التراث، حوّل الكلام بلطف لحكاية عن أسوان.\n"
-            "• إجابتك تكون قصيرة وطبيعية زي ما بتحكي لحد قاعد جنبك.\n\n"
-
-            "─── قواعد الدقة ومنع الاختلاق ───\n"
-            "• اتكلم بس عن معلومات معروفة وموثقة عن أسوان "
-            "(فيلة، أبو سمبل، السد العالي، إلفنتين، متحف النوبة، مقابر النبلاء، كوم أمبو، جزيرة النباتات).\n"
-            "• لو مش متأكد من معلومة، قول بصراحة: "
-            "\"والله يا حبيبي، مش متأكد من المعلومة دي.\"\n"
-            "• ممنوع تخترع أسماء أو تواريخ أو أحداث أو أماكن من خيالك.\n"
-            "• لو مش متأكد من تاريخ أو رقم، قول \"تقريباً\" بدل ما تقول رقم غلط.\n"
-        ),
     },
+    # ── Add new voices below ──────────────────────────────────────────────
+    # "hatshepsut": {
+    #     "name": "حتشبسوت",
+    #     "ref_audio_path": "data/characters/hatshepsut.mp3",
+    #     "ref_text": "النص اللي اتقال في الصوت المرجعي",
+    # },
 }
 
 
-def get_persona(region: str, fallback: bool = True) -> dict:
-    """
-    Get persona config for a region.
+# ─── Lookup helpers ──────────────────────────────────────────────────────────
 
-    Args:
-        region: Region key (e.g. "aswan", "luxor", "cairo", "alexandria").
-        fallback: If True (default) and the requested region has no dedicated
-            persona yet, return the "aswan" persona instead of raising.  This
-            keeps the demo working for regions that are on the map but whose
-            personas haven't been authored yet.  Set False for strict lookups.
 
-    Raises:
-        ValueError: If region is unknown AND fallback is False, or if even the
-            fallback ("aswan") is somehow missing.
-    """
-    region = region.lower().strip()
-    if region in REGIONAL_PERSONAS:
-        return REGIONAL_PERSONAS[region]
+def get_voice(voice_name: str) -> dict | None:
+    """Return voice config by its identifier, or None."""
+    return VOICES.get(voice_name)
 
-    available = ", ".join(REGIONAL_PERSONAS.keys())
-    if not fallback or "aswan" not in REGIONAL_PERSONAS:
-        raise ValueError(
-            f"Region '{region}' not found. Available regions: {available}"
-        )
 
-    # Log-friendly fallback: silently use Aswan for regions without a persona yet.
-    logging.getLogger(__name__).info(
-        "No persona yet for region '%s'; falling back to 'aswan'. "
-        "Available regions: %s", region, available,
-    )
-    return REGIONAL_PERSONAS["aswan"]
+def get_voice_by_name(voice_name: str) -> dict | None:
+    """Alias kept for backwards compatibility with tts_service."""
+    return VOICES.get(voice_name)
 
-def get_persona_by_character_name(char_name: str) -> dict | None:
-    """Get persona config by its character name."""
-    for persona in REGIONAL_PERSONAS.values():
-        if persona.get("character_name") == char_name:
-            return persona
-    return None
+
+def list_voices() -> list[str]:
+    """Return all registered voice names."""
+    return list(VOICES.keys())
