@@ -16,13 +16,13 @@ export default function ChatPanel({ chatHistory, onSendText, onSendAudio, isLoad
         {/* Welcome message */}
         {chatHistory.length === 0 && !isLoading && (
           <div className="text-center py-10 animate-fade-in">
-            <div className="w-14 h-14 bg-sand/8 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-14 h-14 bg-[#c4a06a]/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-[#c4a06a]/20">
               <span className="text-2xl">💬</span>
             </div>
-            <p className="text-sand/40 text-sm leading-relaxed">
-              ابدأ المحادثة مع <span className="text-sand/60 font-semibold">{elderName}</span>
+            <p className="text-[#9d9167] text-sm leading-relaxed" style={{ fontFamily: 'var(--font-body)' }}>
+              ابدأ الكلام مع <span className="text-[#c4a06a] font-bold text-base">{elderName}</span>
               <br />
-              <span className="text-sand/25 text-xs">اكتب رسالة أو سجّل صوتك</span>
+              <span className="text-[#9d9167]/70 text-xs mt-1 block">اكتب رسالة أو ابعت فويس</span>
             </p>
           </div>
         )}
@@ -41,10 +41,10 @@ export default function ChatPanel({ chatHistory, onSendText, onSendAudio, isLoad
         {/* Loading indicator */}
         {isLoading && (
           <div className="flex justify-start animate-fade-in">
-            <div className="bg-sand/10 rounded-2xl rounded-es-sm px-5 py-3">
-              <div className="loading-dots">
-                <span /><span /><span />
-              </div>
+            <div className="bg-[#1a1815]/95 border border-[#c4a06a]/15 text-[#f8ebd5] rounded-2xl rounded-tl-sm px-5 py-4 shadow-lg flex items-center gap-1.5">
+              {[0, 0.2, 0.4].map((d, i) => (
+                <span key={i} className="w-2 h-2 rounded-full bg-[#c4a06a] opacity-60 animate-bounce" style={{ animationDelay: `${d}s` }} />
+              ))}
             </div>
           </div>
         )}

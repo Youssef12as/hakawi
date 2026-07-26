@@ -4,14 +4,14 @@ export function useChatApi() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const sendTextMessage = useCallback(async (text, sessionId) => {
+  const sendTextMessage = useCallback(async (text, sessionId, extraParams = {}) => {
     setIsLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/chat/text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, session_id: sessionId }),
+        body: JSON.stringify({ text, session_id: sessionId, ...extraParams }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -25,6 +25,7 @@ export function useChatApi() {
       setIsLoading(false);
     }
   }, []);
+
 
   const sendAudioMessage = useCallback(async (blob, sessionId) => {
     setIsLoading(true);

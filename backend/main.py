@@ -50,6 +50,8 @@ conversation_history: dict[str, list[dict]] = {}
 class TextChatRequest(BaseModel):
     text: str
     session_id: str | None = None
+    member_name: str | None = None   # Name of the family member persona
+    persona: str = "family_member"   # Which persona to use
 
 
 class TextChatResponse(BaseModel):
@@ -83,33 +85,42 @@ async def health_check():
 @app.post("/api/chat/text", response_model=TextChatResponse)
 async def chat_text(request: TextChatRequest):
     """
-    Text chat with the Aswan regional persona.
-
-    Sends the user's text to Gemini 2.5 Flash with the Aswan persona
-    system prompt and returns a response in Sa'idi/Nubian dialect.
+    Text chat with a persona. Defaults to the Egyptian family member persona.
+    Pass `persona='aswan'` for the heritage guide persona.
+    Pass `member_name` to personalise the family member's responses.
     """
     try:
-        # Generate or use existing session ID
         session_id = request.session_id or str(uuid4())
 
-        # Get Aswan persona
-        persona = get_persona("aswan")
+        # Pick persona — fall back to aswan if family_member not found
+        try:
+            persona_data = get_persona(request.persona)
+        except ValueError:
+            persona_data = get_persona("aswan")
 
-        # Get or create conversation history
+        system_prompt = persona_data["system_prompt"]
+
+        # Inject member's real name into system prompt so it feels personal
+        if request.member_name:
+            name_injection = (
+                f"اسمك الحقيقي هو '{request.member_name}'. "
+                f"لما حد يسألك عن اسمك، قول اسمك ده بالظبط. "
+                f"وتكلم دايماً كأنك أنت {request.member_name} من العيلة.\n\n"
+            )
+            system_prompt = name_injection + system_prompt
+
         history = conversation_history.setdefault(session_id, [])
 
-        # Generate response from Gemini
         ai_response = generate_response(
             user_text=request.text,
-            system_prompt=persona["system_prompt"],
+            system_prompt=system_prompt,
             history=history,
         )
 
-        # Update conversation history
         history.append({"role": "user", "parts": [{"text": request.text}]})
         history.append({"role": "model", "parts": [{"text": ai_response}]})
 
-        logger.info(f"Text chat | session={session_id[:8]}... | user={request.text[:30]}...")
+        logger.info(f"Text chat | persona={request.persona} | member={request.member_name} | session={session_id[:8]}...")
 
         return TextChatResponse(response=ai_response, session_id=session_id)
 
