@@ -3,8 +3,9 @@ import os
 import re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-INPUT_FILE = os.path.join(HERE, "backend", "data", "rag", "monuments_data.txt")
-OUTPUT_FILE = os.path.join(HERE, "backend", "data", "rag", "chunks.json")
+ROOT = os.path.dirname(HERE)
+INPUT_FILE = os.path.join(ROOT, "backend", "data", "rag", "monuments_data.txt")
+OUTPUT_FILE = os.path.join(ROOT, "backend", "data", "rag", "chunks.json")
 
 with open(INPUT_FILE, "r", encoding="utf-8") as f:
     text = f.read()

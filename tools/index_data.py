@@ -5,8 +5,9 @@ import time
 
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "")
 HERE = os.path.dirname(os.path.abspath(__file__))
-CHUNKS_FILE = os.path.join(HERE, "backend", "data", "rag", "chunks.json")
-OUTPUT_FILE = os.path.join(HERE, "backend", "data", "rag", "embeddings.json")
+ROOT = os.path.dirname(HERE)
+CHUNKS_FILE = os.path.join(ROOT, "backend", "data", "rag", "chunks.json")
+OUTPUT_FILE = os.path.join(ROOT, "backend", "data", "rag", "embeddings.json")
 
 if not GEMINI_KEY:
     raise SystemExit("GEMINI_API_KEY env var is required")
