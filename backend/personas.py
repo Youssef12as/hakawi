@@ -36,7 +36,7 @@ VOICES = {
 
      "amr-abdeen": {
          "name": "amr-abdeen",
-        "ref_audio_path": "D:\hakawi\backend\data\characters\Ancient.wav.mp3",
+        "ref_audio_path": "data/characters/Ancient.wav.mp3",
          "ref_text": "واع ثِن خِيِمِت فِي دُو دِي يو سِيسُو سِيفِخو خيمينو بِسيج",
     },
 
@@ -44,7 +44,7 @@ VOICES = {
 
     "am-mohamed": {
          "name": "am-mohamed",
-        "ref_audio_path": "D:\hakawi\backend\data\characters\aswan.wav.mp3",
+        "ref_audio_path": "data/characters/aswan.wav.mp3",
          "ref_text": "ولا في حد نتوَنَّس معاه الناس زمان البتحَكَّى الحكاوي الحلوة دي احسن من الكلام بتاع هنا الشباب اديلو يومين ولا فاهمينه",
     },
 }
