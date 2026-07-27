@@ -34,10 +34,22 @@ VOICES = {
     
 
 
-     "amr-abdeen": {
-         "name": "amr-abdeen",
+    "amr-abdeen": {
+        "name": "amr-abdeen",
         "ref_audio_path": "data/characters/Ancient.wav.mp3",
-         "ref_text": "واع ثِن خِيِمِت فِي دُو دِي يو سِيسُو سِيفِخو خيمينو بِسيج",
+        "ref_text": "واع ثِن خِيِمِت فِي دُو دِي يو سِيسُو سِيفِخو خيمينو بِسيج",
+    },
+
+    "amr-abdeen-modern": {
+        "name": "عمرو عابدين",
+        "ref_audio_path": "data/characters/amr-abdeen-modern.mp3",
+        "ref_text": "كرروا موضوع الهجاء الحرفي ده مئات المرات على أسماء الملوك  و المدن اللي زي رمسيس و أحمس و طيبة و كيمت",
+    },
+
+    "ramsis": {
+        "name": "رمسيس الثاني",
+        "ref_audio_path": "data/characters/Ancient.wav.mp3",
+        "ref_text": "واع ثِن خِيِمِت فِي دُو دِي يو سِيسُو سِيفِخو خيمينو بِسيج",
     },
 
 

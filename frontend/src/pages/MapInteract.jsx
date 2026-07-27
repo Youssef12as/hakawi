@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
-import { X, Sparkles } from 'lucide-react';
+import { X, Languages } from 'lucide-react';
 import PageShell from '../components/layout/PageShell';
 import DialectMap from '../components/map/DialectMap';
 import MonumentSelector from '../components/map/MonumentSelector';
@@ -26,7 +25,7 @@ const WALL_SYMBOLS = [
 ];
 
 export default function MapInteract() {
-  const navigate = useNavigate();
+
 
   // 3-stage state: null → governorate → monument
   const [governorates, setGovernorates] = useState(null);
@@ -46,7 +45,8 @@ export default function MapInteract() {
 
   const [sessionId, setSessionId] = useState(null);
   const [chatHistory, setChatHistory] = useState([]);
-  const [isAncientMode, setIsAncientMode] = useState(false);
+  // Language mode for TTS: 'modern' = Arabic voice, 'ancient' = old Egyptian voice
+  const [languageMode, setLanguageMode] = useState('modern');
 
   const { isSpeaking, playResponseAudio, stopAudio } = useCharacterState();
   const { sendTextMessage, sendAncientMessage, fetchTTS, fetchGovernorates, isLoading } = useChatApi();
@@ -62,10 +62,6 @@ export default function MapInteract() {
   const handleSelectGovernorate = useCallback(
     (govKey) => {
       stopAudio();
-      if (isAncientMode) {
-        navigate(`/ancient/${govKey}`);
-        return;
-      }
       const gov = governorates?.find((g) => g.key === govKey);
       if (gov) {
         // Start cross-fade transition
@@ -87,7 +83,7 @@ export default function MapInteract() {
         }, CROSSFADE_MS);
       }
     },
-    [stopAudio, isAncientMode, navigate, governorates],
+    [stopAudio, governorates],
   );
 
   // ── Stage 2 → Stage 3: pick a monument ─────────────────────────
@@ -122,9 +118,11 @@ export default function MapInteract() {
       ]);
 
       try {
-        const data = await sendAncientMessage(text, sessionId, selectedMonument?.key);
+        const data = await sendAncientMessage(text, sessionId, selectedMonument?.key, languageMode);
         setSessionId(data.session_id);
         const aiResponseText = data.response;
+        // Use tts_text for TTS (old Egyptian when ancient mode, same as response when modern)
+        const ttsText = data.tts_text || aiResponseText;
 
         const msgId = Date.now();
         setChatHistory((prev) => [
@@ -138,9 +136,9 @@ export default function MapInteract() {
           },
         ]);
 
-        // TTS
-        const characterName = selectedMonument?.character_name || 'am-othman';
-        const audioBlob = await fetchTTS(aiResponseText, characterName);
+        // TTS — always use the character's voice, but text differs by language mode
+        const characterName = data.character_name || selectedMonument?.character_name || 'am-othman';
+        const audioBlob = await fetchTTS(ttsText, characterName);
 
         if (audioBlob) {
           setChatHistory((prev) =>
@@ -162,7 +160,7 @@ export default function MapInteract() {
         ]);
       }
     },
-    [sessionId, selectedMonument, sendAncientMessage, fetchTTS, playResponseAudio],
+    [sessionId, selectedMonument, languageMode, sendAncientMessage, fetchTTS, playResponseAudio],
   );
 
   // ══════════════════════════════════════════════════════════════════
@@ -193,20 +191,6 @@ export default function MapInteract() {
       <PageShell className="bg-espresso/5">
         <style>{crossfadeStyles}</style>
         <div className="h-[calc(100vh-4rem)] flex flex-col lg:flex-row relative">
-          {/* Ancient Mode Toggle */}
-          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-4 bg-[#111010]/80 backdrop-blur-md px-6 py-3 rounded-full border border-[#c4a06a]/20 shadow-lg">
-            <span className={`text-sm font-bold transition-colors ${!isAncientMode ? 'text-[#c4a06a]' : 'text-sand/40'}`}>اللهجة الحديثة</span>
-
-            <button
-              onClick={() => setIsAncientMode(!isAncientMode)}
-              className="relative w-14 h-7 rounded-full bg-espresso border border-[#c4a06a]/30 transition-colors"
-            >
-              <div className={`absolute top-1 bottom-1 w-5 bg-[#c4a06a] rounded-full transition-all duration-300 ${isAncientMode ? 'left-1' : 'left-8'}`} />
-            </button>
-
-            <span className={`text-sm font-bold transition-colors ${isAncientMode ? 'text-[#c4a06a]' : 'text-sand/40'}`}>وضع الفراعنة</span>
-          </div>
-
           {/* Map — with cross-fade-out when transitioning */}
           <div className={`w-full h-full p-3 sm:p-4 ${fadePhase === 'out' ? 'map-crossfade-out' : 'animate-fade-in'}`}>
             <DialectMap
@@ -288,7 +272,7 @@ export default function MapInteract() {
                     عودة
                   </button>
                 </div>
-                
+
                 <div className="relative w-full h-full overflow-hidden mt-12">
                   {WALL_SYMBOLS.map((symbol) => (
                     <button
@@ -333,23 +317,50 @@ export default function MapInteract() {
 
         {/* Chat Side (Left Column in RTL) */}
         <div className="relative flex flex-col min-h-0 bg-[#111010]">
-          
-          {/* Chat Side Header - "منقوشاتنا" Button */}
-          {monument.key === 'aswan-general' && (
+
+          {/* Chat Side Header — Language Toggle (Aswan monuments) + منقوشاتنا */}
+          {selectedGovernorate?.key === 'aswan' && (
             <div className="flex items-center justify-between px-4 py-2 border-b border-[#c4a06a]/10 bg-[#1a1815]">
-              <span className="text-sand/50 text-xs flex items-center gap-2">
-                <Sparkles className="w-3 h-3 text-[#c4a06a]" />
-                اسأل عن المنقوشات
-              </span>
-              <button
-                onClick={() => setShowWall((prev) => !prev)}
-                className={`flex items-center gap-2 px-4 py-1.5 rounded-lg border transition-all duration-300 text-sm font-medium ${showWall ? 'bg-[#c4a06a]/20 border-[#c4a06a]/50 text-[#c4a06a]' : 'bg-transparent border-[#c4a06a]/20 text-[#c4a06a]/70 hover:bg-[#c4a06a]/10 hover:text-[#c4a06a]'}`}
-              >
-                🏛️ منقوشاتنا
-              </button>
+              {/* Language Mode Toggle - Only show for ancient monuments (not am-othman/aswan-general) */}
+              {monument.key !== 'aswan-general' ? (
+                <div className="flex items-center gap-3">
+                  <Languages className="w-4 h-4 text-[#c4a06a]/60" />
+                  <span className={`text-xs font-bold transition-colors cursor-pointer ${languageMode === 'modern' ? 'text-[#c4a06a]' : 'text-sand/40'}`}
+                    onClick={() => setLanguageMode('modern')}
+                  >
+                    المصرية الحديثة
+                  </span>
+
+                  <button
+                    onClick={() => setLanguageMode(languageMode === 'modern' ? 'ancient' : 'modern')}
+                    className="relative w-12 h-6 rounded-full bg-espresso border border-[#c4a06a]/30 transition-colors flex-shrink-0"
+                    aria-label="تبديل اللغة"
+                  >
+                    <div className={`absolute top-0.5 bottom-0.5 w-5 bg-[#c4a06a] rounded-full transition-all duration-300 ${languageMode === 'ancient' ? 'left-0.5' : 'left-[1.375rem]'}`} />
+                  </button>
+
+                  <span className={`text-xs font-bold transition-colors cursor-pointer ${languageMode === 'ancient' ? 'text-[#c4a06a]' : 'text-sand/40'}`}
+                    onClick={() => setLanguageMode('ancient')}
+                  >
+                    المصرية القديمة
+                  </span>
+                </div>
+              ) : (
+                <div /> /* Empty div to maintain flex spacing if needed */
+              )}
+
+              {/* منقوشاتنا button (only for aswan-general) */}
+              {monument.key === 'aswan-general' && (
+                <button
+                  onClick={() => setShowWall((prev) => !prev)}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg border transition-all duration-300 text-sm font-medium ${showWall ? 'bg-[#c4a06a]/20 border-[#c4a06a]/50 text-[#c4a06a]' : 'bg-transparent border-[#c4a06a]/20 text-[#c4a06a]/70 hover:bg-[#c4a06a]/10 hover:text-[#c4a06a]'}`}
+                >
+                  🏛️ منقوشاتنا
+                </button>
+              )}
             </div>
           )}
-          
+
           {/* Floating Symbol Panel */}
           {selectedSymbol && (
             <div className="absolute top-4 left-4 right-4 z-30 animate-slide-in-end">

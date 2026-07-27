@@ -16,6 +16,7 @@ from services.gemini_service import generate
 from services.rag_service import is_ready as rag_is_ready, retrieve_and_build
 from services.stt_service import transcribe_audio
 from services.tts_service import synthesize_speech, save_character, saved_characters
+from services.ancient_translation import generate_with_ancient
 
 # Configure logging
 logging.basicConfig(
@@ -101,10 +102,13 @@ class AncientChatRequest(BaseModel):
     # the persona is resolved directly from the registry instead of being
     # fuzzy-matched from the top chunk.
     monument_key: str | None = None
+    # "modern" = normal Arabic TTS, "ancient" = old Egyptian TTS
+    language_mode: str = "modern"
 
 
 class AncientChatResponse(BaseModel):
     response: str
+    tts_text: str  # Text to be spoken by TTS (old Egyptian when ancient mode)
     session_id: str
     monument: str
     builder: str
@@ -309,6 +313,9 @@ async def chat_ancient(request: AncientChatRequest):
             )
 
         session_id = request.session_id or str(uuid4())
+        
+        # Determine language mode
+        use_ancient = (request.language_mode == "ancient")
 
         # Resolve monument filter from the registry (if provided)
         monument_name_filter: str | None = None
@@ -324,6 +331,8 @@ async def chat_ancient(request: AncientChatRequest):
             monument_name_filter = entry["monument_name"]
             display_name = entry["display_name"]
             character_name = entry.get("character_name", "am-othman")
+            if character_name == "ramsis" and not use_ancient:
+                character_name = "amr-abdeen-modern"
 
         payload = retrieve_and_build(
             request.text,
@@ -331,13 +340,24 @@ async def chat_ancient(request: AncientChatRequest):
             monument_name=monument_name_filter,
         )
 
-        ai_response = generate(
-            user_text=payload["user_prompt"],
-            system_prompt=payload["system_prompt"],
-            temperature=0.4,
-            max_output_tokens=400,
-            thinking_budget=0,
-        )
+        if use_ancient:
+            # Single-call dual output: Arabic chat text + old Egyptian TTS text
+            ai_response, tts_text = generate_with_ancient(
+                user_prompt=payload["user_prompt"],
+                base_system_prompt=payload["system_prompt"],
+                temperature=0.4,
+                max_output_tokens=800,
+                thinking_budget=0,
+            )
+        else:
+            ai_response = generate(
+                user_text=payload["user_prompt"],
+                system_prompt=payload["system_prompt"],
+                temperature=0.4,
+                max_output_tokens=400,
+                thinking_budget=0,
+            )
+            tts_text = ai_response
 
         # If the monument was explicitly selected, prefer the registry's
         # display_name and builder over the fuzzy-matched ones.
@@ -347,13 +367,14 @@ async def chat_ancient(request: AncientChatRequest):
             builder = payload["builder"]
 
         logger.info(
-            "Ancient chat | session=%s... | monument=%s | builder=%s | user=%s...",
+            "Ancient chat | session=%s... | monument=%s | builder=%s | mode=%s | user=%s...",
             session_id[:8], payload["monument"][:30],
-            builder[:20], request.text[:30],
+            builder[:20], request.language_mode, request.text[:30],
         )
 
         return AncientChatResponse(
             response=ai_response,
+            tts_text=tts_text,
             session_id=session_id,
             monument=payload["monument"],
             builder=builder,

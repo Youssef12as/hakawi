@@ -85,14 +85,16 @@ export function useChatApi() {
     }
   }, []);
 
-  // RAG-backed Ancient Mode chat — returns {response, monument, builder, ...}
+  // RAG-backed Ancient Mode chat — returns {response, tts_text, monument, builder, ...}
   // monument_key constrains the RAG search to a specific monument's chunks.
-  const sendAncientMessage = useCallback(async (text, sessionId, monumentKey) => {
+  // languageMode: 'modern' (default) or 'ancient' — controls TTS output language.
+  const sendAncientMessage = useCallback(async (text, sessionId, monumentKey, languageMode = 'modern') => {
     setIsLoading(true);
     setError(null);
     try {
       const body = { text, session_id: sessionId };
       if (monumentKey) body.monument_key = monumentKey;
+      if (languageMode) body.language_mode = languageMode;
       const res = await fetch('/api/chat/ancient', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

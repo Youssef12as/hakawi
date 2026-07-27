@@ -23,14 +23,8 @@ def _load_saved_characters() -> list[str]:
                 names.extend(registry.keys())
         except Exception:
             pass
-    # 2. From the built-in voices (e.g. am-othman)
-    try:
-        from personas import list_voices
-        for vname in list_voices():
-            if vname not in names:
-                names.append(vname)
-    except Exception:
-        pass
+    # 2. We no longer automatically assume built-in voices exist on the TTS server.
+    # They will be lazy-loaded on the first request.
     return names
 
 # Characters successfully registered with the TTS API (in-memory for this process)
