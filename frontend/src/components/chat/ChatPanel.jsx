@@ -2,7 +2,7 @@ import { useRef, useEffect } from 'react';
 import ChatBubble from './ChatBubble';
 import ChatInput from './ChatInput';
 
-export default function ChatPanel({ chatHistory, onSendText, onSendAudio, onTranscribeAudio, isLoading, elderName }) {
+export default function ChatPanel({ chatHistory, onSendText, onSendAudio, onTranscribeAudio, isLoading, elderName, languageMode }) {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -35,6 +35,7 @@ export default function ChatPanel({ chatHistory, onSendText, onSendAudio, onTran
             isError={msg.isError}
             audioBlob={msg.audioBlob}
             elderName={elderName}
+            languageMode={languageMode}
           />
         ))}
 

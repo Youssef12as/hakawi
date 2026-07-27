@@ -388,6 +388,7 @@ export default function MapInteract() {
             onTranscribeAudio={transcribeAudio}
             isLoading={isLoading}
             elderName={monument.builder}
+            languageMode={languageMode}
           />
         </div>
       </div>
