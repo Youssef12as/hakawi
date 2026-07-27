@@ -471,45 +471,157 @@ export default function Landing() {
 
         <div style={{ width: '100%', position: 'relative', zIndex: 3, display: 'grid', gridTemplateColumns: '1.1fr 1fr', alignItems: 'center', gap: 'clamp(20px,4vw,40px)', padding: '70px clamp(20px,5vw,80px)' }}>
 
-          {/* ── LEFT: Big Map ─────────────────────────────────────── */}
+          {/* ── LEFT: Big Map ─────────────────────────────────── */}
           <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-            <div className="rv" style={{ position: 'relative', width: '100%', maxWidth: 320, maxHeight: '60vh', display: 'flex', justifyContent: 'center' }}>
-              <svg viewBox="0 0 260 500" style={{ width: '100%', maxHeight: '100%', filter: 'drop-shadow(0 12px 30px rgba(0,0,0,.6))' }}>
-                {/* Egypt shape */}
-                <path d="M88 17L162 35L166 112L184 145L169 199L203 269L177 335L148 409L136 481L103 466L85 390L70 315L76 239L62 177L79 111L73 58Z"
-                  fill="rgba(14,11,8,.85)" stroke="rgba(200,152,48,.35)" strokeWidth="1.8" />
-                {/* Nile */}
-                <path d="M124 49C151 96 101 126 134 171C166 215 112 257 144 301C169 336 118 379 128 447"
-                  fill="none" stroke="rgba(90,160,190,.55)" strokeWidth="2.5" strokeLinecap="round"
-                  strokeDasharray="5 9" style={{ animation: 'nile 6s linear infinite' }} />
-                {/* Region dots with labels */}
+            <div className="rv" style={{ position: 'relative', width: '100%', maxWidth: 420, maxHeight: '70vh', display: 'flex', justifyContent: 'center' }}>
+              <svg viewBox="0 0 400 520" style={{ width: '100%', maxHeight: '100%', filter: 'drop-shadow(0 16px 40px rgba(0,0,0,.7))' }}>
+                <defs>
+                  <filter id="markerGlow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="4" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+
+                {/* Egypt silhouette */}
+                <path d={`
+                  M52 55
+                  C70 48, 88 54, 105 49
+                  C124 43, 143 49, 161 52
+                  C181 56, 201 52, 221 55
+                  C242 58, 263 52, 286 48
+                  L307 52 L306 113 L292 129 L281 151
+                  C283 155, 282 177, 283 199
+                  C284 225, 282 251, 278 277
+                  C274 305, 268 333, 262 360
+                  C256 388, 249 416, 242 445
+                  L235 480 L86 480
+                  L82 448 L78 410 L74 371 L70 331
+                  L67 291 L64 251 L61 211 L58 171
+                  L56 132 L53 93
+                  C50 78, 47 65, 52 55
+                  Z
+                `}
+                  fill="#0a0a0a"
+                  stroke="rgba(200,152,48,.4)"
+                  strokeWidth="1.2"
+                  strokeLinejoin="round"
+                />
+
+                {/* Sinai peninsula */}
+                <path d={`
+                  M307 52
+                  L332 45
+                  L360 54
+                  L374 102
+                  L360 145
+                  L336 204
+                  L315 164
+                  L306 113
+                  Z
+                `}
+                  fill="#0a0a0a"
+                  stroke="rgba(200,152,48,.4)"
+                  strokeWidth="1.2"
+                  strokeLinejoin="round"
+                />
+                {/* Nile River — cyan dashed */}
+                <path d={`
+                  M194 480
+                  C190 462, 198 445, 196 428
+                  C193 409, 186 392, 191 373
+                  C196 354, 205 337, 201 317
+                  C197 297, 190 280, 195 260
+                  C200 240, 209 222, 204 202
+                  C199 181, 190 163, 195 143
+                  C199 125, 210 111, 207 94
+                  C204 80, 199 70, 197 61
+                `}
+                  fill="none"
+                  stroke="rgba(80,210,230,.65)"
+                  strokeWidth="2.8"
+                  strokeLinecap="round"
+                  strokeDasharray="8 6"
+                  style={{ animation: 'nile 4s linear infinite' }}
+                />
+
+                {/* Delta branches */}
+                <path d="M197 61 C182 59, 163 55, 144 50"
+                  fill="none" stroke="rgba(80,210,230,.5)" strokeWidth="2"
+                  strokeLinecap="round" strokeDasharray="6 5"
+                  style={{ animation: 'nile 4s linear infinite' }}
+                />
+                <path d="M197 61 C211 59, 227 57, 244 54"
+                  fill="none" stroke="rgba(80,210,230,.5)" strokeWidth="2"
+                  strokeLinecap="round" strokeDasharray="6 5"
+                  style={{ animation: 'nile 4s linear infinite' }}
+                />
+
+                {/* Lake Nasser */}
+                <path d="M194 465 C203 478, 205 491, 199 505 C193 513, 183 508, 187 498 C190 489, 184 481, 194 465"
+                  fill="rgba(80,210,230,.25)" stroke="rgba(80,210,230,.45)"
+                  strokeWidth="1.5" strokeDasharray="4 4"
+                  style={{ animation: 'nile 4s linear infinite' }}
+                />
+
+                {/* City markers */}
                 {REGIONS.map((r, i) => {
                   const isActive = region.key === r.key;
+                  const positions = {
+                    aswan: { cx: 195, cy: 435 },
+                    luxor: { cx: 202, cy: 335 },
+                    cairo: { cx: 207, cy: 94 },
+                    alexandria: { cx: 144, cy: 51 },
+                  };
+                  const pos = positions[r.key] || { cx: 200, cy: 200 };
+                  const labelOffsets = {
+                    aswan: { dx: 28, dy: 5, anchor: 'start' },
+                    luxor: { dx: 28, dy: 5, anchor: 'start' },
+                    cairo: { dx: 28, dy: 5, anchor: 'start' },
+                    alexandria: { dx: -20, dy: -12, anchor: 'end' },
+                  };
+                  const label = labelOffsets[r.key] || { dx: 20, dy: 4, anchor: 'start' };
+
                   return (
-                    <g key={r.key}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => goTo(i)}>
-                      {/* Ripple ring for active */}
+                    <g key={r.key} style={{ cursor: 'pointer' }} onClick={() => goTo(i)}>
+                      {/* Outer ring */}
+                      <circle cx={pos.cx} cy={pos.cy} r={isActive ? 18 : 14}
+                        fill="none"
+                        stroke={isActive ? '#e8a820' : 'rgba(200,152,48,.2)'}
+                        strokeWidth={isActive ? 2 : 1}
+                        opacity={isActive ? .6 : .3}
+                        style={{ transition: 'all .4s ease' }}
+                      />
+                      {/* Active ripple */}
                       {isActive && (
-                        <circle cx={r.mapCx} cy={r.mapCy} r={7}
-                          fill="none" stroke={r.accent} strokeWidth="2"
-                          opacity=".6"
-                          style={{ animation: 'ripple 1.5s ease-out infinite', transformOrigin: `${r.mapCx}px ${r.mapCy}px` }} />
+                        <circle cx={pos.cx} cy={pos.cy} r={12}
+                          fill="none" stroke="#e8a820" strokeWidth="2" opacity=".5"
+                          style={{ animation: 'ripple 2s ease-out infinite', transformOrigin: `${pos.cx}px ${pos.cy}px` }}
+                        />
                       )}
-                      {/* Main dot */}
-                      <circle cx={r.mapCx} cy={r.mapCy} r={isActive ? 9 : 6}
-                        fill={isActive ? r.accent : 'rgba(200,152,48,.25)'}
-                        stroke={isActive ? '#fff' : 'rgba(200,152,48,.5)'}
-                        strokeWidth={isActive ? 2.5 : 1.5}
-                        style={{ transition: 'all .35s ease' }} />
-                      {/* Region name label */}
-                      <text x={r.mapCx + (r.mapCx > 130 ? 18 : -18)} y={r.mapCy + 4}
-                        textAnchor={r.mapCx > 130 ? 'start' : 'end'}
-                        fill={isActive ? r.tagColor : 'rgba(200,152,48,.45)'}
-                        fontSize={isActive ? 11 : 9}
-                        fontWeight={isActive ? 700 : 400}
+                      {/* Golden dot */}
+                      <circle cx={pos.cx} cy={pos.cy} r={isActive ? 10 : 7}
+                        fill={isActive ? '#e8a820' : '#c89830'}
+                        stroke="#fff8ee" strokeWidth={isActive ? 2.5 : 1.5}
+                        filter="url(#markerGlow)"
+                        style={{ transition: 'all .35s ease' }}
+                      />
+                      {/* Highlight */}
+                      <circle cx={pos.cx - 2} cy={pos.cy - 2} r={isActive ? 3 : 2}
+                        fill="rgba(255,255,255,.6)"
+                        style={{ transition: 'all .35s ease' }}
+                      />
+                      {/* Label */}
+                      <text x={pos.cx + label.dx} y={pos.cy + label.dy}
+                        textAnchor={label.anchor}
+                        fill={isActive ? '#ffffff' : 'rgba(255,255,255,.85)'}
+                        fontSize={isActive ? 16 : 13}
+                        fontWeight={isActive ? 800 : 600}
                         fontFamily="'Noto Kufi Arabic', sans-serif"
-                        style={{ transition: 'all .35s ease' }}>
+                        style={{ transition: 'all .35s ease' }}
+                      >
                         {r.name.split(' ')[0]}
                       </text>
                     </g>
@@ -527,6 +639,7 @@ export default function Landing() {
               <MousePointer size={14} style={{ animation: 'floatImg 3s ease-in-out infinite' }} />
               اضغط على أي منطقة لاستكشاف شخصيتها
             </div>
+
           </div>
 
           {/* ── RIGHT: Character Card ────────────────────────────── */}
