@@ -12,20 +12,13 @@ logger = logging.getLogger(__name__)
 # Pre-populate saved characters from the on-disk registry so we don't
 # re-save them to the TTS model on every server restart.
 def _load_saved_characters() -> list[str]:
-    """Read character names from the local registry and built-in voices."""
-    names: list[str] = []
-    # 1. From the local characters registry
-    registry_path = os.path.join("data", "characters", "registry.json")
-    if os.path.exists(registry_path):
-        try:
-            with open(registry_path, "r", encoding="utf-8") as f:
-                registry = json.load(f)
-                names.extend(registry.keys())
-        except Exception:
-            pass
-    # 2. We no longer automatically assume built-in voices exist on the TTS server.
-    # They will be lazy-loaded on the first request.
-    return names
+    """
+    We now return an empty list on startup.
+    This forces `_ensure_character_saved` to lazy-load (re-register) the character 
+    to the TTS server on their first use, which handles cases where the user 
+    manually edited registry.json or the TTS server restarted.
+    """
+    return []
 
 # Characters successfully registered with the TTS API (in-memory for this process)
 saved_characters: list[str] = _load_saved_characters()
@@ -98,7 +91,7 @@ def save_character(
         }
 
         logger.info(f"Saving character {char_name} to {url}...")
-        response = requests.post(url, json=payload, headers={"Content-Type": "application/json"})
+        response = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=10)
         response.raise_for_status()
 
         data = response.json()

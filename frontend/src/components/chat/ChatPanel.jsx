@@ -2,7 +2,7 @@ import { useRef, useEffect } from 'react';
 import ChatBubble from './ChatBubble';
 import ChatInput from './ChatInput';
 
-export default function ChatPanel({ chatHistory, onSendText, onSendAudio, isLoading, elderName }) {
+export default function ChatPanel({ chatHistory, onSendText, onSendAudio, onTranscribeAudio, isLoading, elderName }) {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -53,7 +53,7 @@ export default function ChatPanel({ chatHistory, onSendText, onSendAudio, isLoad
       </div>
 
       {/* Input */}
-      <ChatInput onSendText={onSendText} onSendAudio={onSendAudio} isLoading={isLoading} />
+      <ChatInput onSendText={onSendText} onSendAudio={onSendAudio} onTranscribeAudio={onTranscribeAudio} isLoading={isLoading} />
     </div>
   );
 }

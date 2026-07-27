@@ -49,7 +49,7 @@ export default function MapInteract() {
   const [languageMode, setLanguageMode] = useState('modern');
 
   const { isSpeaking, playResponseAudio, stopAudio } = useCharacterState();
-  const { sendTextMessage, sendAncientMessage, fetchTTS, fetchGovernorates, isLoading } = useChatApi();
+  const { sendTextMessage, sendAncientMessage, fetchTTS, fetchGovernorates, transcribeAudio, isLoading } = useChatApi();
 
   // ── Fetch governorates on mount ─────────────────────────────────
   useEffect(() => {
@@ -385,6 +385,7 @@ export default function MapInteract() {
           <ChatPanel
             chatHistory={chatHistory}
             onSendText={handleSendText}
+            onTranscribeAudio={transcribeAudio}
             isLoading={isLoading}
             elderName={monument.builder}
           />

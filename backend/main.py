@@ -4,7 +4,7 @@ import os
 from collections import OrderedDict
 from uuid import uuid4
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
@@ -73,6 +73,10 @@ class TextChatRequest(BaseModel):
     # Region is optional so the existing frontend payload keeps working.
     # Defaults to "aswan" for backwards compatibility.
     region: str = "aswan"
+    # Family tree chat fields (optional)
+    persona: str | None = None        # "family_member" to trigger family mode
+    member_name: str | None = None    # e.g. "فاطمة"
+    relation: str | None = None       # e.g. "جدة", "أب"
 
 
 class TextChatResponse(BaseModel):
@@ -117,6 +121,44 @@ class AncientChatResponse(BaseModel):
     character_name: str
 
 
+# ─── Family Member Personas ────────────────────────────────────────────────────
+
+FAMILY_PROMPTS = {
+    "جد": "أنت {name}، جد حنون وحكيم. بتحب تحكي حكايات من أيام زمان وتنصح أحفادك بخبرة سنين عمرك. كلامك فيه دفا وحكمة.",
+    "جدة": "أنتِ {name}، جدة حنونة وطيبة. بتفتكري أيام زمان وبتحكي عن العيلة والأكل والتقاليد. كلامك فيه حب ودفا.",
+    "أب": "أنت {name}، أب مسؤول وحنون. بتحب تنصح ولادك وتشاركهم خبراتك في الحياة. كلامك فيه قوة وحنان.",
+    "أم": "أنتِ {name}، أم حنونة ومهتمة. بتسألي عن أحوال ولادك وبتحكيلهم حكايات وتعلميهم. كلامك فيه حب وأمان.",
+    "عم": "أنت {name}، عم طيب ومرح. بتحب تضحّك ولاد أخوك وتحكيلهم حكايات عن العيلة. كلامك فيه خفة دم ومحبة.",
+    "عمة": "أنتِ {name}، عمة حنونة وقريبة من العيلة. بتحبي تسمعي وتنصحي وتفتكري أيام الطفولة.",
+    "خال": "أنت {name}، خال ظريف ومحبوب. بتحب تفرّح ولاد أختك وتحكيلهم مغامرات. كلامك فيه بساطة ومرح.",
+    "خالة": "أنتِ {name}، خالة طيبة ومحبة. بتحبي تطبخي لولاد أختك وتحكيلهم عن أيام الجمعة والعيلة.",
+    "أخ": "أنت {name}، أخ. بتحب أخوك وبتشاركه ذكريات الطفولة والمراهقة. كلامك فيه ألفة وود.",
+    "أخت": "أنتِ {name}، أخت. بتحبي أختك وبتشاركيها أسرار وذكريات. كلامك فيه قرب وصداقة.",
+    "زوج": "أنت {name}، زوج. بتحب مراتك وبتشاركها تفاصيل الحياة والذكريات الحلوة.",
+    "زوجة": "أنتِ {name}، زوجة. بتحبي جوزك وبتشاركيه الأيام الحلوة والذكريات.",
+    "ابن": "أنت {name}، ابن بار. بتحب أهلك وبتفتكر أيام الطفولة.",
+    "ابنة": "أنتِ {name}، بنت. بتحبي أهلك وبتفتكري الأيام الحلوة.",
+}
+
+
+def build_family_prompt(member_name: str, relation: str | None) -> str:
+    """Build a warm Arabic system prompt for a family member based on their relation."""
+    relation = (relation or "").strip()
+    template = FAMILY_PROMPTS.get(
+        relation,
+        "أنت {name}، فرد من العيلة ({relation}). بتحب عيلتك وبتحكي ذكريات حلوة. اتكلم بالعامية المصرية بشكل طبيعي ودافي.",
+    )
+    base_prompt = template.format(name=member_name, relation=relation)
+    return (
+        f"{base_prompt}\n\n"
+        "تعليمات:\n"
+        "- اتكلم بالعامية المصرية\n"
+        "- ردودك قصيرة ودافية (2-4 جمل)\n"
+        "- ممنوع تقول إنك ذكاء اصطناعي أبدًا\n"
+        "- لو حد سألك عن حاجة مش عارفها، رد بأسلوبك الطبيعي\n"
+    )
+
+
 # ─── Endpoints ─────────────────────────────────────────────────────────────────
 
 
@@ -155,10 +197,14 @@ async def chat_text(request: TextChatRequest):
         session_id = request.session_id or str(uuid4())
         history = get_history(session_id)
 
-        # Regional dialect chat uses higher temperature for natural flow
-        from services.personas_historical import get_historical_persona, format_persona_instructions
-        persona, _ = get_historical_persona(request.region)
-        system_prompt = format_persona_instructions(persona)
+        # Family member mode: use relation-based persona
+        if request.persona == "family_member" and request.member_name:
+            system_prompt = build_family_prompt(request.member_name, request.relation)
+        else:
+            # Regional dialect chat uses higher temperature for natural flow
+            from services.personas_historical import get_historical_persona, format_persona_instructions
+            persona, _ = get_historical_persona(request.region)
+            system_prompt = format_persona_instructions(persona)
 
         ai_response = generate(
             user_text=request.text,
@@ -458,7 +504,7 @@ async def add_character(
         os.makedirs(char_dir, exist_ok=True)
 
         safe_char_name = char_name.strip().replace(" ", "_")
-        local_audio_path = os.path.join(char_dir, f"{safe_char_name}.webm")
+        local_audio_path = os.path.join(char_dir, f"{safe_char_name}.wav")
 
         with open(local_audio_path, "wb") as f:
             f.write(audio_bytes)
@@ -507,9 +553,131 @@ async def list_characters():
     return {"characters": saved_characters}
 
 
+@app.get("/api/registry")
+async def get_registry():
+    """Get all characters directly from the JSON registry file."""
+    registry_path = os.path.join("data", "characters", "registry.json")
+    if os.path.exists(registry_path):
+        try:
+            with open(registry_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Error reading registry.json: {e}")
+    return {}
+
+
+DEFAULT_TREE_DATA = {
+    "id": "root",
+    "members": [
+        { 
+            "id": "gm", "role": "جدة", "name": "فاطمة", "avatar": "/avatars/gm.png", "status": "preserved", "memories": 847, "occasions": ["عيد ميلاد — 15 مارس"],
+            "hasParents": False 
+        },
+        { 
+            "id": "gf", "role": "جد", "name": "محمود", "avatar": "/avatars/gf.png", "status": "preserved", "memories": 1203, "occasions": ["ذكرى زواج — 8 يناير"],
+            "hasParents": False
+        }
+    ],
+    "children": [
+        {
+            "id": "branch_add_uncle",
+            "members": [{"id": "add_u", "role": "عم / عمة", "isAddNode": True}]
+        },
+        {
+            "id": "branch_parents",
+            "members": [
+                {"id": "f", "role": "أب", "name": "أحمد", "avatar": "/avatars/f.png", "status": "preserved", "memories": 24, "occasions": []},
+                {"id": "m", "role": "أم", "name": "سعاد", "avatar": "/avatars/m.png", "status": "preserved", "memories": 12, "occasions": []}
+            ],
+            "children": [
+                {"id": "bro", "members": [{"id": "add_b", "role": "أخ / أخت", "isAddNode": True}]},
+                { 
+                    "id": "me_branch", 
+                    "members": [
+                        {"id": "me", "role": "أنا", "name": "حسين", "avatar": "/avatars/me.png", "status": "preserved", "isMe": True, "memories": 5, "occasions": []},
+                        {"id": "add_wife", "role": "زوج / زوجة", "isAddNode": True}
+                    ],
+                    "children": [
+                        {"id": "dau", "members": [{"id": "add_c", "role": "ابن / ابنة", "isAddNode": True}]}
+                    ]
+                },
+                {"id": "sis", "members": [{"id": "add_s", "role": "أخ / أخت", "isAddNode": True}]}
+            ]
+        },
+        {
+            "id": "branch_add_aunt",
+            "members": [{"id": "add_a", "role": "خال / خالة", "isAddNode": True}]
+        }
+    ]
+}
+
+def is_character_in_tree(node: dict, char_name: str) -> bool:
+    for m in node.get("members", []):
+        if m.get("name") == char_name or m.get("characterName") == char_name:
+            return True
+    for child in node.get("children", []):
+        if is_character_in_tree(child, char_name):
+            return True
+    return False
+
+@app.get("/api/family-tree")
+async def get_family_tree():
+    import uuid
+    tree_path = os.path.join("data", "characters", "family_tree.json")
+    tree_data = DEFAULT_TREE_DATA.copy()
+    
+    if os.path.exists(tree_path):
+        try:
+            with open(tree_path, "r", encoding="utf-8") as f:
+                tree_data = json.load(f)
+        except Exception as e:
+            logger.error(f"Error reading family_tree.json: {e}")
+            
+    # Auto-merge missing characters from registry
+    registry_path = os.path.join("data", "characters", "registry.json")
+    if os.path.exists(registry_path):
+        try:
+            with open(registry_path, "r", encoding="utf-8") as f:
+                registry = json.load(f)
+                has_changes = False
+                for char_name in registry.keys():
+                    if char_name in ["ana", "am-othman"]:
+                        continue
+                    if not is_character_in_tree(tree_data, char_name):
+                        tree_data["members"].append({
+                            "id": str(uuid.uuid4()),
+                            "name": char_name,
+                            "role": "فرد العائلة",
+                            "characterName": char_name,
+                            "status": "preserved",
+                            "memories": 0,
+                            "occasions": [],
+                            "avatar": None
+                        })
+                        has_changes = True
+                if has_changes:
+                    # Save the merged tree back to disk
+                    with open(tree_path, "w", encoding="utf-8") as out_f:
+                        json.dump(tree_data, out_f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.error(f"Error auto-merging registry into tree: {e}")
+            
+    return tree_data
+
+@app.post("/api/family-tree")
+async def save_family_tree(request: Request):
+    try:
+        tree_data = await request.json()
+        tree_path = os.path.join("data", "characters", "family_tree.json")
+        with open(tree_path, "w", encoding="utf-8") as f:
+            json.dump(tree_data, f, ensure_ascii=False, indent=2)
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Error saving family tree: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save tree")
+
 # ─── Run ───────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
