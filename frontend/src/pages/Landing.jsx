@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mic, ChevronDown, MousePointer, Sparkles, Users, Heart } from 'lucide-react';
 
 /* ─── Font constants ───────────────────────────────────────────────────────── */
@@ -193,11 +193,17 @@ export default function Landing() {
   const pageRef = useRef(null);
   useReveal(pageRef);
   const scrollY = useScrollY();
+  const navigate = useNavigate();
 
   /* region state */
   const [activeIdx, setActiveIdx] = useState(0);
   const [animKey, setAnimKey] = useState(0);
   const cycleRef = useRef(null);
+
+  /* zoom-transition state */
+  const [zoomActive, setZoomActive] = useState(false);
+  const [zoomOrigin, setZoomOrigin] = useState({ x: '50%', y: '50%' });
+  const [zoomColor, setZoomColor] = useState('#c89830');
 
   const goTo = useCallback((idx) => {
     clearInterval(cycleRef.current);
@@ -209,6 +215,23 @@ export default function Landing() {
       setAnimKey((k) => k + 1);
     }, 6000);
   }, []);
+
+  /* Navigate with a zoom-burst from the clicked marker position */
+  const navigateWithZoom = useCallback((regionKey, svgEl, svgCx, svgCy) => {
+    // Convert SVG coords → screen %
+    if (svgEl) {
+      const rect = svgEl.getBoundingClientRect();
+      const scaleX = rect.width / 1000;
+      const scaleY = rect.height / 1000;
+      const screenX = rect.left + svgCx * scaleX;
+      const screenY = rect.top + svgCy * scaleY;
+      setZoomOrigin({ x: `${screenX}px`, y: `${screenY}px` });
+    }
+    const r = REGIONS.find(r => r.key === regionKey);
+    setZoomColor(r?.accent || '#c89830');
+    setZoomActive(true);
+    setTimeout(() => navigate('/map'), 550);
+  }, [navigate]);
 
   // Auto-cycle characters — kept for animation feel
   useEffect(() => {
@@ -311,6 +334,23 @@ export default function Landing() {
         /* nile */
         @keyframes nile { to { stroke-dashoffset: -180; } }
 
+        /* zoom portal burst */
+        @keyframes zoomBurst {
+          0%   { transform: scale(0); opacity: 1; }
+          100% { transform: scale(40); opacity: 1; }
+        }
+        .zoom-portal {
+          position: fixed;
+          border-radius: 50%;
+          z-index: 9999;
+          pointer-events: none;
+          width: 80px;
+          height: 80px;
+          margin-left: -40px;
+          margin-top: -40px;
+          animation: zoomBurst 0.65s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
         /* wave */
         @keyframes wvAnim { from { transform: scaleY(.2); } to { transform: scaleY(1); } }
 
@@ -343,6 +383,18 @@ export default function Landing() {
         /* heading font utility */
         .font-heading { font-family: ${FONT_HEADING}; }
       `}</style>
+
+      {/* Zoom portal overlay */}
+      {zoomActive && (
+        <div
+          className="zoom-portal"
+          style={{
+            left: zoomOrigin.x,
+            top: zoomOrigin.y,
+            background: `radial-gradient(circle, ${zoomColor} 0%, ${zoomColor}cc 40%, ${zoomColor}44 70%, transparent 100%)`,
+          }}
+        />
+      )}
 
       <div className="grain" />
 
@@ -473,161 +525,92 @@ export default function Landing() {
 
           {/* ── LEFT: Big Map ─────────────────────────────────── */}
           <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-            <div className="rv" style={{ position: 'relative', width: '100%', maxWidth: 420, maxHeight: '70vh', display: 'flex', justifyContent: 'center' }}>
-              <svg viewBox="0 0 400 520" style={{ width: '100%', maxHeight: '100%', filter: 'drop-shadow(0 16px 40px rgba(0,0,0,.7))' }}>
-                <defs>
-                  <filter id="markerGlow" x="-50%" y="-50%" width="200%" height="200%">
-                    <feGaussianBlur stdDeviation="4" result="blur" />
-                    <feMerge>
-                      <feMergeNode in="blur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
-
-                {/* Egypt silhouette */}
-                <path d={`
-                  M52 55
-                  C70 48, 88 54, 105 49
-                  C124 43, 143 49, 161 52
-                  C181 56, 201 52, 221 55
-                  C242 58, 263 52, 286 48
-                  L307 52 L306 113 L292 129 L281 151
-                  C283 155, 282 177, 283 199
-                  C284 225, 282 251, 278 277
-                  C274 305, 268 333, 262 360
-                  C256 388, 249 416, 242 445
-                  L235 480 L86 480
-                  L82 448 L78 410 L74 371 L70 331
-                  L67 291 L64 251 L61 211 L58 171
-                  L56 132 L53 93
-                  C50 78, 47 65, 52 55
-                  Z
-                `}
-                  fill="#0a0a0a"
-                  stroke="rgba(200,152,48,.4)"
-                  strokeWidth="1.2"
-                  strokeLinejoin="round"
+            <div className="rv" style={{ position: 'relative', width: '100%', maxWidth: 440, maxHeight: '70vh', display: 'flex', justifyContent: 'center' }}>
+              <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1' }}>
+                <img 
+                  src="/map/egypt_gold_outline.png" 
+                  alt="خريطة مصر" 
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(0 16px 40px rgba(0,0,0,.7))' }} 
                 />
+                <svg viewBox="0 0 1000 1000" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+                  <defs>
+                    <filter id="markerGlow" x="-50%" y="-50%" width="200%" height="200%">
+                      <feGaussianBlur stdDeviation="8" result="blur" />
+                      <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
 
-                {/* Sinai peninsula */}
-                <path d={`
-                  M307 52
-                  L332 45
-                  L360 54
-                  L374 102
-                  L360 145
-                  L336 204
-                  L315 164
-                  L306 113
-                  Z
-                `}
-                  fill="#0a0a0a"
-                  stroke="rgba(200,152,48,.4)"
-                  strokeWidth="1.2"
-                  strokeLinejoin="round"
-                />
-                {/* Nile River — cyan dashed */}
-                <path d={`
-                  M194 480
-                  C190 462, 198 445, 196 428
-                  C193 409, 186 392, 191 373
-                  C196 354, 205 337, 201 317
-                  C197 297, 190 280, 195 260
-                  C200 240, 209 222, 204 202
-                  C199 181, 190 163, 195 143
-                  C199 125, 210 111, 207 94
-                  C204 80, 199 70, 197 61
-                `}
-                  fill="none"
-                  stroke="rgba(80,210,230,.65)"
-                  strokeWidth="2.8"
-                  strokeLinecap="round"
-                  strokeDasharray="8 6"
-                  style={{ animation: 'nile 4s linear infinite' }}
-                />
+                  {/* City markers */}
+                  {REGIONS.map((r, i) => {
+                    const isActive = region.key === r.key;
+                    const positions = {
+                      aswan: { cx: 660, cy: 840 },
+                      luxor: { cx: 690, cy: 650 },
+                      cairo: { cx: 575, cy: 260 },
+                      alexandria: { cx: 470, cy: 150 },
+                    };
+                    const pos = positions[r.key] || { cx: 500, cy: 500 };
+                    const labelOffsets = {
+                      aswan: { dx: 45, dy: 10, anchor: 'start' },
+                      luxor: { dx: 45, dy: 10, anchor: 'start' },
+                      cairo: { dx: 45, dy: 10, anchor: 'start' },
+                      alexandria: { dx: -35, dy: -25, anchor: 'end' },
+                    };
+                    const label = labelOffsets[r.key] || { dx: 40, dy: 10, anchor: 'start' };
 
-                {/* Delta branches */}
-                <path d="M197 61 C182 59, 163 55, 144 50"
-                  fill="none" stroke="rgba(80,210,230,.5)" strokeWidth="2"
-                  strokeLinecap="round" strokeDasharray="6 5"
-                  style={{ animation: 'nile 4s linear infinite' }}
-                />
-                <path d="M197 61 C211 59, 227 57, 244 54"
-                  fill="none" stroke="rgba(80,210,230,.5)" strokeWidth="2"
-                  strokeLinecap="round" strokeDasharray="6 5"
-                  style={{ animation: 'nile 4s linear infinite' }}
-                />
+                    const svgRef = { current: null };
 
-                {/* Lake Nasser */}
-                <path d="M194 465 C203 478, 205 491, 199 505 C193 513, 183 508, 187 498 C190 489, 184 481, 194 465"
-                  fill="rgba(80,210,230,.25)" stroke="rgba(80,210,230,.45)"
-                  strokeWidth="1.5" strokeDasharray="4 4"
-                  style={{ animation: 'nile 4s linear infinite' }}
-                />
-
-                {/* City markers */}
-                {REGIONS.map((r, i) => {
-                  const isActive = region.key === r.key;
-                  const positions = {
-                    aswan: { cx: 195, cy: 435 },
-                    luxor: { cx: 202, cy: 335 },
-                    cairo: { cx: 207, cy: 94 },
-                    alexandria: { cx: 144, cy: 51 },
-                  };
-                  const pos = positions[r.key] || { cx: 200, cy: 200 };
-                  const labelOffsets = {
-                    aswan: { dx: 28, dy: 5, anchor: 'start' },
-                    luxor: { dx: 28, dy: 5, anchor: 'start' },
-                    cairo: { dx: 28, dy: 5, anchor: 'start' },
-                    alexandria: { dx: -20, dy: -12, anchor: 'end' },
-                  };
-                  const label = labelOffsets[r.key] || { dx: 20, dy: 4, anchor: 'start' };
-
-                  return (
-                    <g key={r.key} style={{ cursor: 'pointer' }} onClick={() => goTo(i)}>
-                      {/* Outer ring */}
-                      <circle cx={pos.cx} cy={pos.cy} r={isActive ? 18 : 14}
-                        fill="none"
-                        stroke={isActive ? '#e8a820' : 'rgba(200,152,48,.2)'}
-                        strokeWidth={isActive ? 2 : 1}
-                        opacity={isActive ? .6 : .3}
-                        style={{ transition: 'all .4s ease' }}
-                      />
-                      {/* Active ripple */}
-                      {isActive && (
-                        <circle cx={pos.cx} cy={pos.cy} r={12}
-                          fill="none" stroke="#e8a820" strokeWidth="2" opacity=".5"
-                          style={{ animation: 'ripple 2s ease-out infinite', transformOrigin: `${pos.cx}px ${pos.cy}px` }}
+                    return (
+                      <g key={r.key} style={{ cursor: 'pointer' }} onClick={(e) => {
+                        goTo(i);
+                        navigateWithZoom(r.key, e.currentTarget.closest('svg'), pos.cx, pos.cy);
+                      }}>
+                        {/* Outer ring */}
+                        <circle cx={pos.cx} cy={pos.cy} r={isActive ? 34 : 24}
+                          fill="none"
+                          stroke={isActive ? '#e8a820' : 'rgba(200,152,48,.3)'}
+                          strokeWidth={isActive ? 4 : 2}
+                          opacity={isActive ? .8 : .4}
+                          style={{ transition: 'all .4s ease' }}
                         />
-                      )}
-                      {/* Golden dot */}
-                      <circle cx={pos.cx} cy={pos.cy} r={isActive ? 10 : 7}
-                        fill={isActive ? '#e8a820' : '#c89830'}
-                        stroke="#fff8ee" strokeWidth={isActive ? 2.5 : 1.5}
-                        filter="url(#markerGlow)"
-                        style={{ transition: 'all .35s ease' }}
-                      />
-                      {/* Highlight */}
-                      <circle cx={pos.cx - 2} cy={pos.cy - 2} r={isActive ? 3 : 2}
-                        fill="rgba(255,255,255,.6)"
-                        style={{ transition: 'all .35s ease' }}
-                      />
-                      {/* Label */}
-                      <text x={pos.cx + label.dx} y={pos.cy + label.dy}
-                        textAnchor={label.anchor}
-                        fill={isActive ? '#ffffff' : 'rgba(255,255,255,.85)'}
-                        fontSize={isActive ? 16 : 13}
-                        fontWeight={isActive ? 800 : 600}
-                        fontFamily="'Noto Kufi Arabic', sans-serif"
-                        style={{ transition: 'all .35s ease' }}
-                      >
-                        {r.name.split(' ')[0]}
-                      </text>
-                    </g>
-                  );
-                })}
-              </svg>
+                        {/* Active ripple */}
+                        {isActive && (
+                          <circle cx={pos.cx} cy={pos.cy} r={24}
+                            fill="none" stroke="#e8a820" strokeWidth="4" opacity=".6"
+                            style={{ animation: 'ripple 2s ease-out infinite', transformOrigin: `${pos.cx}px ${pos.cy}px` }}
+                          />
+                        )}
+                        {/* Golden dot */}
+                        <circle cx={pos.cx} cy={pos.cy} r={isActive ? 18 : 12}
+                          fill={isActive ? '#e8a820' : '#c89830'}
+                          stroke="#fff8ee" strokeWidth={isActive ? 4 : 2.5}
+                          filter="url(#markerGlow)"
+                          style={{ transition: 'all .35s ease' }}
+                        />
+                        {/* Highlight */}
+                        <circle cx={pos.cx - 4} cy={pos.cy - 4} r={isActive ? 5 : 3}
+                          fill="rgba(255,255,255,.7)"
+                          style={{ transition: 'all .35s ease' }}
+                        />
+                        {/* Label */}
+                        <text x={pos.cx + label.dx} y={pos.cy + label.dy}
+                          textAnchor={label.anchor}
+                          fill={isActive ? '#ffffff' : 'rgba(255,255,255,.9)'}
+                          fontSize={isActive ? 32 : 24}
+                          fontWeight={isActive ? 800 : 600}
+                          fontFamily="'Noto Kufi Arabic', sans-serif"
+                          style={{ transition: 'all .35s ease' }}
+                        >
+                          {r.name.split(' ')[0]}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
             </div>
             {/* Map interaction hint */}
             <div className="rv d1" style={{
