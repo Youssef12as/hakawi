@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
-import { Map, Users, Landmark, BookOpen, Menu, X } from 'lucide-react';
+import { Map, Users, Menu, X } from 'lucide-react';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,8 +17,6 @@ export default function Navbar() {
   // Navigation links — mix of routes and anchor links (for landing page)
   const navLinks = [
     { to: '/map', label: 'الخريطة', icon: Map },
-    { to: isLanding ? '#chars' : '/map', label: 'الشخصيات', icon: Landmark, isAnchor: isLanding },
-    { to: isLanding ? '#living-wall' : '/#living-wall', label: 'الجدار الحي', icon: BookOpen, isAnchor: isLanding },
     { to: '/family', label: 'شجرة العيلة', icon: Users },
   ];
 

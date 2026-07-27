@@ -4,14 +4,18 @@ export function useChatApi() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const sendTextMessage = useCallback(async (text, sessionId, region = 'aswan') => {
+  const sendTextMessage = useCallback(async (text, sessionId, extraParams = {}) => {
     setIsLoading(true);
     setError(null);
     try {
+      const payload = typeof extraParams === 'string' 
+        ? { text, session_id: sessionId, region: extraParams }
+        : { text, session_id: sessionId, ...extraParams };
+
       const res = await fetch('/api/chat/text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, session_id: sessionId, region }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -26,14 +30,19 @@ export function useChatApi() {
     }
   }, []);
 
-  const sendAudioMessage = useCallback(async (blob, sessionId, region = 'aswan') => {
+  const sendAudioMessage = useCallback(async (blob, sessionId, extraParams = {}) => {
     setIsLoading(true);
     setError(null);
     try {
       const formData = new FormData();
       formData.append('file', blob, 'recording.webm');
       if (sessionId) formData.append('session_id', sessionId);
-      formData.append('region', region);
+
+      if (typeof extraParams === 'string') {
+        formData.append('region', extraParams);
+      } else if (extraParams && typeof extraParams === 'object') {
+        Object.entries(extraParams).forEach(([k, v]) => formData.append(k, v));
+      }
 
       const res = await fetch('/api/chat/audio', {
         method: 'POST',

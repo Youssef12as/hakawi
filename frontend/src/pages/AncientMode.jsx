@@ -99,9 +99,8 @@ export default function AncientMode() {
 
             <CharacterStage
               isSpeaking={isSpeaking}
-              // We reuse the am-othman video but in reality this would be a Pharaonic avatar
-              idleSrc={`/character/am-othman-idle.mp4`}
-              talkingSrc={`/character/am-othman-talking.mp4`}
+              idleSrc={regionId === 'aswan' ? '/character/ramsis_idle.mp4' : '/character/am-othman-idle.mp4'}
+              talkingSrc={regionId === 'aswan' ? '/character/ramsis_talking.mp4' : '/character/am-othman-talking.mp4'}
             />
           </div>
 

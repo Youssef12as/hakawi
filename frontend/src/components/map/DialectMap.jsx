@@ -15,6 +15,7 @@ export default function DialectMap({ regions, selectedRegion, onSelectRegion }) 
   const [popup, setPopup] = useState(null);
   const [scale, setScale] = useState(1);
   const containerRef = useRef(null);
+  const transformRef = useRef(null);
 
   // 1. Fetch SVG and render inline
   useEffect(() => {
@@ -67,6 +68,21 @@ export default function DialectMap({ regions, selectedRegion, onSelectRegion }) 
 
   const handleConfirm = () => {
     if (popup) {
+      if (popup.regionKey === 'aswan' && transformRef.current) {
+        setPopup(null); // Hide popup before zooming
+        const aswanNode = document.querySelector('[data-city="aswan"]');
+        if (aswanNode) {
+          const { zoomToElement } = transformRef.current;
+          // Zoom into Aswan region
+          zoomToElement(aswanNode, 3.5, 900, 'easeOut');
+          
+          // Wait for zoom to finish before changing the view
+          setTimeout(() => {
+            onSelectRegion(popup.regionKey);
+          }, 900);
+          return;
+        }
+      }
       onSelectRegion(popup.regionKey);
       setPopup(null);
     }
@@ -79,6 +95,7 @@ export default function DialectMap({ regions, selectedRegion, onSelectRegion }) 
       id="dialect-map"
     >
       <TransformWrapper
+        ref={transformRef}
         initialScale={1}
         minScale={1}
         maxScale={4}
