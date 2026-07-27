@@ -1,8 +1,17 @@
 import json
 import logging
 import os
+import re
 from collections import OrderedDict
 from uuid import uuid4
+
+def clean_text_formatting(text: str) -> str:
+    """Clean markdown asterisks and duplicated punctuation from LLM response."""
+    if not text:
+        return text
+    text = text.replace("**", "").replace("*", "")
+    text = re.sub(r"([،,])\1+", r"\1", text)
+    return text.strip()
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -213,6 +222,7 @@ async def chat_text(request: TextChatRequest):
             temperature=0.8,
             max_output_tokens=500,
         )
+        ai_response = clean_text_formatting(ai_response)
 
         history.append({"role": "user", "parts": [{"text": request.text}]})
         history.append({"role": "model", "parts": [{"text": ai_response}]})
@@ -307,6 +317,7 @@ async def chat_audio(
             temperature=0.8,
             max_output_tokens=500,
         )
+        ai_response = clean_text_formatting(ai_response)
 
         history.append({"role": "user", "parts": [{"text": transcribed_text}]})
         history.append({"role": "model", "parts": [{"text": ai_response}]})
@@ -404,6 +415,9 @@ async def chat_ancient(request: AncientChatRequest):
                 thinking_budget=0,
             )
             tts_text = ai_response
+
+        ai_response = clean_text_formatting(ai_response)
+        tts_text = clean_text_formatting(tts_text)
 
         # If the monument was explicitly selected, prefer the registry's
         # display_name and builder over the fuzzy-matched ones.
