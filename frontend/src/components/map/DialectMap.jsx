@@ -15,6 +15,7 @@ export default function DialectMap({ regions, selectedRegion, onSelectRegion }) 
   const [popup, setPopup] = useState(null);
   const [scale, setScale] = useState(1);
   const containerRef = useRef(null);
+  const transformRef = useRef(null);
 
   // 1. Fetch SVG and render inline
   useEffect(() => {
@@ -57,6 +58,7 @@ export default function DialectMap({ regions, selectedRegion, onSelectRegion }) 
         region,
         x: rect.left + rect.width / 2 - containerRect.left,
         y: rect.top - containerRect.top,
+        isTopHalf: (rect.top - containerRect.top) < (containerRect.height / 2),
       });
     } else {
       // Clicked outside a marker, close popup
@@ -66,6 +68,21 @@ export default function DialectMap({ regions, selectedRegion, onSelectRegion }) 
 
   const handleConfirm = () => {
     if (popup) {
+      if (popup.regionKey === 'aswan' && transformRef.current) {
+        setPopup(null); // Hide popup before zooming
+        const aswanNode = document.querySelector('[data-city="aswan"]');
+        if (aswanNode) {
+          const { zoomToElement } = transformRef.current;
+          // Zoom into Aswan region
+          zoomToElement(aswanNode, 3.5, 900, 'easeOut');
+          
+          // Wait for zoom to finish before changing the view
+          setTimeout(() => {
+            onSelectRegion(popup.regionKey);
+          }, 900);
+          return;
+        }
+      }
       onSelectRegion(popup.regionKey);
       setPopup(null);
     }
@@ -78,6 +95,7 @@ export default function DialectMap({ regions, selectedRegion, onSelectRegion }) 
       id="dialect-map"
     >
       <TransformWrapper
+        ref={transformRef}
         initialScale={1}
         minScale={1}
         maxScale={4}
@@ -142,42 +160,63 @@ export default function DialectMap({ regions, selectedRegion, onSelectRegion }) 
       {/* ── Marker Popup (confirmation before chat) ── */}
       {popup && (
         <div
-          className="absolute z-40"
+          className="absolute z-40 flex flex-col items-center"
           style={{
             left: popup.x,
             top: popup.y,
-            transform: 'translate(-50%, calc(-100% - 22px))',
+            transform: popup.isTopHalf ? 'translate(-50%, 22px)' : 'translate(-50%, calc(-100% - 22px))',
             animation: 'popupAppear 0.25s ease-out both',
           }}
         >
-          <div className="bg-[#111010]/95 backdrop-blur-md border border-[#c4a06a]/40 rounded-2xl px-6 py-4 shadow-2xl min-w-[185px] text-center">
-            <h3 className="font-bold text-base mb-0.5 text-[#f4e1bd]">
-              {popup.region.name}
-            </h3>
-            <p className="text-xs text-[#c4a06a]/70 mb-3 font-medium">
-              {popup.region.elder || 'قريبًا...'}
-            </p>
-            <button
-              onClick={handleConfirm}
-              id={`region-btn-${popup.regionKey}`}
-              className="bg-[#7a2e2e] text-[#f4e1bd] px-5 py-2.5 rounded-xl text-sm font-bold
-                         hover:bg-[#8a3636] transition-all w-full active:scale-95 shadow-lg"
-            >
-              ابدأ المحادثة
-            </button>
-          </div>
-
-          <div className="flex justify-center -mt-px">
+          {/* Top Triangle (pops downward) */}
+          {popup.isTopHalf && (
             <div
               style={{
                 width: 0,
                 height: 0,
                 borderLeft: '10px solid transparent',
                 borderRight: '10px solid transparent',
-                borderTop: '10px solid rgba(17, 16, 16, 0.95)',
+                borderBottom: '10px solid rgba(17, 16, 16, 0.95)',
+                marginBottom: '-1px', // overlap border slightly
               }}
             />
+          )}
+
+          <div className="bg-[#111010]/95 backdrop-blur-md border border-[#c4a06a]/40 rounded-2xl px-6 py-4 shadow-2xl min-w-[185px] text-center">
+            <h3 className="font-bold text-base mb-0.5 text-[#f4e1bd]">
+              {popup.region.name}
+            </h3>
+            <p className="text-xs text-[#c4a06a]/70 mb-3 font-medium">
+              {(popup.region.monuments?.length || 0) > 0
+                ? `${popup.region.monuments.length} معالم أثرية`
+                : 'قريبًا...'}
+            </p>
+            <button
+              onClick={handleConfirm}
+              disabled={!popup.region.monuments?.length}
+              id={`region-btn-${popup.regionKey}`}
+              className="bg-[#7a2e2e] text-[#f4e1bd] px-5 py-2.5 rounded-xl text-sm font-bold
+                         hover:bg-[#8a3636] transition-all w-full active:scale-95 shadow-lg
+                         disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              اختر الأثر
+            </button>
           </div>
+
+          {/* Bottom Triangle (pops upward) */}
+          {!popup.isTopHalf && (
+            <div className="flex justify-center -mt-px">
+              <div
+                style={{
+                  width: 0,
+                  height: 0,
+                  borderLeft: '10px solid transparent',
+                  borderRight: '10px solid transparent',
+                  borderTop: '10px solid rgba(17, 16, 16, 0.95)',
+                }}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

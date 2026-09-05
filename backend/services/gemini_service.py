@@ -8,40 +8,32 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
-# Initialize the Gemini client
+# Initialize the Gemini client (shared by both generation paths)
 client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
+# Generation model
 MODEL_ID = "gemini-3.1-flash-lite"
-
 
 MAX_RETRIES = 3
 RETRY_DELAY = 2  # seconds
 
 
-def generate_response(
-    user_text: str,
-    system_prompt: str,
-    history: list[dict],
+def _generate_with_retry(
+    *,
+    contents,
+    system_instruction: str,
+    temperature: float,
+    max_output_tokens: int,
+    thinking_budget: int = 0,
 ) -> str:
     """
-    Generate a response from Gemini 2.5 Flash with persona and conversation history.
-    Retries up to 3 times on temporary API failures (e.g., high demand).
+    Shared retry wrapper around ``client.models.generate_content``.
 
-    Args:
-        user_text: The user's current message (Arabic text).
-        system_prompt: The persona's system prompt from personas.py.
-        history: List of previous messages in format:
-                 [{"role": "user", "parts": [{"text": "..."}]},
-                  {"role": "model", "parts": [{"text": "..."}]}]
-
-    Returns:
-        The generated text response in the regional dialect.
+    Raises:
+        ValueError  — when the API rate-limits us (surfaced to the user
+                       as a friendly Arabic message).
+        RuntimeError — when all retries fail.
     """
-    # Build contents: history + current user message
-    contents = list(history) + [
-        {"role": "user", "parts": [{"text": user_text}]}
-    ]
-
     last_error = None
     for attempt in range(1, MAX_RETRIES + 1):
         try:
@@ -49,9 +41,12 @@ def generate_response(
                 model=MODEL_ID,
                 contents=contents,
                 config=types.GenerateContentConfig(
-                    system_instruction=system_prompt,
-                    temperature=0.8,
-                    max_output_tokens=500,
+                    system_instruction=system_instruction,
+                    temperature=temperature,
+                    max_output_tokens=max_output_tokens,
+                    thinking_config=types.ThinkingConfig(
+                        thinking_budget=thinking_budget
+                    ),
                 ),
             )
             return response.text
@@ -59,15 +54,79 @@ def generate_response(
         except Exception as e:
             last_error = e
             error_str = str(e)
-            logger.warning(f"Gemini API error (attempt {attempt}/{MAX_RETRIES}): {error_str}")
-            
-            # If it's a rate limit, don't just quickly retry, it needs more time
+            logger.warning(
+                "Gemini API error (attempt %d/%d): %s",
+                attempt,
+                MAX_RETRIES,
+                error_str,
+            )
+
+            # Rate limit → don't burn retries, surface immediately
             if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
                 logger.error("Rate limit hit, stopping retries.")
-                raise ValueError("لقد تجاوزت الحد المسموح به من الرسائل. يرجي الانتظار دقيقة  والمحاولة مرة أخرى.")
-                
+                raise ValueError(
+                    "لقد تجاوزت الحد المسموح به من الرسائل. "
+                    "يرجي الانتظار دقيقة والمحاولة مرة أخرى."
+                )
+
             if attempt < MAX_RETRIES:
                 time.sleep(RETRY_DELAY * attempt)
 
-    logger.error(f"Gemini API failed after {MAX_RETRIES} attempts: {last_error}")
+    logger.error(
+        "Gemini API failed after %d attempts: %s", MAX_RETRIES, last_error
+    )
     raise RuntimeError(f"Failed to generate response from Gemini: {last_error}")
+
+
+def generate(
+    user_text: str,
+    system_prompt: str,
+    history: list[dict] | None = None,
+    temperature: float = 0.4,
+    max_output_tokens: int = 400,
+    thinking_budget: int = 0,
+) -> str:
+    """
+    Generate a response from Gemini.
+
+    This is the single entry point for ALL Gemini text generation in Hikawi.
+    It handles both use cases:
+
+    **Regional dialect chat** (``/api/chat/text``, ``/api/chat/audio``):
+        Called with conversation ``history``, higher ``temperature=0.8``
+        for natural dialect flow, and ``max_output_tokens=500``.
+        The ``system_prompt`` comes from ``personas_historical.py``
+        persona instructions.
+
+    **RAG-backed Ancient Mode** (``/api/chat/ancient``):
+        Called WITHOUT history (single-turn), lower ``temperature=0.4``
+        for factual grounding, ``max_output_tokens=400``, and
+        ``thinking_budget=0`` for speed.  The ``system_prompt`` and
+        ``user_text`` are assembled by ``rag_service.build_rag_prompt``
+        with the retrieved context baked in.
+
+    Args:
+        user_text: The user's current message or the fully-assembled
+                   RAG prompt (persona + context + question).
+        system_prompt: System instructions (persona rules / anti-hallucination).
+        history: Optional list of previous messages in Gemini's format:
+                 [{"role": "user", "parts": [{"text": "..."}]},
+                  {"role": "model", "parts": [{"text": "..."}]}]
+                 Pass None for single-turn (RAG) calls.
+        temperature: Sampling temperature (0.0–2.0).
+        max_output_tokens: Maximum response length.
+        thinking_budget: Gemini thinking budget (0 = disabled).
+
+    Returns:
+        The generated text response.
+    """
+    contents = list(history or []) + [
+        {"role": "user", "parts": [{"text": user_text}]}
+    ]
+    return _generate_with_retry(
+        contents=contents,
+        system_instruction=system_prompt,
+        temperature=temperature,
+        max_output_tokens=max_output_tokens,
+        thinking_budget=thinking_budget,
+    )

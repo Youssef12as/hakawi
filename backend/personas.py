@@ -1,50 +1,80 @@
+"""
+Voice and identity registry for Hikawi characters.
 
+VOICES maps each voice name to its reference audio and display metadata.
+All historical persona instructions (tone, vocabulary, etc.) live in
+``services/personas_historical.py`` — this file only holds identity and
+voice-cloning data used by the TTS service.
 
-REGIONAL_PERSONAS = {
-    "aswan": {
+To add a new voice:
+    1. Place the reference audio clip in ``data/characters/{voice_name}.mp3``
+    2. Add an entry to VOICES below with ``ref_audio_path`` and ``ref_text``
+    3. Assign the voice to monuments in ``monuments_registry.py``
+       by setting their ``character_name`` to the new voice key
+    4. Add matching video files in ``frontend/public/character/``
+       (``{voice_name}-idle.mp4`` and ``{voice_name}-talking.mp4``)
+"""
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+# ─── Voices ─────────────────────────────────────────────────────────────────
+# Key: voice identifier (used as ``character_name`` in monuments_registry.py
+#      and sent to the Lightning TTS server for voice cloning).
+# ref_audio_path: Path (relative to backend/) to the reference audio clip.
+# ref_text:       The exact Arabic text spoken in the reference audio.
+
+VOICES = {
+    "am-othman": {
         "name": "عم عثمان",
-        "character_name": "am-othman",
         "ref_audio_path": "data/characters/am-othman.wav.mp3",
-        "ref_text": "لهجة الصعيد لهجة واعرة جوي مش أي حد يتكلمها", 
-        "system_prompt": (
-            "أنت عم عثمان من أسوان، حارس التراث النوبي..."
-        ),
+        "ref_text": "لهجة الصعيد لهجة واعرة جوي مش أي حد يتكلمها",
     },
-    "family_member": {
-        "name": "فرد العائلة",
-        "character_name": "family-member",
-        "ref_audio_path": "",
-        "ref_text": "",
-        "system_prompt": (
-            "أنت فرد من عائلة مصرية أصيلة، تم حفظ بصمتك الصوتية وذكرياتك علشان تفضل عايش مع عيلتك للأجيال اللي جاية.\n"
-            "تتحدث بالعامية المصرية بطريقة لذيذة، قريبة للقلب، ودافية جداً كأنك بتكلم حد من ولادك أو أحفادك.\n"
-            "استخدم كلمات مصرية أصيلة وحميمة زي 'يا حبيبي'، 'يا نور عيني'، 'يا بني'، 'والله يا ابني'.\n"
-            "إجابتك لازم تكون قصيرة وطبيعية جداً، كأنك قاعد معاهم على الكنبة بتدردش.\n\n"
-            "─── قواعد الدقة ومنع الاختلاق (مهم جداً جداً) ───\n"
-            "١. اتكلم عن ذكريات العيلة بحب، ولو سألوك عن حاجة متعرفهاش قول ببساطة 'والله يا حبيبي مش فاكر أوي، بس الأيام دي كانت حلوة'.\n"
-            "٢. متخترعش أسماء أو تواريخ من خيالك.\n"
-            "٣. خليك دايماً إيجابي ودافي في كلامك، بتدعي لهم بالتوفيق والستر والصحة.\n\n"
-            "─── تعليمات تنسيق الصوت للنموذج (مهم جداً) ───\n"
-            "١. قسم كلامك لجمل قصيرة، واستخدم الفاصلة (،) للوقفات الطبيعية.\n"
-            "٢. اكتب الرد كأنك بتسجله بصوتك، مش كأنه نص مكتوب في كتاب."
-        ),
-    }
+    
+
+
+    "amr-abdeen": {
+        "name": "amr-abdeen",
+        "ref_audio_path": "data/characters/Ancient.wav.mp3",
+        "ref_text": "واع ثِن خِيِمِت فِي دُو دِي يو سِيسُو سِيفِخو خيمينو بِسيج",
+    },
+
+    "amr-abdeen-modern": {
+        "name": "عمرو عابدين",
+        "ref_audio_path": "data/characters/amr-abdeen-modern.mp3",
+        "ref_text": "كرروا موضوع الهجاء الحرفي ده مئات المرات على أسماء الملوك  و المدن اللي زي رمسيس و أحمس و طيبة و كيمت",
+    },
+
+    "ramsis": {
+        "name": "رمسيس الثاني",
+        "ref_audio_path": "data/characters/Ancient.wav.mp3",
+        "ref_text": "واع ثِن خِيِمِت فِي دُو دِي يو سِيسُو سِيفِخو خيمينو بِسيج",
+    },
+
+
+
+    "am-mohamed": {
+         "name": "am-mohamed",
+        "ref_audio_path": "data/characters/aswan.wav.mp3",
+         "ref_text": "ولا في حد نتوَنَّس معاه الناس زمان البتحَكَّى الحكاوي الحلوة دي احسن من الكلام بتاع هنا الشباب اديلو يومين ولا فاهمينه",
+    },
 }
 
 
-def get_persona(region: str) -> dict:
-    """Get persona config for a region. Raises ValueError if not found."""
-    region = region.lower().strip()
-    if region not in REGIONAL_PERSONAS:
-        available = ", ".join(REGIONAL_PERSONAS.keys())
-        raise ValueError(
-            f"Region '{region}' not found. Available regions: {available}"
-        )
-    return REGIONAL_PERSONAS[region]
+# ─── Lookup helpers ──────────────────────────────────────────────────────────
 
-def get_persona_by_character_name(char_name: str) -> dict | None:
-    """Get persona config by its character name."""
-    for persona in REGIONAL_PERSONAS.values():
-        if persona.get("character_name") == char_name:
-            return persona
-    return None
+
+def get_voice(voice_name: str) -> dict | None:
+    """Return voice config by its identifier, or None."""
+    return VOICES.get(voice_name)
+
+
+def get_voice_by_name(voice_name: str) -> dict | None:
+    """Alias kept for backwards compatibility with tts_service."""
+    return VOICES.get(voice_name)
+
+
+def list_voices() -> list[str]:
+    """Return all registered voice names."""
+    return list(VOICES.keys())

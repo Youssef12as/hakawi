@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mic, ChevronDown, MousePointer, Sparkles, Users, Heart } from 'lucide-react';
 
 /* ─── Font constants ───────────────────────────────────────────────────────── */
@@ -193,11 +193,17 @@ export default function Landing() {
   const pageRef = useRef(null);
   useReveal(pageRef);
   const scrollY = useScrollY();
+  const navigate = useNavigate();
 
   /* region state */
   const [activeIdx, setActiveIdx] = useState(0);
   const [animKey, setAnimKey] = useState(0);
   const cycleRef = useRef(null);
+
+  /* zoom-transition state */
+  const [zoomActive, setZoomActive] = useState(false);
+  const [zoomOrigin, setZoomOrigin] = useState({ x: '50%', y: '50%' });
+  const [zoomColor, setZoomColor] = useState('#c89830');
 
   const goTo = useCallback((idx) => {
     clearInterval(cycleRef.current);
@@ -209,6 +215,23 @@ export default function Landing() {
       setAnimKey((k) => k + 1);
     }, 6000);
   }, []);
+
+  /* Navigate with a zoom-burst from the clicked marker position */
+  const navigateWithZoom = useCallback((regionKey, svgEl, svgCx, svgCy) => {
+    // Convert SVG coords → screen %
+    if (svgEl) {
+      const rect = svgEl.getBoundingClientRect();
+      const scaleX = rect.width / 1000;
+      const scaleY = rect.height / 1000;
+      const screenX = rect.left + svgCx * scaleX;
+      const screenY = rect.top + svgCy * scaleY;
+      setZoomOrigin({ x: `${screenX}px`, y: `${screenY}px` });
+    }
+    const r = REGIONS.find(r => r.key === regionKey);
+    setZoomColor(r?.accent || '#c89830');
+    setZoomActive(true);
+    setTimeout(() => navigate('/map'), 550);
+  }, [navigate]);
 
   // Auto-cycle characters — kept for animation feel
   useEffect(() => {
@@ -311,6 +334,23 @@ export default function Landing() {
         /* nile */
         @keyframes nile { to { stroke-dashoffset: -180; } }
 
+        /* zoom portal burst */
+        @keyframes zoomBurst {
+          0%   { transform: scale(0); opacity: 1; }
+          100% { transform: scale(40); opacity: 1; }
+        }
+        .zoom-portal {
+          position: fixed;
+          border-radius: 50%;
+          z-index: 9999;
+          pointer-events: none;
+          width: 80px;
+          height: 80px;
+          margin-left: -40px;
+          margin-top: -40px;
+          animation: zoomBurst 0.65s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
         /* wave */
         @keyframes wvAnim { from { transform: scaleY(.2); } to { transform: scaleY(1); } }
 
@@ -343,6 +383,18 @@ export default function Landing() {
         /* heading font utility */
         .font-heading { font-family: ${FONT_HEADING}; }
       `}</style>
+
+      {/* Zoom portal overlay */}
+      {zoomActive && (
+        <div
+          className="zoom-portal"
+          style={{
+            left: zoomOrigin.x,
+            top: zoomOrigin.y,
+            background: `radial-gradient(circle, ${zoomColor} 0%, ${zoomColor}cc 40%, ${zoomColor}44 70%, transparent 100%)`,
+          }}
+        />
+      )}
 
       <div className="grain" />
 
@@ -471,51 +523,94 @@ export default function Landing() {
 
         <div style={{ width: '100%', position: 'relative', zIndex: 3, display: 'grid', gridTemplateColumns: '1.1fr 1fr', alignItems: 'center', gap: 'clamp(20px,4vw,40px)', padding: '70px clamp(20px,5vw,80px)' }}>
 
-          {/* ── LEFT: Big Map ─────────────────────────────────────── */}
+          {/* ── LEFT: Big Map ─────────────────────────────────── */}
           <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-            <div className="rv" style={{ position: 'relative', width: '100%', maxWidth: 320, maxHeight: '60vh', display: 'flex', justifyContent: 'center' }}>
-              <svg viewBox="0 0 260 500" style={{ width: '100%', maxHeight: '100%', filter: 'drop-shadow(0 12px 30px rgba(0,0,0,.6))' }}>
-                {/* Egypt shape */}
-                <path d="M88 17L162 35L166 112L184 145L169 199L203 269L177 335L148 409L136 481L103 466L85 390L70 315L76 239L62 177L79 111L73 58Z"
-                  fill="rgba(14,11,8,.85)" stroke="rgba(200,152,48,.35)" strokeWidth="1.8" />
-                {/* Nile */}
-                <path d="M124 49C151 96 101 126 134 171C166 215 112 257 144 301C169 336 118 379 128 447"
-                  fill="none" stroke="rgba(90,160,190,.55)" strokeWidth="2.5" strokeLinecap="round"
-                  strokeDasharray="5 9" style={{ animation: 'nile 6s linear infinite' }} />
-                {/* Region dots with labels */}
-                {REGIONS.map((r, i) => {
-                  const isActive = region.key === r.key;
-                  return (
-                    <g key={r.key}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => goTo(i)}>
-                      {/* Ripple ring for active */}
-                      {isActive && (
-                        <circle cx={r.mapCx} cy={r.mapCy} r={7}
-                          fill="none" stroke={r.accent} strokeWidth="2"
-                          opacity=".6"
-                          style={{ animation: 'ripple 1.5s ease-out infinite', transformOrigin: `${r.mapCx}px ${r.mapCy}px` }} />
-                      )}
-                      {/* Main dot */}
-                      <circle cx={r.mapCx} cy={r.mapCy} r={isActive ? 9 : 6}
-                        fill={isActive ? r.accent : 'rgba(200,152,48,.25)'}
-                        stroke={isActive ? '#fff' : 'rgba(200,152,48,.5)'}
-                        strokeWidth={isActive ? 2.5 : 1.5}
-                        style={{ transition: 'all .35s ease' }} />
-                      {/* Region name label */}
-                      <text x={r.mapCx + (r.mapCx > 130 ? 18 : -18)} y={r.mapCy + 4}
-                        textAnchor={r.mapCx > 130 ? 'start' : 'end'}
-                        fill={isActive ? r.tagColor : 'rgba(200,152,48,.45)'}
-                        fontSize={isActive ? 11 : 9}
-                        fontWeight={isActive ? 700 : 400}
-                        fontFamily="'Noto Kufi Arabic', sans-serif"
-                        style={{ transition: 'all .35s ease' }}>
-                        {r.name.split(' ')[0]}
-                      </text>
-                    </g>
-                  );
-                })}
-              </svg>
+            <div className="rv" style={{ position: 'relative', width: '100%', maxWidth: 440, maxHeight: '70vh', display: 'flex', justifyContent: 'center' }}>
+              <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1' }}>
+                <img 
+                  src="/map/egypt_gold_outline.png" 
+                  alt="خريطة مصر" 
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(0 16px 40px rgba(0,0,0,.7))' }} 
+                />
+                <svg viewBox="0 0 1000 1000" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+                  <defs>
+                    <filter id="markerGlow" x="-50%" y="-50%" width="200%" height="200%">
+                      <feGaussianBlur stdDeviation="8" result="blur" />
+                      <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
+
+                  {/* City markers */}
+                  {REGIONS.map((r, i) => {
+                    const isActive = region.key === r.key;
+                    const positions = {
+                      aswan: { cx: 660, cy: 840 },
+                      luxor: { cx: 690, cy: 650 },
+                      cairo: { cx: 575, cy: 260 },
+                      alexandria: { cx: 470, cy: 150 },
+                    };
+                    const pos = positions[r.key] || { cx: 500, cy: 500 };
+                    const labelOffsets = {
+                      aswan: { dx: 45, dy: 10, anchor: 'start' },
+                      luxor: { dx: 45, dy: 10, anchor: 'start' },
+                      cairo: { dx: 45, dy: 10, anchor: 'start' },
+                      alexandria: { dx: -35, dy: -25, anchor: 'end' },
+                    };
+                    const label = labelOffsets[r.key] || { dx: 40, dy: 10, anchor: 'start' };
+
+                    const svgRef = { current: null };
+
+                    return (
+                      <g key={r.key} style={{ cursor: 'pointer' }} onClick={(e) => {
+                        goTo(i);
+                        navigateWithZoom(r.key, e.currentTarget.closest('svg'), pos.cx, pos.cy);
+                      }}>
+                        {/* Outer ring */}
+                        <circle cx={pos.cx} cy={pos.cy} r={isActive ? 34 : 24}
+                          fill="none"
+                          stroke={isActive ? '#e8a820' : 'rgba(200,152,48,.3)'}
+                          strokeWidth={isActive ? 4 : 2}
+                          opacity={isActive ? .8 : .4}
+                          style={{ transition: 'all .4s ease' }}
+                        />
+                        {/* Active ripple */}
+                        {isActive && (
+                          <circle cx={pos.cx} cy={pos.cy} r={24}
+                            fill="none" stroke="#e8a820" strokeWidth="4" opacity=".6"
+                            style={{ animation: 'ripple 2s ease-out infinite', transformOrigin: `${pos.cx}px ${pos.cy}px` }}
+                          />
+                        )}
+                        {/* Golden dot */}
+                        <circle cx={pos.cx} cy={pos.cy} r={isActive ? 18 : 12}
+                          fill={isActive ? '#e8a820' : '#c89830'}
+                          stroke="#fff8ee" strokeWidth={isActive ? 4 : 2.5}
+                          filter="url(#markerGlow)"
+                          style={{ transition: 'all .35s ease' }}
+                        />
+                        {/* Highlight */}
+                        <circle cx={pos.cx - 4} cy={pos.cy - 4} r={isActive ? 5 : 3}
+                          fill="rgba(255,255,255,.7)"
+                          style={{ transition: 'all .35s ease' }}
+                        />
+                        {/* Label */}
+                        <text x={pos.cx + label.dx} y={pos.cy + label.dy}
+                          textAnchor={label.anchor}
+                          fill={isActive ? '#ffffff' : 'rgba(255,255,255,.9)'}
+                          fontSize={isActive ? 32 : 24}
+                          fontWeight={isActive ? 800 : 600}
+                          fontFamily="'Noto Kufi Arabic', sans-serif"
+                          style={{ transition: 'all .35s ease' }}
+                        >
+                          {r.name.split(' ')[0]}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
             </div>
             {/* Map interaction hint */}
             <div className="rv d1" style={{
@@ -527,6 +622,7 @@ export default function Landing() {
               <MousePointer size={14} style={{ animation: 'floatImg 3s ease-in-out infinite' }} />
               اضغط على أي منطقة لاستكشاف شخصيتها
             </div>
+
           </div>
 
           {/* ── RIGHT: Character Card ────────────────────────────── */}

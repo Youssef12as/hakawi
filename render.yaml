@@ -10,5 +10,5 @@ services:
         sync: false
       - key: SPEECHMATICS_API_KEY
         sync: false
-      - key: GRADIO_TTS_URL
+      - key: VOICE_API_URL
         sync: false

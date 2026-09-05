@@ -16,6 +16,14 @@ export default function Modal({ isOpen, onClose, children, title, showClose = tr
     }
   }, [isOpen, onClose]);
 
+  // Safety net: always restore overflow when the Modal unmounts,
+  // even if it was still "open" (e.g. ConsentScreen disappears after consent).
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
   if (!isOpen) return null;
 
   return (

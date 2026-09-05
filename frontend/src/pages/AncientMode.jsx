@@ -5,7 +5,11 @@ import PageShell from '../components/layout/PageShell';
 import CharacterStage from '../components/character/CharacterStage';
 import ChatBubble from '../components/chat/ChatBubble';
 import ChatInput from '../components/chat/ChatInput';
+import { useChatApi } from '../hooks/useChatApi';
 
+// Ancient Mode now uses the RAG-backed /api/chat/ancient endpoint, which
+// retrieves a historical character based on the user's question. The
+// region here is only used for the avatar video + UI labels.
 const ANCIENT_REGIONS = {
   aswan: { name: 'أسوان والنوبة', elder: 'رمسيس الثاني', title: 'فرعون مصر العظيم', bio: 'أنا رمسيس الثاني، باني معابد أبو سمبل العظيمة. هنا يتحد النيل مع الخلود.' },
   luxor: { name: 'الأقصر', elder: 'أمنحتب الثالث', title: 'ملك الشمس', bio: 'في طيبة العظيمة شيدت المعابد التي تصل بين الأرض والسماء، وبين البشر والآلهة.' },
@@ -17,7 +21,7 @@ export default function AncientMode() {
   const { regionId } = useParams();
   const navigate = useNavigate();
   const region = ANCIENT_REGIONS[regionId] || ANCIENT_REGIONS['aswan'];
-  
+
   const [chatHistory, setChatHistory] = useState([
     {
       id: 1,
@@ -26,31 +30,39 @@ export default function AncientMode() {
       timestamp: Date.now()
     }
   ]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const { sendAncientMessage, isLoading } = useChatApi();
 
   const handleSendText = useCallback(async (text) => {
     setChatHistory(prev => [...prev, { id: Date.now(), sender: 'user', text, timestamp: Date.now() }]);
-    setIsLoading(true);
 
-    // Simulate Pharaonic response
-    setTimeout(() => {
-      let aiResponseText = '𓋹𓊵𓏏𓊪 𓎛𓎡𓅓... (الحكمة توجد في الصمت أكثر من الكلام. لقد بنينا الأهرامات بالإرادة وليس بالكلمات.)';
-      
-      if (text.includes('هرم')) {
-        aiResponseText = '𓍋𓅓𓂋 𓉐𓂋 𓉐𓂋... (الأهرامات ليست مقابر بل بوابات للنجوم، حيث يصعد الملك إلى السماء.)';
-      } else if (text.includes('نيل')) {
-        aiResponseText = '𓇋𓏏𓂋𓅱 𓂝𓉻 𓈖𓆑𓂋... (النيل هو شريان الحياة، لولاه لكانت مصر صحراء قاحلة. نحن نقدس حابي إله النيل.)';
-      }
+    try {
+      const data = await sendAncientMessage(text, sessionId);
+      setSessionId(data.session_id);
 
-      setChatHistory(prev => [...prev, { id: Date.now() + 1, sender: 'ai', text: aiResponseText, timestamp: Date.now() + 1 }]);
-      setIsLoading(false);
-      
-      // Simulate speaking for 3 seconds
+      setChatHistory(prev => [...prev, {
+        id: Date.now() + 1,
+        sender: 'ai',
+        text: data.response,
+        timestamp: Date.now() + 1,
+        meta: { monument: data.monument, builder: data.builder }
+      }]);
+
+      // Simulate speaking for ~3s so the avatar mouth moves while the user reads.
+      // (TTS pipeline can be wired here later the same way as MapInteract.)
       setIsSpeaking(true);
       setTimeout(() => setIsSpeaking(false), 3000);
-    }, 1500);
-  }, []);
+    } catch {
+      setChatHistory(prev => [...prev, {
+        id: Date.now() + 1,
+        sender: 'ai',
+        text: 'عذرًا، لم أتمكن من استدعاء الحكمة من النصوص القديمة. حاول مرة أخرى.',
+        timestamp: Date.now() + 1,
+        isError: true
+      }]);
+    }
+  }, [sendAncientMessage, sessionId]);
 
   const handleClose = () => {
     navigate('/map');
@@ -59,10 +71,10 @@ export default function AncientMode() {
   return (
     <PageShell className="bg-[#050403]">
       <div className="h-[calc(100vh-4rem)] flex flex-col lg:flex-row bg-[#0b0a08]" style={{ background: 'radial-gradient(circle at center, #1a150c 0%, #050403 100%)' }}>
-        
+
         {/* Character Portal & Bio Side */}
         <div className="flex flex-col lg:w-[55%] border-b lg:border-b-0 lg:border-l border-[#c4a06a]/30 overflow-y-auto custom-scrollbar">
-          
+
           {/* Ancient Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-[#c4a06a]/20 flex-shrink-0 bg-[#050403]/80 backdrop-blur">
             <div className="flex items-center gap-3">
@@ -84,12 +96,11 @@ export default function AncientMode() {
           <div className="w-full relative">
             {/* Ambient Pharaonic particles (Simulated) */}
             <div className="absolute inset-0 pointer-events-none opacity-30 mix-blend-screen" style={{ backgroundImage: 'radial-gradient(circle, #e8d1a7 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-            
+
             <CharacterStage
               isSpeaking={isSpeaking}
-              // We reuse the am-othman video but in reality this would be a Pharaonic avatar
-              idleSrc={`/character/am-othman-idle.mp4`}
-              talkingSrc={`/character/am-othman-talking.mp4`}
+              idleSrc={regionId === 'aswan' ? '/character/ramsis_idle.mp4' : '/character/am-othman-idle.mp4'}
+              talkingSrc={regionId === 'aswan' ? '/character/ramsis_talking.mp4' : '/character/am-othman-talking.mp4'}
             />
           </div>
 
@@ -100,17 +111,17 @@ export default function AncientMode() {
             <p className="text-[#c4a06a]/70 text-sm leading-relaxed border-r-2 border-[#c4a06a]/30 pr-4 italic">
               "{region.bio}"
             </p>
-            
+
             <div className="mt-6 pt-6 border-t border-[#c4a06a]/10">
                <p className="text-xs text-[#c4a06a]/50 uppercase tracking-widest mb-3 flex items-center gap-2">
                  <Sparkles className="w-3 h-3" />
                  كلمات مفتاحية
                </p>
                <div className="flex flex-wrap gap-2">
-                 {['هرم', 'نيل', 'معبد', 'آلهة'].map(word => (
-                   <button 
-                     key={word} 
-                     onClick={() => handleSendText(`حدثني عن ال${word}`)}
+                 {['هرم خوفو', 'معبد حتشبسوت', 'مقبرة توت عنخ آمون', 'أبو سمبل', 'معبد فيلة'].map(word => (
+                   <button
+                     key={word}
+                     onClick={() => handleSendText(`حدثني عن ${word}`)}
                      className="px-4 py-2 rounded-full border border-[#c4a06a]/20 text-[#c4a06a]/80 text-xs hover:bg-[#c4a06a]/10 transition-colors"
                    >
                      {word}
@@ -129,7 +140,8 @@ export default function AncientMode() {
                 key={msg.id}
                 sender={msg.sender}
                 text={msg.text}
-                elderName={region.elder}
+                elderName={msg.meta?.builder || region.elder}
+                isError={msg.isError}
               />
             ))}
             {isLoading && (

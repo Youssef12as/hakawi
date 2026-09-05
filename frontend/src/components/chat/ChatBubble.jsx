@@ -1,6 +1,7 @@
 import { Volume2 } from 'lucide-react';
+import { arabicToHieroglyphs } from '../../utils/hieroglyphs';
 
-export default function ChatBubble({ sender, text, isError, elderName, audioBlob }) {
+export default function ChatBubble({ sender, text, isError, elderName, audioBlob, languageMode }) {
   const isAI = sender === 'ai';
 
   const handleReplay = () => {
@@ -25,9 +26,14 @@ export default function ChatBubble({ sender, text, isError, elderName, audioBlob
             : 'bg-gradient-to-br from-[#c4a06a] to-[#a8865a] text-[#0b0a08] font-semibold border-none rounded-2xl rounded-tr-sm'
           }
         `}
-        style={{ fontFamily: 'var(--font-body)' }}
+        style={{ fontFamily: languageMode === 'ancient' ? '"Segoe UI Historic", "Noto Sans Egyptian Hieroglyphs", sans-serif' : 'var(--font-body)' }}
       >
-        <p>{text}</p>
+        <p 
+          className={languageMode === 'ancient' ? 'text-lg tracking-wide leading-relaxed' : ''}
+          title={languageMode === 'ancient' ? text : undefined}
+        >
+          {languageMode === 'ancient' ? arabicToHieroglyphs(text) : text}
+        </p>
         
         {/* Footer with Name and Audio Button */}
         <div className={`flex items-center gap-2 mt-3 pt-3 border-t border-[#c4a06a]/10 ${isAI ? 'justify-between' : 'justify-end'}`}>

@@ -9,14 +9,56 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
-# Track saved characters
-saved_characters: list[str] = []
+# Pre-populate saved characters from the on-disk registry so we don't
+# re-save them to the TTS model on every server restart.
+def _load_saved_characters() -> list[str]:
+    """
+    We now return an empty list on startup.
+    This forces `_ensure_character_saved` to lazy-load (re-register) the character 
+    to the TTS server on their first use, which handles cases where the user 
+    manually edited registry.json or the TTS server restarted.
+    """
+    return []
+
+# Characters successfully registered with the TTS API (in-memory for this process)
+saved_characters: list[str] = _load_saved_characters()
+# In-flight save requests — prevents duplicate clone calls under concurrency
+_pending_saves: set[str] = set()
 
 def get_api_url() -> str:
     url = settings.VOICE_API_URL
     if not url.endswith('/'):
         url += '/'
     return url
+
+
+def _resolve_character_ref(character_name: str) -> tuple[str | None, str | None]:
+    """Resolve a character's reference audio path and text.
+
+    Lookup order:
+        1. VOICES dict in personas.py (primary source)
+        2. data/characters/registry.json (runtime-added characters)
+    """
+    from personas import get_voice
+
+    voice = get_voice(character_name)
+    if voice and voice.get("ref_audio_path") and voice.get("ref_text"):
+        return voice["ref_audio_path"], voice["ref_text"]
+
+    # Fallback: check the runtime registry
+    registry_path = os.path.join("data", "characters", "registry.json")
+    if os.path.exists(registry_path):
+        with open(registry_path, "r", encoding="utf-8") as f:
+            try:
+                registry = json.load(f)
+                if character_name in registry:
+                    entry = registry[character_name]
+                    return entry.get("ref_audio_path"), entry.get("ref_text")
+            except Exception as e:
+                logger.error(f"Error reading registry.json: {e}")
+
+    return None, None
+
 
 def save_character(
     char_name: str,
@@ -26,22 +68,32 @@ def save_character(
 ) -> tuple[str, None] | tuple[None, str]:
     """
     Save a new character voice to the Lightning TTS model via REST API.
+    Skips the API call if the character is already saved or a save is in progress.
     """
+    if char_name in saved_characters:
+        logger.info(f"Character '{char_name}' already saved — skipping clone request.")
+        return "Already saved", None
+
+    if char_name in _pending_saves:
+        logger.info(f"Character '{char_name}' save already in progress — skipping duplicate.")
+        return "Save in progress", None
+
+    _pending_saves.add(char_name)
     try:
         url = get_api_url()
         audio_b64 = base64.b64encode(audio_bytes).decode('utf-8')
-        
+
         payload = {
             "action": "save_character",
             "char_name": char_name,
             "audio_prompt": audio_b64,
-            "ref_text": ref_text
+            "ref_text": ref_text,
         }
-        
+
         logger.info(f"Saving character {char_name} to {url}...")
-        response = requests.post(url, json=payload, headers={"Content-Type": "application/json"})
+        response = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=10)
         response.raise_for_status()
-        
+
         data = response.json()
         if data.get("status") == "success":
             message = data.get("message", "Success")
@@ -49,95 +101,87 @@ def save_character(
             if char_name not in saved_characters:
                 saved_characters.append(char_name)
             return message, None
-        else:
-            err_msg = data.get("message", "Unknown error")
-            logger.error(f"Failed to save character {char_name}: {err_msg}")
-            return None, err_msg
-            
+
+        err_msg = data.get("message", "Unknown error")
+        logger.error(f"Failed to save character {char_name}: {err_msg}")
+        return None, err_msg
+
     except Exception as e:
         logger.error(f"Failed to save character via API: {e}")
         return None, f"Failed to save character: {e}"
+    finally:
+        _pending_saves.discard(char_name)
+
+
+def _ensure_character_saved(character_name: str) -> None:
+    """Lazy-register a character once; no-op if already saved or saving."""
+    if not character_name or character_name in saved_characters:
+        return
+
+    if character_name in _pending_saves:
+        return
+
+    ref_path, ref_text = _resolve_character_ref(character_name)
+    if not ref_path or not ref_text or not os.path.exists(ref_path):
+        logger.warning(f"No reference info found for character {character_name}")
+        return
+
+    logger.info(f"Character '{character_name}' not saved yet — registering voice.")
+    with open(ref_path, "rb") as f:
+        audio_bytes = f.read()
+
+    _, err = save_character(
+        char_name=character_name,
+        audio_bytes=audio_bytes,
+        audio_filename=os.path.basename(ref_path),
+        ref_text=ref_text,
+    )
+    if err:
+        logger.error(f"Lazy load failed for {character_name}: {err}")
 
 
 def synthesize_speech(text: str, character_name: str) -> tuple[str, None] | tuple[None, str]:
     """
     Synthesize speech using the Lightning TTS API.
+    Reuses saved character voices — reference audio is sent only when not yet registered.
     """
     try:
-        from personas import get_persona_by_character_name
-        
-        ref_path = None
-        ref_text = None
-        
-        # We always try to load the reference audio to pass in the payload if needed
-        persona = get_persona_by_character_name(character_name)
-        if persona and "ref_audio_path" in persona and "ref_text" in persona:
-            ref_path = persona["ref_audio_path"]
-            ref_text = persona["ref_text"]
-        else:
-            registry_path = os.path.join("data", "characters", "registry.json")
-            if os.path.exists(registry_path):
-                with open(registry_path, "r", encoding="utf-8") as f:
-                    try:
-                        registry = json.load(f)
-                        if character_name in registry:
-                            ref_path = registry[character_name].get("ref_audio_path")
-                            ref_text = registry[character_name].get("ref_text")
-                    except Exception as e:
-                        logger.error(f"Error reading registry.json: {e}")
+        _ensure_character_saved(character_name)
 
-        # If it's not saved yet, we'll try to explicitly save it just in case
-        if character_name and character_name not in saved_characters:
-            if ref_path and ref_text and os.path.exists(ref_path):
-                logger.info(f"Character '{character_name}' not in saved_characters. Saving first.")
-                with open(ref_path, "rb") as f:
-                    audio_bytes = f.read()
-                msg, err = save_character(
-                    char_name=character_name,
-                    audio_bytes=audio_bytes,
-                    audio_filename=os.path.basename(ref_path),
-                    ref_text=ref_text,
-                )
-                if err:
-                    logger.error(f"Lazy load failed for {character_name}: {err}")
-            else:
-                logger.warning(f"No reference info found for character {character_name}")
-
-        audio_b64 = ""
-        if ref_path and ref_text and os.path.exists(ref_path):
-            with open(ref_path, "rb") as f:
-                audio_b64 = base64.b64encode(f.read()).decode('utf-8')
-                
         url = get_api_url()
         payload = {
             "action": "generate",
             "text": text,
-            "char_name": character_name
+            "char_name": character_name,
         }
-        
-        if audio_b64:
-            payload["audio_prompt"] = audio_b64
-            payload["ref_text"] = ref_text
-            
+
+        # Only attach reference audio on first generate before clone succeeds
+        if character_name not in saved_characters:
+            ref_path, ref_text = _resolve_character_ref(character_name)
+            if ref_path and ref_text and os.path.exists(ref_path):
+                with open(ref_path, "rb") as f:
+                    audio_b64 = base64.b64encode(f.read()).decode('utf-8')
+                payload["audio_prompt"] = audio_b64
+                payload["ref_text"] = ref_text
+
         logger.info(f"Requesting TTS generation for text: '{text[:20]}...'")
         response = requests.post(url, json=payload, headers={"Content-Type": "application/json"})
         response.raise_for_status()
-        
+
         data = response.json()
         if data.get("status") == "success":
             audio_base64 = data.get("audio_base64")
             if not audio_base64:
                 return None, "API returned success but no audio_base64"
-                
-            # Write out to a temporary file
+
             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
                 tmp.write(base64.b64decode(audio_base64))
                 logger.info(f"TTS audio generated: {tmp.name}")
                 return tmp.name, None
-        else:
-            err_msg = data.get("message", "Unknown error")
-            logger.error(f"API TTS generation failed: {err_msg}")
-            return None, err_msg
+
+        err_msg = data.get("message", "Unknown error")
+        logger.error(f"API TTS generation failed: {err_msg}")
+        return None, err_msg
 
     except Exception as e:
         logger.error(f"API TTS error: {e}")

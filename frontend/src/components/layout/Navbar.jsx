@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
-import { Map, Users, Landmark, BookOpen, Menu, X } from 'lucide-react';
+import { Map, Users, Menu, X } from 'lucide-react';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,8 +17,6 @@ export default function Navbar() {
   // Navigation links — mix of routes and anchor links (for landing page)
   const navLinks = [
     { to: '/map', label: 'الخريطة', icon: Map },
-    { to: isLanding ? '#chars' : '/map', label: 'الشخصيات', icon: Landmark, isAnchor: isLanding },
-    { to: isLanding ? '#living-wall' : '/#living-wall', label: 'الجدار الحي', icon: BookOpen, isAnchor: isLanding },
     { to: '/family', label: 'شجرة العيلة', icon: Users },
   ];
 
@@ -29,6 +27,11 @@ export default function Navbar() {
       if (el) el.scrollIntoView({ behavior: 'smooth' });
     }
   };
+
+  // On non-landing pages the page content doesn't scroll (fixed-height layouts),
+  // so the scroll listener never fires. Force the "visible" style for all routes
+  // except the landing page where the hero overlay effect is intentional.
+  const isVisible = !isLanding || scrolled;
 
   const navStyle = {
     position: 'fixed',
@@ -41,10 +44,10 @@ export default function Navbar() {
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: '0 clamp(18px,5vw,72px)',
-    background: scrolled ? 'rgba(14,11,8,.92)' : 'transparent',
-    backdropFilter: scrolled ? 'blur(20px)' : 'none',
-    WebkitBackdropFilter: scrolled ? 'blur(20px)' : 'none',
-    borderBottom: `1px solid ${scrolled ? 'rgba(255,220,140,.08)' : 'transparent'}`,
+    background: isVisible ? 'rgba(14,11,8,.92)' : 'transparent',
+    backdropFilter: isVisible ? 'blur(20px)' : 'none',
+    WebkitBackdropFilter: isVisible ? 'blur(20px)' : 'none',
+    borderBottom: `1px solid ${isVisible ? 'rgba(255,220,140,.08)' : 'transparent'}`,
     transition: 'all .4s ease',
     fontFamily: "'Noto Kufi Arabic', 'IBM Plex Sans Arabic', sans-serif",
     direction: 'rtl',
