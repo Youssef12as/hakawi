@@ -1,2 +1,0 @@
-1) the chatbot is replying with the voice directly 
-2) try to send the reply as chunks to read it sentence by sentence as the next are being processed
