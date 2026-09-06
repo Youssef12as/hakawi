@@ -2,71 +2,116 @@
 
 ## Overview
 
-The Hakawi backend is a FastAPI application that powers the chat, text-to-speech (TTS), and speech-to-text (STT) features for the Hakawi interactive map.
-
-It uses a modular service architecture and leverages two modes of interaction:
-1. **Regional Dialect Chat**: General conversation using regional personas (e.g., "am-othman").
-2. **Ancient Mode (RAG)**: Fact-grounded historical conversation using a pre-computed vector index of monument data.
+The Hakawi backend is a modular FastAPI application built with a **Feature-Based (Modular Domain)** architecture. It powers dialectal voice chat, text-to-speech (TTS) voice cloning, speech-to-text (STT), historical Ancient Mode (RAG), and interactive family heritage tree features.
 
 ---
 
-## Architecture Diagram
+## 🏗️ Architecture Diagram
 
 ```mermaid
 graph TD
-    A["main.py — FastAPI App"] --> B["services/gemini_service.py"]
-    A --> C["services/rag_service.py"]
-    A --> D["services/stt_service.py"]
-    A --> E["services/tts_service.py"]
-    A --> F["personas.py"]
-    A --> G["monuments_registry.py"]
-    C --> H["services/personas_historical.py"]
-    A --> I["config.py"]
-    B --> I
-    C --> I
-    D --> I
-    E --> I
+    App["src/main.py — FastAPI App"]
+    
+    subgraph Domains ["Domain Modules (src/)"]
+        Chat["src/chat/ (router, rag_service, prompts)"]
+        Gov["src/governorates/ (router, registry)"]
+        Chars["src/characters/ (router, service, personas)"]
+        Fam["src/family/ (router, service, constants)"]
+    end
+    
+    subgraph Integrations ["Integrations (src/integrations/)"]
+        Gemini["gemini.py (Google Gemini 2.5 Flash)"]
+        STT["speechmatics.py (Speechmatics ASR)"]
+    end
+
+    Config["src/config.py (Settings)"]
+    CORS["src/cors.py (CORS)"]
+
+    App --> CORS
+    App --> Chat
+    App --> Gov
+    App --> Chars
+    App --> Fam
+
+    Chat --> Gemini
+    Chat --> STT
+    Chat --> Gov
+    Chat --> Chars
+    Chat --> Fam
+    
+    Chars --> Config
+    Chat --> Config
+    Gemini --> Config
+    STT --> Config
 ```
 
 ---
 
-## File Structure & Roles
+## 📁 File Structure & Roles
 
-### Core Application
-- **`main.py`**: The FastAPI entry point. Defines all HTTP endpoints, manages chat session history in memory, and wires together the services.
-- **`config.py`**: Pydantic Settings model. Loads environment variables (API keys and URLs) from `.env`.
-- **`monuments_registry.py`**: The single source of truth for all locations. Maps governorates to their monuments, defines map coordinates, and links each monument to its `character_name` (voice ID) and RAG filter keys.
-- **`personas.py`**: The voice registry. Contains the `VOICES` dictionary mapping `character_name` to its reference audio and display name.
-
-### Services
-- **`services/gemini_service.py`**: The unified client for Google's Gemini API. Exposes the `generate()` function which handles retries, rate limits, and model configuration (temperature, tokens).
-- **`services/rag_service.py`**: Handles the "Ancient Mode" logic. Loads `embeddings.json` into memory, performs cosine similarity search, and constructs the augmented prompt using `personas_historical.py`.
-- **`services/personas_historical.py`**: Contains the strict system prompts, behavioral rules, and vocabulary instructions for all 19 historical characters used in Ancient Mode.
-- **`services/stt_service.py`**: Integrates with the Speechmatics Batch API for high-quality Arabic audio transcription.
-- **`services/tts_service.py`**: Integrates with the custom Lightning TTS server for zero-shot voice cloning.
-
-### Data & Tools
-- **`data/rag/`**: Contains the knowledge base. `monuments_data.txt` (source text), `chunks.json` (parsed chunks), and `embeddings.json` (vector index).
-- **`data/characters/`**: Contains the `.mp3` reference audio files used for voice cloning, plus `registry.json` for fallback lookups.
-- **`tools/prepare_data.py`**: Script to parse `monuments_data.txt` into `chunks.json`.
-- **`tools/index_data.py`**: Script to generate embeddings via Gemini and output `embeddings.json`.
+```
+backend/
+├── .env                          # Environment secrets (GEMINI_API_KEY, etc.)
+├── Dockerfile                    # Container configuration (CMD uvicorn src.main:app)
+├── Procfile                      # PaaS process file (uvicorn src.main:app)
+├── requirements/                 # Modular dependencies
+│   ├── base.txt                  # Core app dependencies
+│   ├── dev.txt                   # Testing & linting packages
+│   └── prod.txt                  # Production ASGI servers
+│
+├── data/                         # Persistent media & dataset storage
+│   ├── characters/               # Audio reference files (.wav.mp3) & character registries
+│   └── rag/                      # RAG knowledge base (chunks.json & embeddings.json)
+│
+└── src/                          # Application Source Code
+    ├── main.py                   # FastAPI application initialization & router mounting
+    ├── config.py                 # Pydantic Settings model loading .env
+    ├── cors.py                   # CORS middleware setup
+    │
+    ├── governorates/             # 🏛️ Governorates & Monuments Domain
+    │   ├── registry.py           # Single source of truth for map data & GPS coordinates
+    │   └── router.py             # GET /api/governorates endpoint
+    │
+    ├── characters/               # 🎙️ Voice & Voice-Cloning Domain
+    │   ├── personas.py           # VOICES dictionary mapping characters to reference audio
+    │   ├── schemas.py            # TTSRequest schema
+    │   ├── service.py            # Lightning TTS API client & zero-shot cloning logic
+    │   └── router.py             # /api/tts, /api/characters/add, /api/characters, /api/registry
+    │
+    ├── chat/                     # 💬 Conversation & Heritage AI Engine
+    │   ├── schemas.py            # Chat request/response DTOs (Text, Audio, Ancient)
+    │   ├── service.py            # In-memory LRU session store & text cleanup
+    │   ├── prompts.py            # Strict historical prompts and dialect guidelines
+    │   ├── rag_service.py        # Vector cosine similarity search over embeddings.json
+    │   ├── ancient_translation.py# Ancient Egyptian transliteration helper
+    │   └── router.py             # /api/chat/text, /api/chat/audio, /api/chat/ancient, /api/stt
+    │
+    ├── family/                   # 👨‍👩‍👧‍👦 Family Tree & Memory Preservation Domain
+    │   ├── constants.py          # FAMILY_PROMPTS relation templates & DEFAULT_TREE_DATA
+    │   ├── service.py            # Relationship prompt builder & tree traversal logic
+    │   └── router.py             # GET /api/family-tree, POST /api/family-tree
+    │
+    └── integrations/             # 🔌 External API Clients
+        ├── gemini.py             # Google Gemini 2.5 Flash client with retry logic
+        └── speechmatics.py       # Speechmatics STT audio transcription client
+```
 
 ---
 
-## Voice System (Text-to-Speech)
+## 🎙️ Voice System (Text-to-Speech)
 
 The backend uses zero-shot voice cloning via an external Lightning TTS server.
 
 ### How it works
-1. Every monument in `monuments_registry.py` defines a `character_name` (e.g., `"am-othman"`).
+1. Every monument in `src/governorates/registry.py` defines a `character_name` (e.g. `"am-othman"`).
 2. The frontend sends this `character_name` to the `/api/tts` endpoint along with the text.
-3. `tts_service.py` looks up the `character_name` in `personas.py` (`VOICES` dict).
-4. If it's a new character, it sends the `ref_audio_path` and `ref_text` to the TTS server to "register" the voice.
-5. It then requests speech generation using that registered voice name.
+3. `src/characters/service.py` looks up the character in `src/characters/personas.py` (`VOICES` dict).
+4. If it's a new character, it sends the reference audio clip and `ref_text` to the TTS server to register the voice.
+5. It then requests speech generation using that registered voice identifier.
 
 ### How to add a new voice
-1. **Record Audio**: Place a short, clear Arabic audio clip (e.g., ~10 seconds) in `backend/data/characters/new_voice.mp3`.
-2. **Register**: Add the voice to `personas.py`:
+1. **Record Audio**: Place a short, clear Arabic audio clip in `backend/data/characters/new_voice.mp3`.
+2. **Register**: Add the voice to `src/characters/personas.py`:
    ```python
    VOICES = {
        "new_voice": {
@@ -76,32 +121,39 @@ The backend uses zero-shot voice cloning via an external Lightning TTS server.
        }
    }
    ```
-3. **Assign**: Update `monuments_registry.py` to use `"character_name": "new_voice"` for the desired monuments.
+3. **Assign**: Update `src/governorates/registry.py` to use `"character_name": "new_voice"` for the desired monuments.
 4. **UI Assets**: Ensure the frontend has `/public/character/new_voice-idle.mp4` and `-talking.mp4`.
 
 ---
 
-## API Endpoints
+## 🔗 API Endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | `GET` | Returns API status and RAG readiness. |
-| `/api/chat/ancient` | `POST` | RAG-backed chat. Takes `{text, monument_key}`. |
-| `/api/chat/text` | `POST` | General dialect chat. Takes `{text, region, session_id}`. |
-| `/api/chat/audio` | `POST` | Like text chat, but accepts an audio file (STT) and returns audio (TTS). |
-| `/api/stt` | `POST` | Standalone audio transcription using Speechmatics. |
-| `/api/tts` | `POST` | Standalone voice generation. Takes `{text, character_name}`. |
-| `/api/map/registry` | `GET` | Returns the full governorates and monuments list. |
-| `/api/characters/add` | `POST` | Runtime endpoint to register new voices dynamically. |
+| Endpoint | Method | Domain | Description |
+|---|---|---|---|
+| `/health` | `GET` | System | Health check and RAG readiness status. |
+| `/api/governorates` | `GET` | Governorates | Returns all governorates with monuments, GPS coordinates & prompts. |
+| `/api/chat/text` | `POST` | Chat | Text chat with a regional or family persona. |
+| `/api/chat/audio` | `POST` | Chat | Audio chat: transcribes audio, queries persona, returns AI response. |
+| `/api/chat/ancient` | `POST` | Chat | Ancient Mode: RAG-backed factual historical chat with Pharaonic personas. |
+| `/api/stt` | `POST` | Chat | Transcribes audio to Arabic text without generating an AI response. |
+| `/api/tts` | `POST` | Characters | Converts text to speech using voice cloning. Returns `.wav` audio. |
+| `/api/characters/add` | `POST` | Characters | Registers a new custom voice (audio sample + reference text). |
+| `/api/characters` | `GET` | Characters | Lists all registered in-memory voice names. |
+| `/api/registry` | `GET` | Characters | Returns disk `registry.json` of custom saved characters. |
+| `/api/family-tree` | `GET` | Family | Retrieves the interactive family tree data structure. |
+| `/api/family-tree` | `POST` | Family | Saves the modified family tree hierarchy. |
 
 ---
 
-## How to Run Locally
+## 🚀 How to Run Locally
 
 ### Requirements
 - Python 3.10+
-- `pip install -r requirements.txt`
-- `.env` file containing:
+- Install dependencies:
+  ```bash
+  pip install -r requirements/base.txt
+  ```
+- `.env` file in `backend/`:
   ```env
   GEMINI_API_KEY=your_key
   SPEECHMATICS_API_KEY=your_key
@@ -110,14 +162,17 @@ The backend uses zero-shot voice cloning via an external Lightning TTS server.
 
 ### Start the Server
 ```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 5000
+uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+- API Docs: `http://localhost:8000/docs`
+- Health Check: `http://localhost:8000/health`
+
 ### Rebuilding the RAG Index
-If you update `data/rag/monuments_data.txt`, you must rebuild the index:
+If you update `data/rag/monuments_data.txt`, rebuild the index:
 ```bash
 cd tools
-python prepare_data.py
+python prepare_data2.py
 python index_data.py
 ```
-This will overwrite `data/rag/embeddings.json`. Restart the backend to load the new index.
+This updates `data/rag/embeddings.json`. Restart the backend to reload the new index into memory.

@@ -9,7 +9,7 @@ sections, we parse them out.  Otherwise, a fallback second call is made.
 import logging
 import re
 
-from services.gemini_service import generate
+from src.integrations.gemini import generate
 
 logger = logging.getLogger(__name__)
 

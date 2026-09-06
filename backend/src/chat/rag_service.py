@@ -25,8 +25,8 @@ from typing import Any
 import numpy as np
 from google import genai
 
-from config import settings
-from services.personas_historical import (
+from src.config import settings
+from src.chat.prompts import (
     format_persona_instructions,
     get_historical_persona,
 )
@@ -35,7 +35,8 @@ logger = logging.getLogger(__name__)
 
 # ─── Paths ────────────────────────────────────────────────────────────────
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_BACKEND_ROOT = os.path.dirname(_HERE)
+_SRC_ROOT = os.path.dirname(_HERE)
+_BACKEND_ROOT = os.path.dirname(_SRC_ROOT)
 _DATA_DIR = os.path.join(_BACKEND_ROOT, "data", "rag")
 EMBEDDINGS_FILE = os.path.join(_DATA_DIR, "embeddings.json")
 

@@ -1,0 +1,271 @@
+import logging
+from uuid import uuid4
+
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+
+from src.chat.ancient_translation import generate_with_ancient
+from src.chat.prompts import format_persona_instructions, get_historical_persona
+from src.chat.rag_service import is_ready as rag_is_ready, retrieve_and_build
+from src.chat.schemas import (
+    AncientChatRequest,
+    AncientChatResponse,
+    AudioChatResponse,
+    TextChatRequest,
+    TextChatResponse,
+)
+from src.chat.service import clean_text_formatting, get_history
+from src.family.service import build_family_prompt
+from src.governorates.registry import get_monument_by_key
+from src.integrations.gemini import generate
+from src.integrations.speechmatics import transcribe_audio
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(tags=["chat"])
+
+
+@router.post("/api/chat/text", response_model=TextChatResponse)
+async def chat_text(request: TextChatRequest):
+    """
+    Text chat with a regional persona.
+
+    Sends the user's text to Gemini with the selected region's persona
+    system prompt and returns a response in the matching dialect.
+    """
+    try:
+        session_id = request.session_id or str(uuid4())
+        history = get_history(session_id)
+
+        # Family member mode: use relation-based persona
+        if request.persona == "family_member" and request.member_name:
+            system_prompt = build_family_prompt(request.member_name, request.relation)
+        else:
+            persona, _ = get_historical_persona(request.region)
+            system_prompt = format_persona_instructions(persona)
+
+        ai_response = generate(
+            user_text=request.text,
+            system_prompt=system_prompt,
+            history=history,
+            temperature=0.8,
+            max_output_tokens=500,
+        )
+        ai_response = clean_text_formatting(ai_response)
+
+        history.append({"role": "user", "parts": [{"text": request.text}]})
+        history.append({"role": "model", "parts": [{"text": ai_response}]})
+
+        logger.info(
+            "Text chat | session=%s... | region=%s | user=%s...",
+            session_id[:8], request.region, request.text[:30],
+        )
+
+        return TextChatResponse(
+            response=ai_response,
+            session_id=session_id,
+            region=request.region,
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error in chat_text: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/api/stt")
+async def speech_to_text(file: UploadFile = File(...)):
+    """
+    Transcribe audio to text only (no AI response).
+    Returns the transcribed text for user review before sending.
+    """
+    try:
+        audio_bytes = await file.read()
+        if not audio_bytes:
+            raise HTTPException(status_code=400, detail="Empty audio file")
+
+        filename = file.filename or "recording.webm"
+        transcribed_text = transcribe_audio(audio_bytes, filename)
+
+        if not transcribed_text.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Could not transcribe any text from the audio",
+            )
+
+        return {"text": transcribed_text.strip()}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"STT error: {e}")
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {e}")
+
+
+@router.post("/api/chat/audio", response_model=AudioChatResponse)
+async def chat_audio(
+    file: UploadFile = File(...),
+    session_id: str = Form(default=None),
+    region: str = Form(default="aswan"),
+):
+    """
+    Audio chat with a regional persona.
+
+    Receives an audio file (WebM/OGG/WAV), transcribes it via Speechmatics,
+    then sends the transcribed text to Gemini for a persona response.
+    """
+    try:
+        audio_bytes = await file.read()
+
+        if not audio_bytes:
+            raise HTTPException(status_code=400, detail="Empty audio file")
+
+        filename = file.filename or "recording.webm"
+        transcribed_text = transcribe_audio(audio_bytes, filename)
+
+        if not transcribed_text.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Could not transcribe any text from the audio",
+            )
+
+        session_id = session_id or str(uuid4())
+        history = get_history(session_id)
+
+        persona, _ = get_historical_persona(region)
+        system_prompt = format_persona_instructions(persona)
+
+        ai_response = generate(
+            user_text=transcribed_text,
+            system_prompt=system_prompt,
+            history=history,
+            temperature=0.8,
+            max_output_tokens=500,
+        )
+        ai_response = clean_text_formatting(ai_response)
+
+        history.append({"role": "user", "parts": [{"text": transcribed_text}]})
+        history.append({"role": "model", "parts": [{"text": ai_response}]})
+
+        logger.info(
+            "Audio chat | session=%s... | region=%s | transcribed=%s...",
+            session_id[:8], region, transcribed_text[:30],
+        )
+
+        return AudioChatResponse(
+            transcribed_text=transcribed_text,
+            response=ai_response,
+            session_id=session_id,
+            region=region,
+        )
+
+    except HTTPException:
+        raise
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error in chat_audio: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/api/chat/ancient", response_model=AncientChatResponse)
+async def chat_ancient(request: AncientChatRequest):
+    """
+    RAG-backed chat with a historical character (Ancient Mode).
+
+    Pipeline:
+        user question
+          → Gemini embedding
+          → cosine-similarity search over embeddings.json
+            (constrained to the selected monument when monument_key is set)
+          → pick the historical persona for that monument
+          → assemble strict anti-hallucination prompt
+          → Gemini 2.5 Flash (low temperature)
+          → Arabic reply in character
+    """
+    try:
+        if not rag_is_ready():
+            raise HTTPException(
+                status_code=503,
+                detail="خدمة الـ RAG غير جاهزة. تأكد من وجود ملف embeddings.json.",
+            )
+
+        session_id = request.session_id or str(uuid4())
+        use_ancient = (request.language_mode == "ancient")
+
+        monument_name_filter: str | None = None
+        display_name = ""
+        character_name = "am-othman"
+        if request.monument_key:
+            entry = get_monument_by_key(request.monument_key)
+            if entry is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Monument '{request.monument_key}' not found in registry.",
+                )
+            monument_name_filter = entry["monument_name"]
+            display_name = entry["display_name"]
+            character_name = entry.get("character_name", "am-othman")
+            if character_name == "ramsis" and not use_ancient:
+                character_name = "amr-abdeen-modern"
+
+        payload = retrieve_and_build(
+            request.text,
+            top_k=request.top_k,
+            monument_name=monument_name_filter,
+        )
+
+        if use_ancient:
+            ai_response, tts_text = generate_with_ancient(
+                user_prompt=payload["user_prompt"],
+                base_system_prompt=payload["system_prompt"],
+                temperature=0.4,
+                max_output_tokens=800,
+                thinking_budget=0,
+            )
+        else:
+            ai_response = generate(
+                user_text=payload["user_prompt"],
+                system_prompt=payload["system_prompt"],
+                temperature=0.4,
+                max_output_tokens=400,
+                thinking_budget=0,
+            )
+            tts_text = ai_response
+
+        ai_response = clean_text_formatting(ai_response)
+        tts_text = clean_text_formatting(tts_text)
+
+        if request.monument_key:
+            builder = payload["builder"] or display_name
+        else:
+            builder = payload["builder"]
+
+        logger.info(
+            "Ancient chat | session=%s... | monument=%s | builder=%s | mode=%s | user=%s...",
+            session_id[:8], payload["monument"][:30],
+            builder[:20], request.language_mode, request.text[:30],
+        )
+
+        return AncientChatResponse(
+            response=ai_response,
+            tts_text=tts_text,
+            session_id=session_id,
+            monument=payload["monument"],
+            builder=builder,
+            persona_key=payload["persona_key"],
+            display_name=display_name,
+            character_name=character_name,
+        )
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error in chat_ancient: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
