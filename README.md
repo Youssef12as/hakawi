@@ -56,7 +56,7 @@ python -m venv venv
 source venv/bin/activate
 
 # Install dependencies
-pip install -r requirements.txt
+pip install -r requirements/base.txt
 ```
 
 #### Create `.env` file in `/backend`:
@@ -72,7 +72,7 @@ GRADIO_TTS_URL=your_gradio_tts_url_here
 #### Run the backend:
 
 ```bash
-python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+python -m uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 The API will be running at `http://localhost:8000`
@@ -101,14 +101,17 @@ The app will be running at `http://localhost:5173`
 
 ```
 ├── backend/
-│   ├── main.py              # FastAPI app + endpoints
-│   ├── config.py            # Environment config (Pydantic)
-│   ├── personas.py          # Regional character personas
-│   ├── requirements.txt     # Python dependencies
-│   └── services/
-│       ├── gemini_service.py # Gemini 2.5 Flash integration
-│       ├── stt_service.py   # Speechmatics STT
-│       └── tts_service.py   # Gradio TTS voice cloning
+│   ├── requirements/        # Modular requirements (base, dev, prod)
+│   ├── data/                # Vector index & audio assets
+│   └── src/
+│       ├── main.py          # FastAPI app entrypoint
+│       ├── config.py        # Environment config (Pydantic)
+│       ├── cors.py          # CORS setup helper
+│       ├── governorates/    # Governorates & monuments registry & router
+│       ├── characters/      # Voice characters, cloning service & router
+│       ├── chat/            # Chat router, RAG service & historical prompts
+│       ├── family/          # Family tree router, prompts & logic
+│       └── integrations/    # Gemini & Speechmatics clients
 │
 ├── frontend/
 │   ├── public/

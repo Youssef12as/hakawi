@@ -5,7 +5,7 @@ import base64
 import requests
 import json
 
-from config import settings
+from src.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ def _resolve_character_ref(character_name: str) -> tuple[str | None, str | None]
         1. VOICES dict in personas.py (primary source)
         2. data/characters/registry.json (runtime-added characters)
     """
-    from personas import get_voice
+    from src.characters.personas import get_voice
 
     voice = get_voice(character_name)
     if voice and voice.get("ref_audio_path") and voice.get("ref_text"):

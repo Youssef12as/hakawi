@@ -4,7 +4,7 @@ import time
 from google import genai
 from google.genai import types
 
-from config import settings
+from src.config import settings
 
 logger = logging.getLogger(__name__)
 
