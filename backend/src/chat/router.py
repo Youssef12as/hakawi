@@ -1,8 +1,9 @@
 import logging
 from uuid import uuid4
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, WebSocket
 
+from src.config import settings
 from src.chat.ancient_translation import generate_with_ancient
 from src.chat.prompts import format_persona_instructions, get_historical_persona
 from src.chat.rag_service import is_ready as rag_is_ready, retrieve_and_build
@@ -17,11 +18,42 @@ from src.chat.service import clean_text_formatting, get_history
 from src.family.service import build_family_prompt
 from src.governorates.registry import get_monument_by_key
 from src.integrations.gemini import generate
-from src.integrations.speechmatics import transcribe_audio
+from src.integrations.speechmatics import transcribe_audio as transcribe_audio_speechmatics
+from src.integrations.deepgram import (
+    proxy_deepgram_ws,
+    transcribe_audio_deepgram,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["chat"])
+
+
+def _transcribe_audio(audio_bytes: bytes, filename: str) -> str:
+    """
+    Transcribe audio with Deepgram Nova-3 as primary and Speechmatics as fallback.
+    """
+    if settings.DEEPGRAM_API_KEY:
+        try:
+            text = transcribe_audio_deepgram(audio_bytes, filename)
+            if text:
+                return text
+        except Exception as e:
+            logger.warning(f"Deepgram transcription failed, trying Speechmatics fallback: {e}")
+
+    if settings.SPEECHMATICS_API_KEY:
+        return transcribe_audio_speechmatics(audio_bytes, filename)
+
+    raise RuntimeError("No transcription service available (neither Deepgram nor Speechmatics configured).")
+
+
+@router.websocket("/api/ws/stt")
+async def websocket_stt_endpoint(websocket: WebSocket):
+    """
+    Live streaming speech-to-text WebSocket proxy to Deepgram Nova-3.
+    """
+    await websocket.accept()
+    await proxy_deepgram_ws(websocket)
 
 
 @router.post("/api/chat/text", response_model=TextChatResponse)
@@ -87,7 +119,7 @@ async def speech_to_text(file: UploadFile = File(...)):
             raise HTTPException(status_code=400, detail="Empty audio file")
 
         filename = file.filename or "recording.webm"
-        transcribed_text = transcribe_audio(audio_bytes, filename)
+        transcribed_text = _transcribe_audio(audio_bytes, filename)
 
         if not transcribed_text.strip():
             raise HTTPException(
@@ -113,7 +145,7 @@ async def chat_audio(
     """
     Audio chat with a regional persona.
 
-    Receives an audio file (WebM/OGG/WAV), transcribes it via Speechmatics,
+    Receives an audio file (WebM/OGG/WAV), transcribes it via Deepgram/Speechmatics,
     then sends the transcribed text to Gemini for a persona response.
     """
     try:
@@ -123,7 +155,7 @@ async def chat_audio(
             raise HTTPException(status_code=400, detail="Empty audio file")
 
         filename = file.filename or "recording.webm"
-        transcribed_text = transcribe_audio(audio_bytes, filename)
+        transcribed_text = _transcribe_audio(audio_bytes, filename)
 
         if not transcribed_text.strip():
             raise HTTPException(
