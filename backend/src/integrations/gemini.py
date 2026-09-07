@@ -78,6 +78,9 @@ def _generate_with_retry(
     raise RuntimeError(f"Failed to generate response from Gemini: {last_error}")
 
 
+from opentelemetry import trace
+tracer = trace.get_tracer("hikawi.llm")
+
 def generate(
     user_text: str,
     system_prompt: str,
@@ -86,47 +89,27 @@ def generate(
     max_output_tokens: int = 400,
     thinking_budget: int = 0,
 ) -> str:
-    """
-    Generate a response from Gemini.
-
-    This is the single entry point for ALL Gemini text generation in Hikawi.
-    It handles both use cases:
-
-    **Regional dialect chat** (``/api/chat/text``, ``/api/chat/audio``):
-        Called with conversation ``history``, higher ``temperature=0.8``
-        for natural dialect flow, and ``max_output_tokens=500``.
-        The ``system_prompt`` comes from ``personas_historical.py``
-        persona instructions.
-
-    **RAG-backed Ancient Mode** (``/api/chat/ancient``):
-        Called WITHOUT history (single-turn), lower ``temperature=0.4``
-        for factual grounding, ``max_output_tokens=400``, and
-        ``thinking_budget=0`` for speed.  The ``system_prompt`` and
-        ``user_text`` are assembled by ``rag_service.build_rag_prompt``
-        with the retrieved context baked in.
-
-    Args:
-        user_text: The user's current message or the fully-assembled
-                   RAG prompt (persona + context + question).
-        system_prompt: System instructions (persona rules / anti-hallucination).
-        history: Optional list of previous messages in Gemini's format:
-                 [{"role": "user", "parts": [{"text": "..."}]},
-                  {"role": "model", "parts": [{"text": "..."}]}]
-                 Pass None for single-turn (RAG) calls.
-        temperature: Sampling temperature (0.0–2.0).
-        max_output_tokens: Maximum response length.
-        thinking_budget: Gemini thinking budget (0 = disabled).
-
-    Returns:
-        The generated text response.
-    """
-    contents = list(history or []) + [
-        {"role": "user", "parts": [{"text": user_text}]}
-    ]
-    return _generate_with_retry(
-        contents=contents,
-        system_instruction=system_prompt,
-        temperature=temperature,
-        max_output_tokens=max_output_tokens,
-        thinking_budget=thinking_budget,
-    )
+    with tracer.start_as_current_span("Gemini.generate_content") as span:
+        span.set_attribute("gen_ai.system", "gemini")
+        span.set_attribute("gen_ai.request.model", MODEL_ID)
+        span.set_attribute("llm.system_prompt", system_prompt)
+        span.set_attribute("llm.user_text", user_text)
+        span.set_attribute("llm.temperature", temperature)
+        
+        contents = list(history or []) + [
+            {"role": "user", "parts": [{"text": user_text}]}
+        ]
+        
+        try:
+            result = _generate_with_retry(
+                contents=contents,
+                system_instruction=system_prompt,
+                temperature=temperature,
+                max_output_tokens=max_output_tokens,
+                thinking_budget=thinking_budget,
+            )
+            span.set_attribute("llm.response", result)
+            return result
+        except Exception as e:
+            span.record_exception(e)
+            raise e

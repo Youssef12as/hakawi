@@ -126,7 +126,32 @@ def _embed_query(query: str) -> np.ndarray:
     return vec / norm
 
 
+from opentelemetry import trace
+rag_tracer = trace.get_tracer("hikawi.rag")
+
 def search(
+    query: str,
+    top_k: int = DEFAULT_TOP_K,
+    monument_name: str | None = None,
+) -> list[tuple[float, dict]]:
+    """Wrapped search function with OpenTelemetry tracing."""
+    with rag_tracer.start_as_current_span("RAG.search") as span:
+        span.set_attribute("rag.query", query)
+        span.set_attribute("rag.top_k", top_k)
+        if monument_name:
+            span.set_attribute("rag.monument", monument_name)
+        
+        results = _search_internal(query, top_k, monument_name)
+        
+        span.set_attribute("rag.retrieved_chunks_count", len(results))
+        # Log the retrieved texts for full observability
+        for i, (score, chunk) in enumerate(results):
+            span.set_attribute(f"rag.chunk.{i}.score", score)
+            span.set_attribute(f"rag.chunk.{i}.text", chunk.get("text", "")[:200] + "...")
+            
+        return results
+
+def _search_internal(
     query: str,
     top_k: int = DEFAULT_TOP_K,
     monument_name: str | None = None,
@@ -204,9 +229,15 @@ def pick_persona(chunks: list[tuple[float, dict]]) -> tuple[dict | None, str, st
 def build_rag_prompt(
     question: str,
     chunks: list[tuple[float, dict]],
+    response_mode: str = "direct",
 ) -> dict:
     """
     Build the full prompt payload for a RAG-backed generation.
+
+    Args:
+        question:      The user's question text.
+        chunks:        Retrieved (score, chunk_dict) pairs from vector search.
+        response_mode: One of "direct", "hikaya", or "presentation".
 
     Returns a dict with the keys:
         system_prompt  — Arabic instructions (tone, formatting, anti-hallucination)
@@ -219,26 +250,89 @@ def build_rag_prompt(
     context = build_context(chunks)
     instructions = format_persona_instructions(persona)
 
-    system_prompt = (
-        "أنت محرك شخصيات تاريخية مصرية. مهمتك تجسيد شخصية حقيقية من التراث "
-        "المصري بناءً على نص مرجعي موثوق. التزم بالقواعد التالية تمامًا:\n\n"
+    # ─── القواعد الأساسية المشتركة بين كل الأوضاع ───
+    # (دي القواعد اللي مش بتتغير أبداً مهما كان الـ Mode)
+    base_rules = (
         "١. رد بالعربية فقط.\n"
-        "٢. اعتمد على المعلومات الموجودة في النص المرجعي كأولوية، ولكن يمكنك استخدام معرفتك العامة للإجابة على الأسئلة القريبة من سياق النص طالما بقيت متقمصاً للشخصية.\n"
-        "٣. حافظ على شخصيتك التاريخية ونبرتك في جميع إجاباتك.\n"
-        "٤. لا تخترع أسماء أو تواريخ أو أحداثًا تاريخية غير موجودة في النص.\n"
-        "٥. تكلم بضمير المتكلم كشخصية حقيقية، لا كمرشد سياحي أو موسوعة.\n"
-        "٦. اجعل طول إجابتك يعتمد على طبيعة السؤال:\n"
-        "   - إذا كان السؤال عن التاريخ أو المعلم الأثري أو يطلب قصة: اكتب إجابة واضحة (بين ٤٠ و٧٠ كلمة بالضبط، ممنوع تتجاوز ٧٠ كلمة أبداً)، بجمل قصيرة ومباشرة.\n"
-        "   - إذا كان السؤال بسيطاً أو عاماً أو للتحية: أجب باختصار وبشكل مباشر (من جملة إلى ثلاث جمل كحد أقصى).\n\n"
-        f"تعليمات الشخصية:\n{instructions}"
+        "٢. اعتمد على المعلومات الموجودة في النص المرجعي كأولوية، "
+        "ولكن يمكنك استخدام معرفتك العامة للإجابة على الأسئلة القريبة "
+        "من سياق النص طالما بقيت متقمصاً للشخصية.\n"
+        "٣. لا تخترع أسماء أو تواريخ أو أحداثًا تاريخية غير موجودة في النص.\n"
+        "٤. تكلم بضمير المتكلم كشخصية حقيقية، لا كمرشد سياحي أو موسوعة.\n"
     )
+
+    # ─── بناء الـ System Prompt حسب الـ Mode ───
+    if response_mode == "hikaya":
+        # ════════════════════════════════════════════
+        # وضع "حكاوي" — الراوي القصصي
+        # ════════════════════════════════════════════
+        mode_instructions = (
+            f"أنت الشخصية التاريخية التالية:\n{instructions}\n\n"
+            "─── لكن الآن أنت في وضع الحكاية ───\n"
+            "مهمتك تحويل المعلومات التاريخية إلى قصة ممتعة وسهلة.\n\n"
+            f"{base_rules}"
+            "٥. ⚠️ تعليمات الأسلوب الإلزامية (تتجاوز تعليمات الشخصية أعلاه):\n"
+            "   - لا تتكلم بأسلوب ملكي متعالي أو فصحى ثقيلة.\n"
+            "   - استخدم عربية فصحى بسيطة وسهلة، كأنك جَدّ بيحكي لحفيده قصة قبل النوم.\n"
+            "   - ابدأ دائماً بمدخل قصصي (مثل: 'تخيل معي...' أو 'دعني أحكي لك...' أو 'في زمن بعيد...').\n"
+            "   - اسرد الأحداث بتسلسل درامي: (المشكلة → القرار → النتيجة → المفاجأة).\n"
+            "   - ادمج الحقائق والتواريخ والأرقام بشكل طبيعي داخل القصة.\n"
+            "   - اختم بسؤال تفاعلي يشجع الزائر يسأل أكتر.\n"
+            "   - طول الحكاية: بين ٦٠ و١٠٠ كلمة.\n"
+        )
+        user_ending = (
+            "احكيلي الحكاية دي بأسلوب سهل وبسيط كأنك جدي بيحكيلي قصة، "
+            "مش بأسلوب ملكي. ادمج الحقائق والتواريخ جوه القصة:"
+        )
+
+    elif response_mode == "presentation":
+        # ════════════════════════════════════════════
+        # وضع "العرض" — أسلوب TED Talk
+        # ════════════════════════════════════════════
+        mode_instructions = (
+            f"أنت الشخصية التاريخية التالية:\n{instructions}\n\n"
+            "─── لكن الآن أنت في وضع العرض التقديمي ───\n"
+            "مهمتك تقديم المعلومات بشكل منظم ومذهل.\n\n"
+            f"{base_rules}"
+            "٥. ⚠️ تعليمات الأسلوب الإلزامية (تتجاوز تعليمات الشخصية أعلاه):\n"
+            "   - نظم إجابتك في نقاط مرقمة واضحة (١، ٢، ٣).\n"
+            "   - ابدأ بحقيقة مذهلة أو سؤال يشد الانتباه.\n"
+            "   - اذكر كل الأرقام والتواريخ والحقائق المحددة من النص المرجعي.\n"
+            "   - اكتب بعربية واضحة ومباشرة، تجنب البلاغة الزائدة.\n"
+            "   - اختم بسؤال يفتح باب النقاش.\n"
+            "   - طول العرض: بين ٦٠ و١٠٠ كلمة.\n"
+        )
+        user_ending = (
+            "قدم المعلومة دي كأنك في عرض TED Talk، منظم بنقاط مرقمة "
+            "وبأرقام وحقائق واضحة. تجنب الأسلوب الدرامي:"
+        )
+
+    else:
+        # ════════════════════════════════════════════
+        # وضع "مباشر" — الوضع الحالي (Default)
+        # ════════════════════════════════════════════
+        mode_instructions = (
+            "أنت محرك شخصيات تاريخية مصرية. مهمتك تجسيد شخصية حقيقية من التراث "
+            "المصري بناءً على نص مرجعي موثوق. التزم بالقواعد التالية تمامًا:\n\n"
+            f"{base_rules}"
+            "٥. حافظ على شخصيتك التاريخية ونبرتك في جميع إجاباتك.\n"
+            "٦. اجعل طول إجابتك يعتمد على طبيعة السؤال:\n"
+            "   - إذا كان السؤال عن التاريخ أو المعلم الأثري أو يطلب قصة: "
+            "اكتب إجابة واضحة (بين ٤٠ و٧٠ كلمة بالضبط)، بجمل قصيرة ومباشرة.\n"
+            "   - إذا كان السؤال بسيطاً أو عاماً أو للتحية: أجب باختصار "
+            "وبشكل مباشر (من جملة إلى ثلاث جمل كحد أقصى).\n\n"
+            f"تعليمات الشخصية:\n{instructions}"
+        )
+        user_ending = "ردك كشخصية (طول الرد مناسب لنوع السؤال، بجمل قصيرة):"
+
+    system_prompt = mode_instructions
 
     user_prompt = (
         f"أنت شخصية تاريخية من {monument}.\n"
         f"اسمك أو دورك: {builder}.\n\n"
         f"النص المرجعي:\n{context}\n\n"
         f"سؤال الزائر: {question}\n\n"
-        "ردك كشخصية (طول الرد مناسب لنوع السؤال، بجمل قصيرة):"
+        f"{user_ending}"
     )
 
     return {
@@ -254,6 +348,7 @@ def retrieve_and_build(
     question: str,
     top_k: int = DEFAULT_TOP_K,
     monument_name: str | None = None,
+    response_mode: str = "direct",
 ) -> dict[str, Any]:
     """
     One-shot helper: retrieve chunks + build the prompt payload.
@@ -267,6 +362,7 @@ def retrieve_and_build(
     the raw retrieval results (useful for logging / debugging).
     """
     chunks = search(question, top_k=top_k, monument_name=monument_name)
-    payload = build_rag_prompt(question, chunks)
+    payload = build_rag_prompt(question, chunks, response_mode=response_mode)
     payload["chunks"] = chunks
     return payload
+

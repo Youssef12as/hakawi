@@ -1,4 +1,5 @@
 import logging
+import time
 from uuid import uuid4
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, WebSocket
@@ -21,6 +22,7 @@ from src.chat.service import (
     get_session_messages,
     save_chat_turn,
 )
+from src.chat.metrics import PipelineMetrics, timed_section, log_pipeline_metrics
 from src.chat.utils import format_persona_instructions, get_historical_persona
 from src.family.utils import build_family_prompt
 from src.governorates.utils import get_monument_by_key
@@ -72,6 +74,11 @@ async def chat_text(request: TextChatRequest):
     system prompt and returns a response in the matching dialect.
     """
     try:
+        metrics = PipelineMetrics()
+        metrics.start()
+        metrics.user_query = request.text
+        metrics.response_mode = "regional_chat"
+
         session_id = request.session_id or str(uuid4())
         history = get_history(session_id)
 
@@ -82,17 +89,21 @@ async def chat_text(request: TextChatRequest):
             persona, _ = get_historical_persona(request.region)
             system_prompt = format_persona_instructions(persona)
 
-        ai_response = generate(
-            user_text=request.text,
-            system_prompt=system_prompt,
-            history=history,
-            temperature=0.8,
-            max_output_tokens=500,
-        )
+        with timed_section(metrics, "generation"):
+            ai_response = generate(
+                user_text=request.text,
+                system_prompt=system_prompt,
+                history=history,
+                temperature=0.8,
+                max_output_tokens=500,
+            )
         ai_response = clean_text_formatting(ai_response)
 
         history.append({"role": "user", "parts": [{"text": request.text}]})
         history.append({"role": "model", "parts": [{"text": ai_response}]})
+
+        # Log metrics
+        log_pipeline_metrics(metrics)
 
         chat_mode = "family_member" if request.persona == "family_member" else "regional"
         save_chat_turn(
@@ -254,6 +265,12 @@ async def chat_ancient(request: AncientChatRequest):
           → Arabic reply in character
     """
     try:
+        # --- Initialize metrics ---
+        metrics = PipelineMetrics()
+        metrics.start()
+        metrics.user_query = request.text
+        metrics.language_mode = request.language_mode
+
         if not rag_is_ready():
             raise HTTPException(
                 status_code=503,
@@ -279,33 +296,47 @@ async def chat_ancient(request: AncientChatRequest):
             if character_name == "ramsis" and not use_ancient:
                 character_name = "amr-abdeen-modern"
 
-        payload = retrieve_and_build(
-            request.text,
-            top_k=request.top_k,
-            monument_name=monument_name_filter,
-        )
+        # --- Timed: RAG Search + Prompt Building ---
+        with timed_section(metrics, "rag_search"):
+            payload = retrieve_and_build(
+                request.text,
+                top_k=request.top_k,
+                monument_name=monument_name_filter,
+                response_mode=request.response_mode,
+            )
+
+        # Extract confidence score (top chunk's cosine similarity)
+        if payload.get("chunks"):
+            metrics.confidence_score = payload["chunks"][0][0]  # top score
+            metrics.chunks_retrieved = len(payload["chunks"])
+        metrics.monument = payload.get("monument", "")
+        metrics.builder = payload.get("builder", "")
+        metrics.persona_key = payload.get("persona_key", "")
+        metrics.response_mode = request.response_mode
 
         history = get_history(session_id)
 
-        if use_ancient:
-            ai_response, tts_text = generate_with_ancient(
-                user_prompt=payload["user_prompt"],
-                base_system_prompt=payload["system_prompt"],
-                history=history,
-                temperature=0.4,
-                max_output_tokens=800,
-                thinking_budget=0,
-            )
-        else:
-            ai_response = generate(
-                user_text=payload["user_prompt"],
-                system_prompt=payload["system_prompt"],
-                history=history,
-                temperature=0.4,
-                max_output_tokens=400,
-                thinking_budget=0,
-            )
-            tts_text = ai_response
+        # --- Timed: LLM Generation ---
+        with timed_section(metrics, "generation"):
+            if use_ancient:
+                ai_response, tts_text = generate_with_ancient(
+                    user_prompt=payload["user_prompt"],
+                    base_system_prompt=payload["system_prompt"],
+                    history=history,
+                    temperature=0.4,
+                    max_output_tokens=800,
+                    thinking_budget=0,
+                )
+            else:
+                ai_response = generate(
+                    user_text=payload["user_prompt"],
+                    system_prompt=payload["system_prompt"],
+                    history=history,
+                    temperature=0.4,
+                    max_output_tokens=400,
+                    thinking_budget=0,
+                )
+                tts_text = ai_response
 
         ai_response = clean_text_formatting(ai_response)
         tts_text = clean_text_formatting(tts_text)
@@ -314,6 +345,9 @@ async def chat_ancient(request: AncientChatRequest):
             builder = payload["builder"] or display_name
         else:
             builder = payload["builder"]
+
+        # --- Log all metrics ---
+        log_pipeline_metrics(metrics)
 
         save_chat_turn(
             session_id=session_id,

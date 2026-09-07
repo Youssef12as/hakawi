@@ -15,12 +15,37 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# --- Phoenix & OpenTelemetry Observability Setup ---
+import phoenix as px
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
+
+# 1. (Removed inline launch to run Phoenix externally)
+
+# 2. Configure OpenTelemetry to send traces to Phoenix in the background
+tracer_provider = TracerProvider()
+tracer_provider.add_span_processor(
+    BatchSpanProcessor(OTLPSpanExporter(endpoint="http://localhost:6006/v1/traces"))
+)
+trace.set_tracer_provider(tracer_provider)
+
+# 3. Auto-instrument all outgoing HTTP calls (like Gemini API)
+RequestsInstrumentor().instrument()
+# ---------------------------------------------------
+
 # FastAPI Application Factory
 app = FastAPI(
     title="Hikawi API — حكاوي",
     description="Interactive Egyptian Oral Heritage Chatbot API",
     version="1.1.0",
 )
+
+# 4. Auto-instrument incoming FastAPI requests
+FastAPIInstrumentor.instrument_app(app)
 
 # Setup CORS
 setup_cors(app)

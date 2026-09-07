@@ -43,6 +43,9 @@ class AncientChatRequest(BaseModel):
     monument_key: str | None = None
     # "modern" = normal Arabic TTS, "ancient" = old Egyptian TTS
     language_mode: str = "modern"
+    # Response style: "direct" = factual answer, "hikaya" = storytelling,
+    # "presentation" = structured TED-talk style
+    response_mode: str = "direct"
 
 
 class AncientChatResponse(BaseModel):
