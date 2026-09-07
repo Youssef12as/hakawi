@@ -5,25 +5,69 @@ import base64
 import requests
 import json
 
+from src.characters.constants import DEFAULT_VOICE
+from src.characters.utils import resolve_character_ref, sanitize_character_name
 from src.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Pre-populate saved characters from the on-disk registry so we don't
-# re-save them to the TTS model on every server restart.
-def _load_saved_characters() -> list[str]:
-    """
-    We now return an empty list on startup.
-    This forces `_ensure_character_saved` to lazy-load (re-register) the character 
-    to the TTS server on their first use, which handles cases where the user 
-    manually edited registry.json or the TTS server restarted.
-    """
-    return []
 
-# Characters successfully registered with the TTS API (in-memory for this process)
-saved_characters: list[str] = _load_saved_characters()
+# Pre-populate saved characters from Supabase so we don't re-clone them on the TTS model.
+def _load_saved_characters() -> set[str]:
+    """Load characters that are already registered/cloned in the TTS model."""
+    chars: set[str] = set()
+    try:
+        from src.database import get_db_cursor
+        with get_db_cursor() as cur:
+            cur.execute("SELECT key FROM public.voice_personas WHERE is_cloned = true OR is_custom = false;")
+            rows = cur.fetchall()
+            for r in rows:
+                chars.add(r["key"])
+    except Exception as e:
+        logger.warning(f"Could not load cloned characters from Supabase: {e}")
+
+    return chars
+
+
+# Characters successfully registered with the TTS API (in-memory cache)
+saved_characters: set[str] = _load_saved_characters()
 # In-flight save requests — prevents duplicate clone calls under concurrency
 _pending_saves: set[str] = set()
+
+
+def is_character_saved(character_name: str) -> bool:
+    """Check if character is already cloned/saved in the TTS model."""
+    if not character_name:
+        return False
+
+    # Check in-memory set (fast path)
+    if character_name in saved_characters:
+        return True
+
+    safe_name = sanitize_character_name(character_name)
+    if safe_name in saved_characters:
+        return True
+
+    # Check Supabase voice_personas table
+    try:
+        from src.database import get_db_cursor
+        with get_db_cursor() as cur:
+            cur.execute(
+                "SELECT key, is_cloned, is_custom FROM public.voice_personas WHERE key = %s OR key = %s;",
+                (character_name, safe_name)
+            )
+            row = cur.fetchone()
+            if row:
+                # Built-in (not custom) or already cloned custom
+                if not row.get("is_custom") or row.get("is_cloned"):
+                    saved_characters.add(character_name)
+                    saved_characters.add(row["key"])
+                    return True
+    except Exception as e:
+        logger.error(f"Error checking if character '{character_name}' is saved: {e}")
+
+    return False
+
 
 def get_api_url() -> str:
     url = settings.VOICE_API_URL
@@ -33,31 +77,9 @@ def get_api_url() -> str:
 
 
 def _resolve_character_ref(character_name: str) -> tuple[str | None, str | None]:
-    """Resolve a character's reference audio path and text.
+    """Resolve a character's reference audio path and text from Supabase."""
+    return resolve_character_ref(character_name)
 
-    Lookup order:
-        1. VOICES dict in personas.py (primary source)
-        2. data/characters/registry.json (runtime-added characters)
-    """
-    from src.characters.personas import get_voice
-
-    voice = get_voice(character_name)
-    if voice and voice.get("ref_audio_path") and voice.get("ref_text"):
-        return voice["ref_audio_path"], voice["ref_text"]
-
-    # Fallback: check the runtime registry
-    registry_path = os.path.join("data", "characters", "registry.json")
-    if os.path.exists(registry_path):
-        with open(registry_path, "r", encoding="utf-8") as f:
-            try:
-                registry = json.load(f)
-                if character_name in registry:
-                    entry = registry[character_name]
-                    return entry.get("ref_audio_path"), entry.get("ref_text")
-            except Exception as e:
-                logger.error(f"Error reading registry.json: {e}")
-
-    return None, None
 
 
 def save_character(
@@ -67,10 +89,10 @@ def save_character(
     ref_text: str,
 ) -> tuple[str, None] | tuple[None, str]:
     """
-    Save a new character voice to the Lightning TTS model via REST API.
+    Save/clone a new character voice to the Lightning TTS model via REST API.
     Skips the API call if the character is already saved or a save is in progress.
     """
-    if char_name in saved_characters:
+    if is_character_saved(char_name):
         logger.info(f"Character '{char_name}' already saved — skipping clone request.")
         return "Already saved", None
 
@@ -98,8 +120,20 @@ def save_character(
         if data.get("status") == "success":
             message = data.get("message", "Success")
             logger.info(f"Character saved: {char_name} — {message}")
-            if char_name not in saved_characters:
-                saved_characters.append(char_name)
+            saved_characters.add(char_name)
+
+            # Mark as cloned in Supabase voice_personas
+            safe_name = char_name.strip().replace(" ", "_")
+            try:
+                from src.database import get_db_cursor
+                with get_db_cursor(commit=True) as cur:
+                    cur.execute(
+                        "UPDATE public.voice_personas SET is_cloned = true WHERE key = %s OR key = %s;",
+                        (char_name, safe_name)
+                    )
+            except Exception as db_err:
+                logger.error(f"Error updating is_cloned in Supabase: {db_err}")
+
             return message, None
 
         err_msg = data.get("message", "Unknown error")
@@ -114,8 +148,8 @@ def save_character(
 
 
 def _ensure_character_saved(character_name: str) -> None:
-    """Lazy-register a character once; no-op if already saved or saving."""
-    if not character_name or character_name in saved_characters:
+    """Lazy-register/clone a character once; no-op if already saved or saving."""
+    if not character_name or is_character_saved(character_name):
         return
 
     if character_name in _pending_saves:
@@ -126,7 +160,7 @@ def _ensure_character_saved(character_name: str) -> None:
         logger.warning(f"No reference info found for character {character_name}")
         return
 
-    logger.info(f"Character '{character_name}' not saved yet — registering voice.")
+    logger.info(f"Character '{character_name}' not saved yet — cloning voice now.")
     with open(ref_path, "rb") as f:
         audio_bytes = f.read()
 
@@ -137,26 +171,35 @@ def _ensure_character_saved(character_name: str) -> None:
         ref_text=ref_text,
     )
     if err:
-        logger.error(f"Lazy load failed for {character_name}: {err}")
+        logger.error(f"Lazy clone failed for {character_name}: {err}")
 
 
 def synthesize_speech(text: str, character_name: str) -> tuple[str, None] | tuple[None, str]:
     """
     Synthesize speech using the Lightning TTS API.
-    Reuses saved character voices — reference audio is sent only when not yet registered.
+    First checks if the character is already saved:
+      - If already saved: DO NOT clone, just generate.
+      - If not saved: clones on first generation, then generates.
     """
     try:
-        _ensure_character_saved(character_name)
-
         url = get_api_url()
+
+        # 1. First check if character is already saved
+        if is_character_saved(character_name):
+            logger.info(f"Character '{character_name}' is already saved — skipping clone, generating speech directly.")
+        else:
+            logger.info(f"Character '{character_name}' not saved yet — cloning on first generation.")
+            _ensure_character_saved(character_name)
+
+        # 2. Build generate payload
         payload = {
             "action": "generate",
             "text": text,
             "char_name": character_name,
         }
 
-        # Only attach reference audio on first generate before clone succeeds
-        if character_name not in saved_characters:
+        # 3. Only attach reference audio if character is still not registered
+        if not is_character_saved(character_name):
             ref_path, ref_text = _resolve_character_ref(character_name)
             if ref_path and ref_text and os.path.exists(ref_path):
                 with open(ref_path, "rb") as f:
@@ -164,7 +207,7 @@ def synthesize_speech(text: str, character_name: str) -> tuple[str, None] | tupl
                 payload["audio_prompt"] = audio_b64
                 payload["ref_text"] = ref_text
 
-        logger.info(f"Requesting TTS generation for text: '{text[:20]}...'")
+        logger.info(f"Requesting TTS generation for character '{character_name}', text: '{text[:20]}...'")
         response = requests.post(url, json=payload, headers={"Content-Type": "application/json"})
         response.raise_for_status()
 

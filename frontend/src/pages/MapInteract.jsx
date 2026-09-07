@@ -47,9 +47,11 @@ export default function MapInteract() {
   const [chatHistory, setChatHistory] = useState([]);
   // Language mode for TTS: 'modern' = Arabic voice, 'ancient' = old Egyptian voice
   const [languageMode, setLanguageMode] = useState('modern');
+  // Response style: 'direct' = factual, 'hikaya' = storytelling, 'presentation' = TED talk
+  const [responseMode, setResponseMode] = useState('direct');
 
   const { isSpeaking, playResponseAudio, stopAudio } = useCharacterState();
-  const { sendTextMessage, sendAncientMessage, fetchTTS, fetchGovernorates, transcribeAudio, isLoading } = useChatApi();
+  const { sendTextMessage, sendAncientMessage, fetchTTS, fetchGovernorates, fetchChatHistory, transcribeAudio, isLoading } = useChatApi();
 
   // ── Fetch governorates on mount ─────────────────────────────────
   useEffect(() => {
@@ -87,11 +89,17 @@ export default function MapInteract() {
   );
 
   // ── Stage 2 → Stage 3: pick a monument ─────────────────────────
-  const handleSelectMonument = useCallback((monument) => {
+  const handleSelectMonument = useCallback(async (monument) => {
     setSelectedMonument(monument);
-    setSessionId(uuidv4());
-    setChatHistory([]);
-  }, []);
+    const histData = await fetchChatHistory({ monumentKey: monument.key });
+    if (histData && histData.session_id && histData.messages?.length > 0) {
+      setSessionId(histData.session_id);
+      setChatHistory(histData.messages);
+    } else {
+      setSessionId(uuidv4());
+      setChatHistory([]);
+    }
+  }, [fetchChatHistory]);
 
   // ── Navigation helpers ──────────────────────────────────────────
   const handleBackToMap = useCallback(() => {
@@ -118,7 +126,7 @@ export default function MapInteract() {
       ]);
 
       try {
-        const data = await sendAncientMessage(text, sessionId, selectedMonument?.key, languageMode);
+        const data = await sendAncientMessage(text, sessionId, selectedMonument?.key, languageMode, responseMode);
         setSessionId(data.session_id);
         const aiResponseText = data.response;
         // Use tts_text for TTS (old Egyptian when ancient mode, same as response when modern)
@@ -160,7 +168,7 @@ export default function MapInteract() {
         ]);
       }
     },
-    [sessionId, selectedMonument, languageMode, sendAncientMessage, fetchTTS, playResponseAudio],
+    [sessionId, selectedMonument, languageMode, responseMode, sendAncientMessage, fetchTTS, playResponseAudio],
   );
 
   // ══════════════════════════════════════════════════════════════════
@@ -389,6 +397,8 @@ export default function MapInteract() {
             isLoading={isLoading}
             elderName={monument.builder}
             languageMode={languageMode}
+            responseMode={responseMode}
+            onResponseModeChange={setResponseMode}
           />
         </div>
       </div>

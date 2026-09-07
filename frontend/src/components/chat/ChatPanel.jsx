@@ -2,7 +2,14 @@ import { useRef, useEffect } from 'react';
 import ChatBubble from './ChatBubble';
 import ChatInput from './ChatInput';
 
-export default function ChatPanel({ chatHistory, onSendText, onSendAudio, onTranscribeAudio, isLoading, elderName, languageMode }) {
+/* ── الـ 3 أوضاع بتاعت الرد ── */
+const RESPONSE_MODES = [
+  { key: 'direct',       label: '💬 مباشر',  desc: 'إجابة واضحة ومختصرة' },
+  { key: 'hikaya',       label: '📖 حكاوي',  desc: 'يحكيلك قصة ممتعة' },
+  { key: 'presentation', label: '🎤 عرض',    desc: 'عرض منظم بأرقام وحقائق' },
+];
+
+export default function ChatPanel({ chatHistory, onSendText, onSendAudio, onTranscribeAudio, isLoading, elderName, languageMode, responseMode, onResponseModeChange }) {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -11,6 +18,27 @@ export default function ChatPanel({ chatHistory, onSendText, onSendAudio, onTran
 
   return (
     <div className="flex flex-col flex-1 min-h-0" id="chat-panel">
+      {/* ── Response Mode Selector ── */}
+      {onResponseModeChange && (
+        <div className="flex items-center justify-center gap-2 px-4 py-2 border-b border-[#c4a06a]/10 bg-[#0b0a08]/60">
+          {RESPONSE_MODES.map((mode) => (
+            <button
+              key={mode.key}
+              onClick={() => onResponseModeChange(mode.key)}
+              title={mode.desc}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-300 ${
+                responseMode === mode.key
+                  ? 'bg-[#c4a06a] text-[#0b0a08] shadow-[0_0_12px_rgba(196,160,106,0.4)]'
+                  : 'bg-[#1a1815] text-[#9d9167] border border-[#c4a06a]/20 hover:border-[#c4a06a]/50 hover:text-[#c4a06a]'
+              }`}
+              style={{ fontFamily: 'var(--font-body)' }}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
         {/* Welcome message */}

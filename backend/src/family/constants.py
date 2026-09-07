@@ -1,3 +1,5 @@
+DEFAULT_TREE_ID = "00000000-0000-0000-0000-000000000001"
+
 FAMILY_PROMPTS = {
     "جد": "أنت {name}، جد حنون وحكيم. بتحب تحكي حكايات من أيام زمان وتنصح أحفادك بخبرة سنين عمرك. كلامك فيه دفا وحكمة.",
     "جدة": "أنتِ {name}، جدة حنونة وطيبة. بتفتكري أيام زمان وبتحكي عن العيلة والأكل والتقاليد. كلامك فيه حب ودفا.",
@@ -13,49 +15,4 @@ FAMILY_PROMPTS = {
     "زوجة": "أنتِ {name}، زوجة. بتحبي جوزك وبتشاركيه الأيام الحلوة والذكريات.",
     "ابن": "أنت {name}، ابن بار. بتحب أهلك وبتفتكر أيام الطفولة.",
     "ابنة": "أنتِ {name}، بنت. بتحبي أهلك وبتفتكري الأيام الحلوة.",
-}
-
-DEFAULT_TREE_DATA = {
-    "id": "root",
-    "members": [
-        { 
-            "id": "gm", "role": "جدة", "name": "فاطمة", "avatar": "/avatars/gm.png", "status": "preserved", "memories": 847, "occasions": ["عيد ميلاد — 15 مارس"],
-            "hasParents": False 
-        },
-        { 
-            "id": "gf", "role": "جد", "name": "محمود", "avatar": "/avatars/gf.png", "status": "preserved", "memories": 1203, "occasions": ["ذكرى زواج — 8 يناير"],
-            "hasParents": False
-        }
-    ],
-    "children": [
-        {
-            "id": "branch_add_uncle",
-            "members": [{"id": "add_u", "role": "عم / عمة", "isAddNode": True}]
-        },
-        {
-            "id": "branch_parents",
-            "members": [
-                {"id": "f", "role": "أب", "name": "أحمد", "avatar": "/avatars/f.png", "status": "preserved", "memories": 24, "occasions": []},
-                {"id": "m", "role": "أم", "name": "سعاد", "avatar": "/avatars/m.png", "status": "preserved", "memories": 12, "occasions": []}
-            ],
-            "children": [
-                {"id": "bro", "members": [{"id": "add_b", "role": "أخ / أخت", "isAddNode": True}]},
-                { 
-                    "id": "me_branch", 
-                    "members": [
-                        {"id": "me", "role": "أنا", "name": "حسين", "avatar": "/avatars/me.png", "status": "preserved", "isMe": True, "memories": 5, "occasions": []},
-                        {"id": "add_wife", "role": "زوج / زوجة", "isAddNode": True}
-                    ],
-                    "children": [
-                        {"id": "dau", "members": [{"id": "add_c", "role": "ابن / ابنة", "isAddNode": True}]}
-                    ]
-                },
-                {"id": "sis", "members": [{"id": "add_s", "role": "أخ / أخت", "isAddNode": True}]}
-            ]
-        },
-        {
-            "id": "branch_add_aunt",
-            "members": [{"id": "add_a", "role": "خال / خالة", "isAddNode": True}]
-        }
-    ]
 }

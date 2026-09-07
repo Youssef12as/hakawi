@@ -1,8 +1,16 @@
 import { useState, useRef, useCallback } from 'react';
 import { Mic, MicOff } from 'lucide-react';
 
-export default function MicButton({ onAudioReady, disabled }) {
-  const [isRecording, setIsRecording] = useState(false);
+export default function MicButton({
+  onAudioReady,
+  disabled,
+  isRecording: externalIsRecording,
+  onToggle: externalOnToggle,
+}) {
+  const [internalRecording, setInternalRecording] = useState(false);
+  const isControlled = externalOnToggle !== undefined;
+  const isRecording = isControlled ? !!externalIsRecording : internalRecording;
+
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const streamRef = useRef(null);
@@ -34,7 +42,7 @@ export default function MicButton({ onAudioReady, disabled }) {
       };
 
       recorder.start();
-      setIsRecording(true);
+      setInternalRecording(true);
     } catch (err) {
       console.error('Microphone access denied:', err);
     }
@@ -48,17 +56,22 @@ export default function MicButton({ onAudioReady, disabled }) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
-    setIsRecording(false);
+    setInternalRecording(false);
   }, []);
 
-  const toggle = () => {
-    if (isRecording) stopRecording();
-    else startRecording();
+  const handleClick = () => {
+    if (isControlled) {
+      externalOnToggle();
+    } else {
+      if (internalRecording) stopRecording();
+      else startRecording();
+    }
   };
 
   return (
     <button
-      onClick={toggle}
+      type="button"
+      onClick={handleClick}
       disabled={disabled && !isRecording}
       className={`
         p-2.5 rounded-xl transition-all duration-300
