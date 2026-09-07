@@ -26,7 +26,7 @@ import numpy as np
 from google import genai
 
 from src.config import settings
-from src.chat.prompts import (
+from src.chat.utils import (
     format_persona_instructions,
     get_historical_persona,
 )

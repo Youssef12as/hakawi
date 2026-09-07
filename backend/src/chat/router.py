@@ -5,18 +5,25 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile, WebSocket
 
 from src.config import settings
 from src.chat.ancient_translation import generate_with_ancient
-from src.chat.prompts import format_persona_instructions, get_historical_persona
 from src.chat.rag_service import is_ready as rag_is_ready, retrieve_and_build
 from src.chat.schemas import (
     AncientChatRequest,
     AncientChatResponse,
     AudioChatResponse,
+    ChatHistoryResponse,
     TextChatRequest,
     TextChatResponse,
 )
-from src.chat.service import clean_text_formatting, get_history
-from src.family.service import build_family_prompt
-from src.governorates.registry import get_monument_by_key
+from src.chat.service import (
+    clean_text_formatting,
+    get_history,
+    get_recent_session_history,
+    get_session_messages,
+    save_chat_turn,
+)
+from src.chat.utils import format_persona_instructions, get_historical_persona
+from src.family.utils import build_family_prompt
+from src.governorates.utils import get_monument_by_key
 from src.integrations.gemini import generate
 from src.integrations.speechmatics import transcribe_audio as transcribe_audio_speechmatics
 from src.integrations.deepgram import (
@@ -87,6 +94,16 @@ async def chat_text(request: TextChatRequest):
         history.append({"role": "user", "parts": [{"text": request.text}]})
         history.append({"role": "model", "parts": [{"text": ai_response}]})
 
+        chat_mode = "family_member" if request.persona == "family_member" else "regional"
+        save_chat_turn(
+            session_id=session_id,
+            user_text=request.text,
+            assistant_text=ai_response,
+            chat_mode=chat_mode,
+            governorate_key=request.region if chat_mode == "regional" else None,
+            family_member_id=(request.member_id or request.member_name) if chat_mode == "family_member" else None,
+        )
+
         logger.info(
             "Text chat | session=%s... | region=%s | user=%s...",
             session_id[:8], request.region, request.text[:30],
@@ -141,9 +158,13 @@ async def chat_audio(
     file: UploadFile = File(...),
     session_id: str = Form(default=None),
     region: str = Form(default="aswan"),
+    persona: str = Form(default=None),
+    member_id: str = Form(default=None),
+    member_name: str = Form(default=None),
+    relation: str = Form(default=None),
 ):
     """
-    Audio chat with a regional persona.
+    Audio chat with a regional or family member persona.
 
     Receives an audio file (WebM/OGG/WAV), transcribes it via Deepgram/Speechmatics,
     then sends the transcribed text to Gemini for a persona response.
@@ -166,8 +187,14 @@ async def chat_audio(
         session_id = session_id or str(uuid4())
         history = get_history(session_id)
 
-        persona, _ = get_historical_persona(region)
-        system_prompt = format_persona_instructions(persona)
+        is_family = (persona == "family_member" and (member_name or member_id))
+        if is_family:
+            system_prompt = build_family_prompt(member_name or "", relation)
+            chat_mode = "family_member"
+        else:
+            persona_obj, _ = get_historical_persona(region)
+            system_prompt = format_persona_instructions(persona_obj)
+            chat_mode = "regional"
 
         ai_response = generate(
             user_text=transcribed_text,
@@ -180,6 +207,15 @@ async def chat_audio(
 
         history.append({"role": "user", "parts": [{"text": transcribed_text}]})
         history.append({"role": "model", "parts": [{"text": ai_response}]})
+
+        save_chat_turn(
+            session_id=session_id,
+            user_text=transcribed_text,
+            assistant_text=ai_response,
+            chat_mode=chat_mode,
+            governorate_key=region if chat_mode == "regional" else None,
+            family_member_id=(member_id or member_name) if chat_mode == "family_member" else None,
+        )
 
         logger.info(
             "Audio chat | session=%s... | region=%s | transcribed=%s...",
@@ -249,10 +285,13 @@ async def chat_ancient(request: AncientChatRequest):
             monument_name=monument_name_filter,
         )
 
+        history = get_history(session_id)
+
         if use_ancient:
             ai_response, tts_text = generate_with_ancient(
                 user_prompt=payload["user_prompt"],
                 base_system_prompt=payload["system_prompt"],
+                history=history,
                 temperature=0.4,
                 max_output_tokens=800,
                 thinking_budget=0,
@@ -261,6 +300,7 @@ async def chat_ancient(request: AncientChatRequest):
             ai_response = generate(
                 user_text=payload["user_prompt"],
                 system_prompt=payload["system_prompt"],
+                history=history,
                 temperature=0.4,
                 max_output_tokens=400,
                 thinking_budget=0,
@@ -274,6 +314,21 @@ async def chat_ancient(request: AncientChatRequest):
             builder = payload["builder"] or display_name
         else:
             builder = payload["builder"]
+
+        save_chat_turn(
+            session_id=session_id,
+            user_text=request.text,
+            assistant_text=ai_response,
+            chat_mode="ancient",
+            monument_key=request.monument_key,
+            language_mode=request.language_mode,
+            metadata={
+                "builder": builder,
+                "monument": payload["monument"],
+                "persona_key": payload["persona_key"],
+                "tts_text": tts_text,
+            },
+        )
 
         logger.info(
             "Ancient chat | session=%s... | monument=%s | builder=%s | mode=%s | user=%s...",
@@ -301,3 +356,25 @@ async def chat_ancient(request: AncientChatRequest):
     except Exception as e:
         logger.error(f"Unexpected error in chat_ancient: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/api/chat/history", response_model=ChatHistoryResponse)
+async def get_chat_history_endpoint(
+    session_id: str | None = None,
+    monument_key: str | None = None,
+    family_member_id: str | None = None,
+    chat_mode: str | None = None,
+):
+    """
+    Retrieve chat history for a session ID, or the most recent session for a monument or family member.
+    """
+    if session_id:
+        messages = get_session_messages(session_id)
+        return ChatHistoryResponse(session_id=session_id, messages=messages)
+
+    sid, messages = get_recent_session_history(
+        monument_key=monument_key,
+        family_member_id=family_member_id,
+        chat_mode=chat_mode,
+    )
+    return ChatHistoryResponse(session_id=sid, messages=messages)

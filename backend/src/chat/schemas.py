@@ -9,6 +9,7 @@ class TextChatRequest(BaseModel):
     region: str = "aswan"
     # Family tree chat fields (optional)
     persona: str | None = None        # "family_member" to trigger family mode
+    member_id: str | None = None      # e.g. "gf" or uuid
     member_name: str | None = None    # e.g. "فاطمة"
     relation: str | None = None       # e.g. "جدة", "أب"
 
@@ -17,6 +18,11 @@ class TextChatResponse(BaseModel):
     response: str
     session_id: str
     region: str
+
+
+class ChatHistoryResponse(BaseModel):
+    session_id: str | None
+    messages: list[dict]
 
 
 class AudioChatResponse(BaseModel):

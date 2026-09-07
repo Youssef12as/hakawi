@@ -136,7 +136,7 @@ export default function FamilyTree() {
   const [chatHistory, setChatHistory] = useState([]);
   const [chatSessionId, setChatSessionId] = useState(null);
   const { isSpeaking, playResponseAudio, stopAudio } = useCharacterState();
-  const { sendTextMessage, sendAudioMessage, fetchTTS, transcribeAudio, isLoading: chatLoading } = useChatApi();
+  const { sendTextMessage, sendAudioMessage, fetchTTS, fetchChatHistory, transcribeAudio, isLoading: chatLoading } = useChatApi();
 
   // Recording refs for Add Member
   const mediaRecorderRef = useRef(null);
@@ -319,12 +319,19 @@ export default function FamilyTree() {
   };
 
   // ── Chat handlers — mirrored exactly from MapInteract ──────────────
-  const openChat = (member) => {
+  const openChat = async (member) => {
     setSelectedMember(member);
     stopAudio();
-    setChatHistory([]);
-    setChatSessionId(uuidv4());
     setView('chat');
+
+    const histData = await fetchChatHistory({ familyMemberId: member.id });
+    if (histData && histData.session_id && histData.messages?.length > 0) {
+      setChatSessionId(histData.session_id);
+      setChatHistory(histData.messages);
+    } else {
+      setChatSessionId(uuidv4());
+      setChatHistory([]);
+    }
   };
 
   const handleChatSendText = useCallback(async (text) => {
@@ -333,6 +340,7 @@ export default function FamilyTree() {
 
     try {
       const data = await sendTextMessage(text, chatSessionId, {
+        member_id: m?.id,
         member_name: m?.name,
         persona: 'family_member',
         relation: m?.role,
@@ -358,6 +366,7 @@ export default function FamilyTree() {
     const m = selectedMember;
     try {
       const data = await sendAudioMessage(blob, chatSessionId, {
+        member_id: m?.id,
         member_name: m?.name,
         persona: 'family_member',
         relation: m?.role,

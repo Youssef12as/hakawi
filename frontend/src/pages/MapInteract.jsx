@@ -49,7 +49,7 @@ export default function MapInteract() {
   const [languageMode, setLanguageMode] = useState('modern');
 
   const { isSpeaking, playResponseAudio, stopAudio } = useCharacterState();
-  const { sendTextMessage, sendAncientMessage, fetchTTS, fetchGovernorates, transcribeAudio, isLoading } = useChatApi();
+  const { sendTextMessage, sendAncientMessage, fetchTTS, fetchGovernorates, fetchChatHistory, transcribeAudio, isLoading } = useChatApi();
 
   // ── Fetch governorates on mount ─────────────────────────────────
   useEffect(() => {
@@ -87,11 +87,17 @@ export default function MapInteract() {
   );
 
   // ── Stage 2 → Stage 3: pick a monument ─────────────────────────
-  const handleSelectMonument = useCallback((monument) => {
+  const handleSelectMonument = useCallback(async (monument) => {
     setSelectedMonument(monument);
-    setSessionId(uuidv4());
-    setChatHistory([]);
-  }, []);
+    const histData = await fetchChatHistory({ monumentKey: monument.key });
+    if (histData && histData.session_id && histData.messages?.length > 0) {
+      setSessionId(histData.session_id);
+      setChatHistory(histData.messages);
+    } else {
+      setSessionId(uuidv4());
+      setChatHistory([]);
+    }
+  }, [fetchChatHistory]);
 
   // ── Navigation helpers ──────────────────────────────────────────
   const handleBackToMap = useCallback(() => {

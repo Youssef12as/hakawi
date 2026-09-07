@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from src.governorates.registry import get_all_governorates
+from src.governorates.utils import get_all_governorates
 
 router = APIRouter(tags=["governorates"])
 

@@ -139,12 +139,30 @@ export function useChatApi() {
     }
   }, []);
 
+  const fetchChatHistory = useCallback(async ({ sessionId, monumentKey, familyMemberId, chatMode } = {}) => {
+    try {
+      const params = new URLSearchParams();
+      if (sessionId) params.append('session_id', sessionId);
+      if (monumentKey) params.append('monument_key', monumentKey);
+      if (familyMemberId) params.append('family_member_id', familyMemberId);
+      if (chatMode) params.append('chat_mode', chatMode);
+
+      const res = await fetch(`/api/chat/history?${params.toString()}`);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) {
+      console.error('Failed to fetch chat history:', e);
+      return null;
+    }
+  }, []);
+
   return {
     sendTextMessage,
     sendAudioMessage,
     sendAncientMessage,
     transcribeAudio,
     fetchGovernorates,
+    fetchChatHistory,
     fetchTTS,
     isLoading,
     error,
