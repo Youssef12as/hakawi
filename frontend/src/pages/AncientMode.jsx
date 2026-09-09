@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { X, Globe2, Sparkles } from 'lucide-react';
 import PageShell from '../components/layout/PageShell';
@@ -7,38 +7,45 @@ import ChatBubble from '../components/chat/ChatBubble';
 import ChatInput from '../components/chat/ChatInput';
 import { useChatApi } from '../hooks/useChatApi';
 
-// Ancient Mode now uses the RAG-backed /api/chat/ancient endpoint, which
-// retrieves a historical character based on the user's question. The
-// region here is only used for the avatar video + UI labels.
-const ANCIENT_REGIONS = {
-  aswan: { name: 'أسوان والنوبة', elder: 'رمسيس الثاني', title: 'فرعون مصر العظيم', bio: 'أنا رمسيس الثاني، باني معابد أبو سمبل العظيمة. هنا يتحد النيل مع الخلود.' },
-  luxor: { name: 'الأقصر', elder: 'أمنحتب الثالث', title: 'ملك الشمس', bio: 'في طيبة العظيمة شيدت المعابد التي تصل بين الأرض والسماء، وبين البشر والآلهة.' },
-  cairo: { name: 'الجيزة', elder: 'خوفو', title: 'باني الهرم الأكبر', bio: 'حجارة الأهرامات لا تحكي فقط عن الموت، بل عن الحياة التي تمتد لأبد الآبدين.' },
-  alexandria: { name: 'الإسكندرية', elder: 'كليوباترا', title: 'ملكة مصر', bio: 'حيث يلتقي البحر بالمكتبة العظيمة، هنا تجتمع حكمة العالم بأسره.' }
-};
-
 export default function AncientMode() {
   const { regionId } = useParams();
   const navigate = useNavigate();
-  const region = ANCIENT_REGIONS[regionId] || ANCIENT_REGIONS['aswan'];
+  const { sendAncientMessage, fetchGovernorates, isLoading } = useChatApi();
 
-  const [chatHistory, setChatHistory] = useState([
-    {
-      id: 1,
-      sender: 'ai',
-      text: '𓇋𓏏𓈖 𓂋𓂝 𓊹𓊹𓊹! (مرحباً بك في عصر الأجداد. اسألني عن أسرار الفراعنة...)',
-      timestamp: Date.now()
-    }
-  ]);
-  const [sessionId, setSessionId] = useState(null);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const { sendAncientMessage, isLoading } = useChatApi();
+  const [governorates, setGovernorates] = useState(null);
+
+  useEffect(() => {
+    fetchGovernorates().then((data) => {
+      if (data) setGovernorates(data.governorates || data);
+    });
+  }, [fetchGovernorates]);
+
+  // Dynamically resolve region and ancient monument from database
+  const activeData = useMemo(() => {
+    const gov = governorates?.find((g) => g.key === regionId) || governorates?.[0];
+    const monuments = gov?.monuments || [];
+    // Prioritize monument with ancient voice key or prominent builder
+    const mon = monuments.find((m) => m.ancient_voice_key && m.ancient_voice_key !== 'am-othman') ||
+                monuments.find((m) => m.key === 'abu-simbel') ||
+                monuments[0];
+
+    return {
+      name: gov?.name || 'مصر القديمة',
+      elder: mon?.builder || (regionId === 'aswan' ? 'رمسيس الثاني' : 'حكيم مصر'),
+      title: mon?.title || 'فرعون مصر العظيم',
+      bio: mon?.bio || 'من أعماق التاريخ المصري، أروي لك حكايات الخلود وبناء الحضارة.',
+      idleSrc: mon?.idle_video_url,
+      talkingSrc: mon?.talking_video_url,
+      chips: mon?.chips?.length ? mon.chips : ['هرم خوفو', 'معبد حتشبسوت', 'مقبرة توت عنخ آمون', 'أبو سمبل', 'معبد فيلة'],
+      monumentKey: mon?.key,
+    };
+  }, [governorates, regionId]);
 
   const handleSendText = useCallback(async (text) => {
     setChatHistory(prev => [...prev, { id: Date.now(), sender: 'user', text, timestamp: Date.now() }]);
 
     try {
-      const data = await sendAncientMessage(text, sessionId);
+      const data = await sendAncientMessage(text, sessionId, activeData.monumentKey);
       setSessionId(data.session_id);
 
       setChatHistory(prev => [...prev, {
@@ -50,7 +57,6 @@ export default function AncientMode() {
       }]);
 
       // Simulate speaking for ~3s so the avatar mouth moves while the user reads.
-      // (TTS pipeline can be wired here later the same way as MapInteract.)
       setIsSpeaking(true);
       setTimeout(() => setIsSpeaking(false), 3000);
     } catch {
@@ -62,7 +68,7 @@ export default function AncientMode() {
         isError: true
       }]);
     }
-  }, [sendAncientMessage, sessionId]);
+  }, [sendAncientMessage, sessionId, activeData.monumentKey]);
 
   const handleClose = () => {
     navigate('/map');
@@ -82,7 +88,7 @@ export default function AncientMode() {
                 <Globe2 className="w-4 h-4 text-[#c4a06a]" />
                 <span className="text-[#c4a06a] text-xs font-bold tracking-wider">وضع اللغة الهيروغليفية</span>
               </div>
-              <span className="text-[#c4a06a]/60 text-sm font-medium">{region.name}</span>
+              <span className="text-[#c4a06a]/60 text-sm font-medium">{activeData.name}</span>
             </div>
             <button
               onClick={handleClose}
@@ -99,17 +105,17 @@ export default function AncientMode() {
 
             <CharacterStage
               isSpeaking={isSpeaking}
-              idleSrc={regionId === 'aswan' ? '/character/ramsis_idle.mp4' : '/character/am-othman-idle.mp4'}
-              talkingSrc={regionId === 'aswan' ? '/character/ramsis_talking.mp4' : '/character/am-othman-talking.mp4'}
+              idleSrc={activeData.idleSrc}
+              talkingSrc={activeData.talkingSrc}
             />
           </div>
 
           {/* Ancient Bio Card */}
           <div className="p-6 bg-[#050403]/50 border-t border-[#c4a06a]/10">
-            <h2 className="text-3xl font-bold text-[#e8d1a7] mb-1 font-amiri tracking-wide">{region.elder}</h2>
-            <p className="text-[#c4a06a] text-sm mb-4 tracking-widest">{region.title}</p>
+            <h2 className="text-3xl font-bold text-[#e8d1a7] mb-1 font-amiri tracking-wide">{activeData.elder}</h2>
+            <p className="text-[#c4a06a] text-sm mb-4 tracking-widest">{activeData.title}</p>
             <p className="text-[#c4a06a]/70 text-sm leading-relaxed border-r-2 border-[#c4a06a]/30 pr-4 italic">
-              "{region.bio}"
+              "{activeData.bio}"
             </p>
 
             <div className="mt-6 pt-6 border-t border-[#c4a06a]/10">
@@ -118,7 +124,7 @@ export default function AncientMode() {
                  كلمات مفتاحية
                </p>
                <div className="flex flex-wrap gap-2">
-                 {['هرم خوفو', 'معبد حتشبسوت', 'مقبرة توت عنخ آمون', 'أبو سمبل', 'معبد فيلة'].map(word => (
+                 {activeData.chips.map(word => (
                    <button
                      key={word}
                      onClick={() => handleSendText(`حدثني عن ${word}`)}
@@ -140,7 +146,7 @@ export default function AncientMode() {
                 key={msg.id}
                 sender={msg.sender}
                 text={msg.text}
-                elderName={msg.meta?.builder || region.elder}
+                elderName={msg.meta?.builder || activeData.elder}
                 isError={msg.isError}
               />
             ))}

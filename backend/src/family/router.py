@@ -91,19 +91,22 @@ def _sync_family_members(cur, tree_id: str, tree_data: dict):
 async def save_family_tree(request: Request):
     """Save updated family tree directly to Supabase."""
     try:
+        from src.auth import get_optional_user_id
+        user_id = get_optional_user_id(request)
         tree_data = await request.json()
 
         with get_db_cursor(commit=True) as cur:
             # 1. Update family_trees hierarchical structure
             cur.execute(
                 """
-                INSERT INTO public.family_trees (id, title, tree_data, updated_at)
-                VALUES (%s, %s, %s, timezone('utc'::text, now()))
+                INSERT INTO public.family_trees (id, title, tree_data, user_id, updated_at)
+                VALUES (%s, %s, %s, %s, timezone('utc'::text, now()))
                 ON CONFLICT (id) DO UPDATE SET
                     tree_data = EXCLUDED.tree_data,
+                    user_id = COALESCE(EXCLUDED.user_id, public.family_trees.user_id),
                     updated_at = timezone('utc'::text, now());
                 """,
-                (DEFAULT_TREE_ID, tree_data.get("title", "عائلتي"), Json(tree_data))
+                (DEFAULT_TREE_ID, tree_data.get("title", "عائلتي"), Json(tree_data), user_id)
             )
 
             # 2. Sync individual member rows into public.family_members

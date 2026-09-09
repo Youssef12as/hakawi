@@ -20,6 +20,9 @@ def _map_monument_row(row: dict[str, Any]) -> dict[str, Any]:
         "modern_voice_key": row.get("modern_voice_key"),
         "ancient_voice_key": row.get("ancient_voice_key"),
         "chips": row.get("chips") if isinstance(row.get("chips"), list) else [],
+        "idle_video_url": row.get("idle_video_url"),
+        "talking_video_url": row.get("talking_video_url"),
+        "avatar_url": row.get("avatar_url"),
     }
 
 
@@ -41,7 +44,8 @@ def get_all_governorates() -> list[dict[str, Any]]:
 
         cur.execute("""
             SELECT key, governorate_key, modern_voice_key, ancient_voice_key,
-                   monument_name, display_name, builder, title, bio, lat, lng, chips
+                   monument_name, display_name, builder, title, bio, lat, lng, chips,
+                   idle_video_url, talking_video_url, avatar_url
             FROM public.monuments
             ORDER BY key;
         """)
@@ -68,7 +72,8 @@ def get_monument_by_key(key: str) -> dict[str, Any] | None:
     with get_db_cursor() as cur:
         cur.execute("""
             SELECT key, governorate_key, modern_voice_key, ancient_voice_key,
-                   monument_name, display_name, builder, title, bio, lat, lng, chips
+                   monument_name, display_name, builder, title, bio, lat, lng, chips,
+                   idle_video_url, talking_video_url, avatar_url
             FROM public.monuments
             WHERE key = %s;
         """, (key,))
@@ -83,7 +88,8 @@ def get_monument_by_rag_name(rag_name: str) -> dict[str, Any] | None:
     with get_db_cursor() as cur:
         cur.execute("""
             SELECT key, governorate_key, modern_voice_key, ancient_voice_key,
-                   monument_name, display_name, builder, title, bio, lat, lng, chips
+                   monument_name, display_name, builder, title, bio, lat, lng, chips,
+                   idle_video_url, talking_video_url, avatar_url
             FROM public.monuments
             WHERE monument_name = %s;
         """, (rag_name,))
@@ -98,7 +104,8 @@ def get_monuments_for_governorate(governorate_key: str) -> list[dict[str, Any]]:
     with get_db_cursor() as cur:
         cur.execute("""
             SELECT key, governorate_key, modern_voice_key, ancient_voice_key,
-                   monument_name, display_name, builder, title, bio, lat, lng, chips
+                   monument_name, display_name, builder, title, bio, lat, lng, chips,
+                   idle_video_url, talking_video_url, avatar_url
             FROM public.monuments
             WHERE governorate_key = %s
             ORDER BY key;

@@ -47,17 +47,10 @@ export default function MonumentSelector({
               خريطة المعالم
             </button>
             <button
-              onClick={() => onSelectMonument({
-                key: "aswan-general",
-                governorate: "aswan",
-                monument_name: "أسوان — أرض الذهب",
-                display_name: "أسوان",
-                builder: "عم عثمان",
-                title: "حارس بوابة الجنوب",
-                bio: "أسوان هي بداية الحكاية، ونهاية التعب. هنا النيل بيجري هادي، والصخور بتحفظ الأسرار.",
-                character_name: "am-othman",
-                chips: ["احكيلي عن النوبة", "ليه أسوان اتسمت بالاسم ده؟", "إيه أجمل مكان في أسوان؟"],
-              })}
+              onClick={() => {
+                const aswanGeneral = monuments.find((m) => m.key === "aswan-general") || monuments[0];
+                if (aswanGeneral) onSelectMonument(aswanGeneral);
+              }}
               className="flex-1 text-center py-2.5 rounded-lg text-sm font-bold transition-all text-sand/70 hover:text-[#c4a06a] hover:bg-[#c4a06a]/10"
             >
               حواري أسوان

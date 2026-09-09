@@ -126,15 +126,22 @@ def _embed_query(query: str) -> np.ndarray:
     return vec / norm
 
 
-from opentelemetry import trace
-rag_tracer = trace.get_tracer("hikawi.rag")
+try:
+    from opentelemetry import trace
+    rag_tracer = trace.get_tracer("hikawi.rag")
+except ImportError:
+    rag_tracer = None
+
 
 def search(
     query: str,
     top_k: int = DEFAULT_TOP_K,
     monument_name: str | None = None,
 ) -> list[tuple[float, dict]]:
-    """Wrapped search function with OpenTelemetry tracing."""
+    """Wrapped search function with OpenTelemetry tracing (if available)."""
+    if not rag_tracer:
+        return _search_internal(query, top_k, monument_name)
+
     with rag_tracer.start_as_current_span("RAG.search") as span:
         span.set_attribute("rag.query", query)
         span.set_attribute("rag.top_k", top_k)

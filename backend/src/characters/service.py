@@ -147,6 +147,36 @@ def save_character(
         _pending_saves.discard(char_name)
 
 
+def _get_audio_bytes(ref_path: str) -> bytes | None:
+    """Fetch audio bytes from Supabase Storage URL or local file path."""
+    if not ref_path:
+        return None
+    if ref_path.startswith("http://") or ref_path.startswith("https://"):
+        fname = os.path.basename(ref_path.split("?")[0])
+        local_cache = os.path.join("data", "characters", fname)
+        if os.path.exists(local_cache):
+            try:
+                with open(local_cache, "rb") as f:
+                    return f.read()
+            except Exception:
+                pass
+        try:
+            resp = requests.get(ref_path, timeout=10)
+            if resp.status_code == 200:
+                return resp.content
+        except Exception as e:
+            logger.error(f"Failed to fetch audio from URL {ref_path}: {e}")
+            return None
+    elif os.path.exists(ref_path):
+        try:
+            with open(ref_path, "rb") as f:
+                return f.read()
+        except Exception as e:
+            logger.error(f"Failed to read local audio {ref_path}: {e}")
+            return None
+    return None
+
+
 def _ensure_character_saved(character_name: str) -> None:
     """Lazy-register/clone a character once; no-op if already saved or saving."""
     if not character_name or is_character_saved(character_name):
@@ -156,18 +186,20 @@ def _ensure_character_saved(character_name: str) -> None:
         return
 
     ref_path, ref_text = _resolve_character_ref(character_name)
-    if not ref_path or not ref_text or not os.path.exists(ref_path):
+    if not ref_path or not ref_text:
         logger.warning(f"No reference info found for character {character_name}")
         return
 
-    logger.info(f"Character '{character_name}' not saved yet — cloning voice now.")
-    with open(ref_path, "rb") as f:
-        audio_bytes = f.read()
+    audio_bytes = _get_audio_bytes(ref_path)
+    if not audio_bytes:
+        logger.warning(f"Could not load reference audio for character {character_name} from {ref_path}")
+        return
 
+    logger.info(f"Character '{character_name}' not saved yet — cloning voice now.")
     _, err = save_character(
         char_name=character_name,
         audio_bytes=audio_bytes,
-        audio_filename=os.path.basename(ref_path),
+        audio_filename=os.path.basename(ref_path.split("?")[0]),
         ref_text=ref_text,
     )
     if err:
@@ -201,11 +233,11 @@ def synthesize_speech(text: str, character_name: str) -> tuple[str, None] | tupl
         # 3. Only attach reference audio if character is still not registered
         if not is_character_saved(character_name):
             ref_path, ref_text = _resolve_character_ref(character_name)
-            if ref_path and ref_text and os.path.exists(ref_path):
-                with open(ref_path, "rb") as f:
-                    audio_b64 = base64.b64encode(f.read()).decode('utf-8')
-                payload["audio_prompt"] = audio_b64
-                payload["ref_text"] = ref_text
+            if ref_path and ref_text:
+                audio_bytes = _get_audio_bytes(ref_path)
+                if audio_bytes:
+                    payload["audio_prompt"] = base64.b64encode(audio_bytes).decode('utf-8')
+                    payload["ref_text"] = ref_text
 
         logger.info(f"Requesting TTS generation for character '{character_name}', text: '{text[:20]}...'")
         response = requests.post(url, json=payload, headers={"Content-Type": "application/json"})

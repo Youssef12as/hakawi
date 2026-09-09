@@ -78,8 +78,11 @@ def _generate_with_retry(
     raise RuntimeError(f"Failed to generate response from Gemini: {last_error}")
 
 
-from opentelemetry import trace
-tracer = trace.get_tracer("hikawi.llm")
+try:
+    from opentelemetry import trace
+    tracer = trace.get_tracer("hikawi.llm")
+except ImportError:
+    tracer = None
 
 def generate(
     user_text: str,
@@ -89,16 +92,25 @@ def generate(
     max_output_tokens: int = 400,
     thinking_budget: int = 0,
 ) -> str:
+    contents = list(history or []) + [
+        {"role": "user", "parts": [{"text": user_text}]}
+    ]
+
+    if not tracer:
+        return _generate_with_retry(
+            contents=contents,
+            system_instruction=system_prompt,
+            temperature=temperature,
+            max_output_tokens=max_output_tokens,
+            thinking_budget=thinking_budget,
+        )
+
     with tracer.start_as_current_span("Gemini.generate_content") as span:
         span.set_attribute("gen_ai.system", "gemini")
         span.set_attribute("gen_ai.request.model", MODEL_ID)
         span.set_attribute("llm.system_prompt", system_prompt)
         span.set_attribute("llm.user_text", user_text)
         span.set_attribute("llm.temperature", temperature)
-        
-        contents = list(history or []) + [
-            {"role": "user", "parts": [{"text": user_text}]}
-        ]
         
         try:
             result = _generate_with_retry(

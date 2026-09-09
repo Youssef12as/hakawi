@@ -24,10 +24,12 @@ import logging
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
-from opentelemetry import trace
-
-logger = logging.getLogger(__name__)
-tracer = trace.get_tracer("hikawi.pipeline")
+try:
+    from opentelemetry import trace
+    tracer = trace.get_tracer("hikawi.pipeline")
+except ImportError:
+    trace = None
+    tracer = None
 
 
 @dataclass
@@ -87,18 +89,32 @@ def timed_section(metrics: PipelineMetrics, section: str):
 
 def log_pipeline_metrics(metrics: PipelineMetrics) -> None:
     """
-    Log all accumulated metrics to the current OpenTelemetry span
+    Log all accumulated metrics to the current OpenTelemetry span (if enabled)
     and to Python logging. These metrics will appear automatically
     in the Phoenix Dashboard under the current trace's Attributes.
     """
-    span = trace.get_current_span()
-    if span is None or not span.is_recording():
-        # Create a new span if none exists
-        with tracer.start_as_current_span("pipeline.metrics") as new_span:
-            _write_to_span(new_span, metrics)
-        return
-
-    _write_to_span(span, metrics)
+    if trace is not None and tracer is not None:
+        span = trace.get_current_span()
+        if span is None or not span.is_recording():
+            # Create a new span if none exists
+            with tracer.start_as_current_span("pipeline.metrics") as new_span:
+                _write_to_span(new_span, metrics)
+        else:
+            _write_to_span(span, metrics)
+    else:
+        # Fallback console log when OpenTelemetry is disabled
+        logger.info(
+            "📊 Pipeline Metrics | total=%.0fms | rag=%.0fms | gen=%.0fms | "
+            "confidence=%.3f | chunks=%d | route=%s | guard=%s | mode=%s",
+            metrics.total_latency_ms,
+            metrics.rag_search_ms,
+            metrics.generation_ms,
+            metrics.confidence_score,
+            metrics.chunks_retrieved,
+            metrics.route_decision,
+            metrics.guard_decision,
+            metrics.response_mode,
+        )
 
 
 def _write_to_span(span, metrics: PipelineMetrics) -> None:

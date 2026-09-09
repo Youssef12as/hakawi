@@ -141,8 +141,8 @@ export default function LivingWall() {
             <div className="flex flex-col relative border-l border-[#c4a06a]/20">
               <CharacterStage
                 isSpeaking={isSpeaking}
-                idleSrc="/character/am-othman-idle.mp4"
-                talkingSrc="/character/am-othman-talking.mp4"
+                idleSrc="https://hueymfgudrgdlmyaxeoi.supabase.co/storage/v1/object/public/characters/videos/am-othman-idle.mp4"
+                talkingSrc="https://hueymfgudrgdlmyaxeoi.supabase.co/storage/v1/object/public/characters/videos/am-othman-talking.mp4"
               />
               <button
                 onClick={handleBackToWall}

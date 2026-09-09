@@ -306,8 +306,8 @@ export default function MapInteract() {
             ) : (
               <CharacterStage
                 isSpeaking={isSpeaking}
-                idleSrc={monument.character_name === 'ramsis' ? '/character/ramsis_idle.mp4' : `/character/${monument.character_name || 'am-othman'}-idle.mp4`}
-                talkingSrc={monument.character_name === 'ramsis' ? '/character/ramsis_talking.mp4' : `/character/${monument.character_name || 'am-othman'}-talking.mp4`}
+                idleSrc={monument.idle_video_url}
+                talkingSrc={monument.talking_video_url}
               />
             )}
           </div>
