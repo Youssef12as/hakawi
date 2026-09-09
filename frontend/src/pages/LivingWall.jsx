@@ -15,14 +15,23 @@ export default function LivingWall() {
   const [chatHistory, setChatHistory] = useState([]);
 
   const { isSpeaking, playResponseAudio, stopAudio } = useCharacterState();
-  const { sendTextMessage, sendAudioMessage, fetchTTS, isLoading } = useChatApi();
+  const { sendTextMessage, sendAudioMessage, fetchTTS, createSession, isLoading } = useChatApi();
 
   // Handle clicking a hotspot on the wall
   const handleHotspotClick = useCallback(async (symbolId, storyText) => {
     setIsCracked(true);
 
     // Set up new session
-    const newSessionId = uuidv4();
+    let newSessionId = uuidv4();
+    try {
+      const created = await createSession({
+        chat_mode: 'regional',
+        title: 'الجدار الحي',
+      });
+      if (created?.session_id) newSessionId = created.session_id;
+    } catch {
+      // fallback to uuidv4()
+    }
     setSessionId(newSessionId);
 
     // Add the initial story as AI message
@@ -43,7 +52,7 @@ export default function LivingWall() {
         await playResponseAudio(audioBlob);
       }
     }, 1500);
-  }, [fetchTTS, playResponseAudio]);
+  }, [fetchTTS, playResponseAudio, createSession]);
 
   const handleBackToWall = useCallback(() => {
     stopAudio();

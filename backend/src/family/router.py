@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from src.database import get_db_cursor
 from src.family.constants import DEFAULT_TREE_ID
-from src.family.utils import collect_tree_members, is_character_in_tree
+from src.family.utils import collect_tree_members, is_character_in_tree, prune_tree_members
 
 logger = logging.getLogger(__name__)
 
@@ -16,22 +16,34 @@ router = APIRouter(tags=["family"])
 
 @router.get("/api/family-tree")
 async def get_family_tree():
-    """Retrieve family tree directly from Supabase."""
+    """Retrieve family tree directly from Supabase, synchronizing with public.family_members."""
     try:
-        with get_db_cursor() as cur:
+        with get_db_cursor(commit=True) as cur:
             cur.execute(
-                "SELECT tree_data FROM public.family_trees WHERE id = %s;",
+                "SELECT id, tree_data FROM public.family_trees WHERE id = %s;",
                 (DEFAULT_TREE_ID,)
             )
             row = cur.fetchone()
-            if row and row.get("tree_data"):
-                return row["tree_data"]
+            if not row or not row.get("tree_data"):
+                # Fallback if specific ID not found: get first tree in table
+                cur.execute("SELECT id, tree_data FROM public.family_trees ORDER BY created_at ASC LIMIT 1;")
+                row = cur.fetchone()
 
-            # Fallback if specific ID not found: get first tree in table
-            cur.execute("SELECT tree_data FROM public.family_trees ORDER BY created_at ASC LIMIT 1;")
-            row = cur.fetchone()
             if row and row.get("tree_data"):
-                return row["tree_data"]
+                tree_id = str(row["id"])
+                tree_data = row["tree_data"]
+
+                # Prune any members that were deleted directly from public.family_members
+                cur.execute("SELECT id FROM public.family_members WHERE tree_id = %s;", (tree_id,))
+                valid_ids = {str(r["id"]) for r in cur.fetchall()}
+
+                if valid_ids and prune_tree_members(tree_data, valid_ids):
+                    cur.execute(
+                        "UPDATE public.family_trees SET tree_data = %s WHERE id = %s;",
+                        (Json(tree_data), tree_id)
+                    )
+
+                return tree_data
 
         raise HTTPException(status_code=404, detail="Family tree not found in database")
     except HTTPException:

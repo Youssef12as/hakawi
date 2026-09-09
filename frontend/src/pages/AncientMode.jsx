@@ -10,9 +10,12 @@ import { useChatApi } from '../hooks/useChatApi';
 export default function AncientMode() {
   const { regionId } = useParams();
   const navigate = useNavigate();
-  const { sendAncientMessage, fetchGovernorates, isLoading } = useChatApi();
+  const { sendAncientMessage, fetchGovernorates, fetchChatHistory, createSession, isLoading } = useChatApi();
 
   const [governorates, setGovernorates] = useState(null);
+  const [sessionId, setSessionId] = useState(null);
+  const [chatHistory, setChatHistory] = useState([]);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   useEffect(() => {
     fetchGovernorates().then((data) => {
@@ -41,11 +44,31 @@ export default function AncientMode() {
     };
   }, [governorates, regionId]);
 
+  // Restore chat history or initialize session for this monument
+  useEffect(() => {
+    if (!activeData.monumentKey) return;
+    fetchChatHistory({ monumentKey: activeData.monumentKey }).then((data) => {
+      if (data && data.session_id && data.messages?.length > 0) {
+        setSessionId(data.session_id);
+        setChatHistory(data.messages);
+      } else {
+        createSession({
+          chat_mode: 'ancient',
+          monument_key: activeData.monumentKey,
+          language_mode: 'ancient',
+          title: activeData.elder || 'مصر القديمة',
+        }).then((created) => {
+          if (created?.session_id) setSessionId(created.session_id);
+        }).catch(() => {});
+      }
+    });
+  }, [activeData.monumentKey, activeData.elder, fetchChatHistory, createSession]);
+
   const handleSendText = useCallback(async (text) => {
     setChatHistory(prev => [...prev, { id: Date.now(), sender: 'user', text, timestamp: Date.now() }]);
 
     try {
-      const data = await sendAncientMessage(text, sessionId, activeData.monumentKey);
+      const data = await sendAncientMessage(text, sessionId, activeData.monumentKey, 'ancient');
       setSessionId(data.session_id);
 
       setChatHistory(prev => [...prev, {

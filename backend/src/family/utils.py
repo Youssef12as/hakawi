@@ -38,3 +38,30 @@ def collect_tree_members(node: dict) -> list[dict]:
     for child in node.get("children", []):
         collected.extend(collect_tree_members(child))
     return collected
+
+
+def prune_tree_members(node: dict, valid_member_ids: set[str]) -> bool:
+    """
+    Recursively remove member nodes whose id is not in valid_member_ids.
+    Add-nodes (isAddNode=True or id starting with 'add_') are preserved.
+    Returns True if any member was removed.
+    """
+    if not isinstance(node, dict):
+        return False
+
+    modified = False
+    if "members" in node:
+        original_count = len(node["members"])
+        node["members"] = [
+            m for m in node["members"]
+            if m.get("isAddNode") or str(m.get("id", "")).startswith("add_") or str(m.get("id")) in valid_member_ids
+        ]
+        if len(node["members"]) != original_count:
+            modified = True
+
+    if "children" in node:
+        for child in node["children"]:
+            if prune_tree_members(child, valid_member_ids):
+                modified = True
+
+    return modified

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Map, Users, Menu, X, User, LogIn, LogOut, MessageCircle } from 'lucide-react';
+import { Map, Users, Menu, X, User, LogIn, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function Navbar() {
@@ -20,7 +20,6 @@ export default function Navbar() {
   const navLinks = [
     { to: '/map', label: 'الخريطة', icon: Map },
     { to: '/family', label: 'شجرة العيلة', icon: Users },
-    { to: '/history', label: 'محادثاتي', icon: MessageCircle },
   ];
 
   const handleClick = () => {
@@ -181,25 +180,6 @@ export default function Navbar() {
             تسجيل الدخول
           </Link>
         )}
-
-        {/* Start Journey CTA */}
-        <Link
-          to="/map"
-          style={{
-            border: '1px solid rgba(200,152,48,.4)',
-            background: 'rgba(200,152,48,.12)',
-            color: '#c89830',
-            padding: '8px 18px',
-            borderRadius: 999,
-            fontSize: 13,
-            fontWeight: 700,
-            textDecoration: 'none',
-            marginRight: 6,
-            transition: 'all .25s ease',
-          }}
-        >
-          ابدأ رحلتك
-        </Link>
       </div>
 
       {/* Mobile Toggle */}

@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { X, Languages } from 'lucide-react';
+import { X, Languages, History } from 'lucide-react';
 import PageShell from '../components/layout/PageShell';
 import DialectMap from '../components/map/DialectMap';
 import MonumentSelector from '../components/map/MonumentSelector';
 import CharacterStage from '../components/character/CharacterStage';
 import CharacterCard from '../components/character/CharacterCard';
 import ChatPanel from '../components/chat/ChatPanel';
+import ChatHistoryDrawer from '../components/chat/ChatHistoryDrawer';
 import AIBadge from '../components/consent/AIBadge';
 import { useCharacterState } from '../hooks/useCharacterState';
 import { useChatApi } from '../hooks/useChatApi';
@@ -44,13 +45,14 @@ export default function MapInteract() {
 
   const [sessionId, setSessionId] = useState(null);
   const [chatHistory, setChatHistory] = useState([]);
+  const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
   // Language mode for TTS: 'modern' = Arabic voice, 'ancient' = old Egyptian voice
   const [languageMode, setLanguageMode] = useState('modern');
   // Response style: 'direct' = factual, 'hikaya' = storytelling, 'presentation' = TED talk
   const [responseMode, setResponseMode] = useState('direct');
 
   const { isSpeaking, playResponseAudio, stopAudio } = useCharacterState();
-  const { sendTextMessage, sendAncientMessage, fetchTTS, fetchGovernorates, fetchChatHistory, transcribeAudio, createSession, isLoading } = useChatApi();
+  const { sendTextMessage, sendAncientMessage, fetchTTS, fetchGovernorates, fetchChatHistory, fetchSessionDetail, transcribeAudio, createSession, isLoading } = useChatApi();
 
   // ── Fetch governorates on mount ─────────────────────────────────
   useEffect(() => {
@@ -88,29 +90,47 @@ export default function MapInteract() {
   );
 
   // ── Stage 2 → Stage 3: pick a monument ─────────────────────────
+  // By default, each monument entered starts with a fresh new chat.
   const handleSelectMonument = useCallback(async (monument) => {
     setSelectedMonument(monument);
-    // Restore this user's latest conversation with this monument, if any
-    const histData = await fetchChatHistory({ monumentKey: monument.key });
-    if (histData && histData.session_id && histData.messages?.length > 0) {
-      setSessionId(histData.session_id);
-      setChatHistory(histData.messages);
-    } else {
-      // No history: create a fresh session owned by the logged-in user.
-      // The access token is sent; the backend stamps the session with user_id.
-      try {
-        const created = await createSession({
-          chat_mode: 'ancient',
-          monument_key: monument.key,
-          language_mode: 'modern',
-        });
-        setSessionId(created.session_id);
-      } catch {
-        setSessionId(null); // lazily created by the backend on first message
-      }
-      setChatHistory([]);
+    setChatHistory([]);
+    try {
+      const created = await createSession({
+        chat_mode: 'ancient',
+        monument_key: monument.key,
+        language_mode: 'modern',
+        title: monument.builder || monument.display_name,
+      });
+      setSessionId(created?.session_id || null);
+    } catch {
+      setSessionId(null); // lazily created by the backend on first message
     }
-  }, [fetchChatHistory, createSession]);
+  }, [createSession]);
+
+  // ── Switch to a previous session from the history drawer ────────
+  const handleSelectHistorySession = useCallback(async (selectedSid) => {
+    try {
+      const detail = await fetchSessionDetail(selectedSid);
+      if (detail) {
+        setSessionId(detail.id);
+        if (detail.language_mode) {
+          setLanguageMode(detail.language_mode);
+        }
+        setChatHistory(
+          (detail.messages || []).map((m) => ({
+            id: m.id,
+            sender: m.sender,
+            text: m.text,
+            timestamp: m.timestamp,
+            meta: m.metadata || {},
+            metadata: m.metadata || {},
+          }))
+        );
+      }
+    } catch (e) {
+      console.error('Failed to load session history:', e);
+    }
+  }, [fetchSessionDetail]);
 
   // ── Navigation helpers ──────────────────────────────────────────
   const handleBackToMap = useCallback(() => {
@@ -337,14 +357,27 @@ export default function MapInteract() {
         {/* Chat Side (Left Column in RTL) */}
         <div className="relative flex flex-col min-h-0 bg-[#111010]">
 
-          {/* Chat Side Header — Language Toggle (Aswan monuments) + منقوشاتنا */}
-          {selectedGovernorate?.key === 'aswan' && (
-            <div className="flex items-center justify-between px-4 py-2 border-b border-[#c4a06a]/10 bg-[#1a1815]">
-              {/* Language Mode Toggle - Only show for ancient monuments (not am-othman/aswan-general) */}
-              {monument.key !== 'aswan-general' ? (
-                <div className="flex items-center gap-3">
-                  <Languages className="w-4 h-4 text-[#c4a06a]/60" />
-                  <span className={`text-xs font-bold transition-colors cursor-pointer ${languageMode === 'modern' ? 'text-[#c4a06a]' : 'text-sand/40'}`}
+          {/* Chat Side Header — "محادثاتي" icon + Language Toggle */}
+          <div className="flex items-center justify-between px-4 py-2 border-b border-[#c4a06a]/15 bg-[#14120e]/95 backdrop-blur z-20">
+            {/* Right side (RTL start): Chat History Button */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowHistoryDrawer(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#c4a06a]/15 hover:bg-[#c4a06a]/25 text-[#f0e0c8] border border-[#c4a06a]/30 hover:border-[#c4a06a]/60 text-xs font-bold transition-all shadow-sm"
+                title="عرض المحادثات السابقة لهذا المعلم"
+              >
+                <History className="w-3.5 h-3.5 text-[#c4a06a]" />
+                <span>محادثاتي</span>
+              </button>
+            </div>
+
+            {/* Left side (RTL end): Language Toggle (Aswan monuments) + منقوشاتنا */}
+            <div className="flex items-center gap-3">
+              {selectedGovernorate?.key === 'aswan' && monument.key !== 'aswan-general' && (
+                <div className="flex items-center gap-2">
+                  <Languages className="w-3.5 h-3.5 text-[#c4a06a]/60" />
+                  <span
+                    className={`text-xs font-bold transition-colors cursor-pointer ${languageMode === 'modern' ? 'text-[#c4a06a]' : 'text-sand/40'}`}
                     onClick={() => setLanguageMode('modern')}
                   >
                     المصرية الحديثة
@@ -352,33 +385,41 @@ export default function MapInteract() {
 
                   <button
                     onClick={() => setLanguageMode(languageMode === 'modern' ? 'ancient' : 'modern')}
-                    className="relative w-12 h-6 rounded-full bg-espresso border border-[#c4a06a]/30 transition-colors flex-shrink-0"
+                    className="relative w-10 h-5 rounded-full bg-espresso border border-[#c4a06a]/30 transition-colors flex-shrink-0"
                     aria-label="تبديل اللغة"
                   >
-                    <div className={`absolute top-0.5 bottom-0.5 w-5 bg-[#c4a06a] rounded-full transition-all duration-300 ${languageMode === 'ancient' ? 'left-0.5' : 'left-[1.375rem]'}`} />
+                    <div className={`absolute top-0.5 bottom-0.5 w-4 bg-[#c4a06a] rounded-full transition-all duration-300 ${languageMode === 'ancient' ? 'left-0.5' : 'left-[1.125rem]'}`} />
                   </button>
 
-                  <span className={`text-xs font-bold transition-colors cursor-pointer ${languageMode === 'ancient' ? 'text-[#c4a06a]' : 'text-sand/40'}`}
+                  <span
+                    className={`text-xs font-bold transition-colors cursor-pointer ${languageMode === 'ancient' ? 'text-[#c4a06a]' : 'text-sand/40'}`}
                     onClick={() => setLanguageMode('ancient')}
                   >
                     المصرية القديمة
                   </span>
                 </div>
-              ) : (
-                <div /> /* Empty div to maintain flex spacing if needed */
               )}
 
-              {/* منقوشاتنا button (only for aswan-general) */}
-              {monument.key === 'aswan-general' && (
+              {selectedGovernorate?.key === 'aswan' && monument.key === 'aswan-general' && (
                 <button
                   onClick={() => setShowWall((prev) => !prev)}
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg border transition-all duration-300 text-sm font-medium ${showWall ? 'bg-[#c4a06a]/20 border-[#c4a06a]/50 text-[#c4a06a]' : 'bg-transparent border-[#c4a06a]/20 text-[#c4a06a]/70 hover:bg-[#c4a06a]/10 hover:text-[#c4a06a]'}`}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all duration-300 text-xs font-medium ${showWall ? 'bg-[#c4a06a]/20 border-[#c4a06a]/50 text-[#c4a06a]' : 'bg-transparent border-[#c4a06a]/20 text-[#c4a06a]/70 hover:bg-[#c4a06a]/10 hover:text-[#c4a06a]'}`}
                 >
                   🏛️ منقوشاتنا
                 </button>
               )}
             </div>
-          )}
+          </div>
+
+          {/* ChatGPT-style History Drawer */}
+          <ChatHistoryDrawer
+            isOpen={showHistoryDrawer}
+            onClose={() => setShowHistoryDrawer(false)}
+            currentMonumentKey={monument.key}
+            currentMonumentName={monument.builder || monument.display_name}
+            activeSessionId={sessionId}
+            onSelectSession={handleSelectHistorySession}
+          />
 
           {/* Floating Symbol Panel */}
           {selectedSymbol && (
