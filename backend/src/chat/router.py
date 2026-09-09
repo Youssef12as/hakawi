@@ -1,9 +1,9 @@
 import logging
-import time
 from uuid import uuid4
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, WebSocket
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, WebSocket
 
+from src.auth import get_current_user_id
 from src.config import settings
 from src.chat.ancient_translation import generate_with_ancient
 from src.chat.rag_service import is_ready as rag_is_ready, retrieve_and_build
@@ -12,15 +12,26 @@ from src.chat.schemas import (
     AncientChatResponse,
     AudioChatResponse,
     ChatHistoryResponse,
+    SessionCreateRequest,
+    SessionDetail,
+    SessionResponse,
+    SessionSummary,
     TextChatRequest,
     TextChatResponse,
 )
 from src.chat.service import (
+    SessionForbidden,
+    SessionNotFound,
     clean_text_formatting,
+    create_session,
+    delete_session,
     get_history,
     get_recent_session_history,
+    get_session_detail,
     get_session_messages,
+    list_user_sessions,
     save_chat_turn,
+    verify_session_ownership,
 )
 from src.chat.metrics import PipelineMetrics, timed_section, log_pipeline_metrics
 from src.chat.utils import format_persona_instructions, get_historical_persona
@@ -56,6 +67,15 @@ def _transcribe_audio(audio_bytes: bytes, filename: str) -> str:
     raise RuntimeError("No transcription service available (neither Deepgram nor Speechmatics configured).")
 
 
+def _ensure_session_access(session_id: str | None, user_id: str) -> None:
+    """
+    Verify the user may write to this session (own it or create it).
+    Raises 404 when the session exists but belongs to another user.
+    """
+    if session_id and not verify_session_ownership(session_id, user_id):
+        raise HTTPException(status_code=404, detail="الجلسة غير موجودة.")
+
+
 @router.websocket("/api/ws/stt")
 async def websocket_stt_endpoint(websocket: WebSocket):
     """
@@ -65,13 +85,89 @@ async def websocket_stt_endpoint(websocket: WebSocket):
     await proxy_deepgram_ws(websocket)
 
 
-@router.post("/api/chat/text", response_model=TextChatResponse)
-async def chat_text(request: TextChatRequest):
-    """
-    Text chat with a regional persona.
+# ─── Session management (authenticated) ────────────────────────────────────
 
-    Sends the user's text to Gemini with the selected region's persona
-    system prompt and returns a response in the matching dialect.
+
+def _ts(dt) -> int:
+    return int(dt.timestamp() * 1000) if dt else 0
+
+
+@router.post("/api/chat/sessions", response_model=SessionResponse)
+async def create_chat_session(
+    request: SessionCreateRequest,
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    Create a new chat session owned by the authenticated user.
+    The frontend sends the Supabase access token; the backend verifies it,
+    extracts the user id, and stamps it on the session. No guests allowed.
+    """
+    try:
+        session = create_session(
+            user_id=user_id,
+            chat_mode=request.chat_mode,
+            governorate_key=request.governorate_key,
+            monument_key=request.monument_key,
+            family_member_id=request.family_member_id,
+            language_mode=request.language_mode,
+            title=request.title,
+            session_id=request.session_id,
+        )
+        return SessionResponse(
+            session_id=str(session["id"]),
+            chat_mode=session["chat_mode"],
+            title=session["title"] or "محادثة جديدة",
+            created_at=_ts(session.get("created_at")),
+            updated_at=_ts(session.get("updated_at")),
+        )
+    except SessionForbidden:
+        raise HTTPException(status_code=404, detail="الجلسة غير موجودة.")
+    except Exception as e:
+        logger.error(f"Error creating session: {e}")
+        raise HTTPException(status_code=500, detail="Failed to create session")
+
+
+@router.get("/api/chat/sessions")
+async def list_chat_sessions(user_id: str = Depends(get_current_user_id)):
+    """List all chat sessions owned by the authenticated user, newest first."""
+    sessions = list_user_sessions(user_id)
+    return {
+        "sessions": [SessionSummary(**s).model_dump() for s in sessions],
+    }
+
+
+@router.get("/api/chat/sessions/{session_id}", response_model=SessionDetail)
+async def get_chat_session(session_id: str, user_id: str = Depends(get_current_user_id)):
+    """
+    Get a session with its full transcript. Users can only access their own
+    sessions — a foreign session id returns 404 (existence is not leaked).
+    """
+    try:
+        detail = get_session_detail(session_id, user_id)
+        return SessionDetail(**detail)
+    except (SessionNotFound, SessionForbidden):
+        raise HTTPException(status_code=404, detail="الجلسة غير موجودة.")
+
+
+@router.delete("/api/chat/sessions/{session_id}")
+async def delete_chat_session(session_id: str, user_id: str = Depends(get_current_user_id)):
+    """Delete a session (and its turns) owned by the authenticated user."""
+    if not delete_session(session_id, user_id):
+        raise HTTPException(status_code=404, detail="الجلسة غير موجودة.")
+    return {"status": "deleted"}
+
+
+# ─── Chat endpoints (authentication required) ──────────────────────────────
+
+
+@router.post("/api/chat/text", response_model=TextChatResponse)
+async def chat_text(
+    request: TextChatRequest,
+    user_id: str = Depends(get_current_user_id),
+):
+    """
+    Text chat with a regional or family persona.
+    Requires authentication; sessions are owned by the authenticated user.
     """
     try:
         metrics = PipelineMetrics()
@@ -79,11 +175,13 @@ async def chat_text(request: TextChatRequest):
         metrics.user_query = request.text
         metrics.response_mode = "regional_chat"
 
+        _ensure_session_access(request.session_id, user_id)
         session_id = request.session_id or str(uuid4())
         history = get_history(session_id)
 
         # Family member mode: use relation-based persona
-        if request.persona == "family_member" and request.member_name:
+        is_family = request.persona == "family_member" and request.member_name
+        if is_family:
             system_prompt = build_family_prompt(request.member_name, request.relation)
         else:
             persona, _ = get_historical_persona(request.region)
@@ -99,20 +197,22 @@ async def chat_text(request: TextChatRequest):
             )
         ai_response = clean_text_formatting(ai_response)
 
-        history.append({"role": "user", "parts": [{"text": request.text}]})
-        history.append({"role": "model", "parts": [{"text": ai_response}]})
-
         # Log metrics
         log_pipeline_metrics(metrics)
 
-        chat_mode = "family_member" if request.persona == "family_member" else "regional"
-        save_chat_turn(
+        chat_mode = "family_member" if is_family else "regional"
+        session_id = save_chat_turn(
             session_id=session_id,
-            user_text=request.text,
-            assistant_text=ai_response,
+            user_id=user_id,
+            question=request.text,
+            response=ai_response,
             chat_mode=chat_mode,
             governorate_key=request.region if chat_mode == "regional" else None,
-            family_member_id=(request.member_id or request.member_name) if chat_mode == "family_member" else None,
+            family_member_id=(request.member_id or request.member_name) if is_family else None,
+            metadata={
+                "member_name": request.member_name if is_family else None,
+                "relation": request.relation if is_family else None,
+            },
         )
 
         logger.info(
@@ -126,6 +226,10 @@ async def chat_text(request: TextChatRequest):
             region=request.region,
         )
 
+    except HTTPException:
+        raise
+    except SessionForbidden:
+        raise HTTPException(status_code=404, detail="الجلسة غير موجودة.")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
@@ -173,14 +277,15 @@ async def chat_audio(
     member_id: str = Form(default=None),
     member_name: str = Form(default=None),
     relation: str = Form(default=None),
+    user_id: str = Depends(get_current_user_id),
 ):
     """
     Audio chat with a regional or family member persona.
-
-    Receives an audio file (WebM/OGG/WAV), transcribes it via Deepgram/Speechmatics,
-    then sends the transcribed text to Gemini for a persona response.
+    Requires authentication; sessions are owned by the authenticated user.
     """
     try:
+        _ensure_session_access(session_id, user_id)
+
         audio_bytes = await file.read()
 
         if not audio_bytes:
@@ -216,16 +321,18 @@ async def chat_audio(
         )
         ai_response = clean_text_formatting(ai_response)
 
-        history.append({"role": "user", "parts": [{"text": transcribed_text}]})
-        history.append({"role": "model", "parts": [{"text": ai_response}]})
-
-        save_chat_turn(
+        session_id = save_chat_turn(
             session_id=session_id,
-            user_text=transcribed_text,
-            assistant_text=ai_response,
+            user_id=user_id,
+            question=transcribed_text,
+            response=ai_response,
             chat_mode=chat_mode,
             governorate_key=region if chat_mode == "regional" else None,
-            family_member_id=(member_id or member_name) if chat_mode == "family_member" else None,
+            family_member_id=(member_id or member_name) if is_family else None,
+            metadata={
+                "member_name": member_name if is_family else None,
+                "relation": relation if is_family else None,
+            },
         )
 
         logger.info(
@@ -242,6 +349,8 @@ async def chat_audio(
 
     except HTTPException:
         raise
+    except SessionForbidden:
+        raise HTTPException(status_code=404, detail="الجلسة غير موجودة.")
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
@@ -250,9 +359,13 @@ async def chat_audio(
 
 
 @router.post("/api/chat/ancient", response_model=AncientChatResponse)
-async def chat_ancient(request: AncientChatRequest):
+async def chat_ancient(
+    request: AncientChatRequest,
+    user_id: str = Depends(get_current_user_id),
+):
     """
     RAG-backed chat with a historical character (Ancient Mode).
+    Requires authentication; sessions are owned by the authenticated user.
 
     Pipeline:
         user question
@@ -277,6 +390,7 @@ async def chat_ancient(request: AncientChatRequest):
                 detail="خدمة الـ RAG غير جاهزة. تأكد من وجود ملف embeddings.json.",
             )
 
+        _ensure_session_access(request.session_id, user_id)
         session_id = request.session_id or str(uuid4())
         use_ancient = (request.language_mode == "ancient")
 
@@ -349,10 +463,11 @@ async def chat_ancient(request: AncientChatRequest):
         # --- Log all metrics ---
         log_pipeline_metrics(metrics)
 
-        save_chat_turn(
+        session_id = save_chat_turn(
             session_id=session_id,
-            user_text=request.text,
-            assistant_text=ai_response,
+            user_id=user_id,
+            question=request.text,
+            response=ai_response,
             chat_mode="ancient",
             monument_key=request.monument_key,
             language_mode=request.language_mode,
@@ -361,6 +476,8 @@ async def chat_ancient(request: AncientChatRequest):
                 "monument": payload["monument"],
                 "persona_key": payload["persona_key"],
                 "tts_text": tts_text,
+                "character_name": character_name,
+                "response_mode": request.response_mode,
             },
         )
 
@@ -383,6 +500,8 @@ async def chat_ancient(request: AncientChatRequest):
 
     except HTTPException:
         raise
+    except SessionForbidden:
+        raise HTTPException(status_code=404, detail="الجلسة غير موجودة.")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
@@ -398,15 +517,21 @@ async def get_chat_history_endpoint(
     monument_key: str | None = None,
     family_member_id: str | None = None,
     chat_mode: str | None = None,
+    user_id: str = Depends(get_current_user_id),
 ):
     """
-    Retrieve chat history for a session ID, or the most recent session for a monument or family member.
+    Retrieve chat history for the authenticated user only:
+    - by explicit session id (ownership enforced), or
+    - the user's most recent session for a monument / family member / mode.
     """
     if session_id:
+        if not verify_session_ownership(session_id, user_id):
+            raise HTTPException(status_code=404, detail="الجلسة غير موجودة.")
         messages = get_session_messages(session_id)
         return ChatHistoryResponse(session_id=session_id, messages=messages)
 
     sid, messages = get_recent_session_history(
+        user_id=user_id,
         monument_key=monument_key,
         family_member_id=family_member_id,
         chat_mode=chat_mode,

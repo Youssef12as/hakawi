@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Map, Users, Menu, X, User, LogIn, LogOut } from 'lucide-react';
+import { Map, Users, Menu, X, User, LogIn, LogOut, MessageCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function Navbar() {
@@ -20,6 +20,7 @@ export default function Navbar() {
   const navLinks = [
     { to: '/map', label: 'الخريطة', icon: Map },
     { to: '/family', label: 'شجرة العيلة', icon: Users },
+    { to: '/history', label: 'محادثاتي', icon: MessageCircle },
   ];
 
   const handleClick = () => {

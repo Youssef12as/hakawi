@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import { X, Languages } from 'lucide-react';
 import PageShell from '../components/layout/PageShell';
 import DialectMap from '../components/map/DialectMap';
@@ -51,7 +50,7 @@ export default function MapInteract() {
   const [responseMode, setResponseMode] = useState('direct');
 
   const { isSpeaking, playResponseAudio, stopAudio } = useCharacterState();
-  const { sendTextMessage, sendAncientMessage, fetchTTS, fetchGovernorates, fetchChatHistory, transcribeAudio, isLoading } = useChatApi();
+  const { sendTextMessage, sendAncientMessage, fetchTTS, fetchGovernorates, fetchChatHistory, transcribeAudio, createSession, isLoading } = useChatApi();
 
   // ── Fetch governorates on mount ─────────────────────────────────
   useEffect(() => {
@@ -91,15 +90,27 @@ export default function MapInteract() {
   // ── Stage 2 → Stage 3: pick a monument ─────────────────────────
   const handleSelectMonument = useCallback(async (monument) => {
     setSelectedMonument(monument);
+    // Restore this user's latest conversation with this monument, if any
     const histData = await fetchChatHistory({ monumentKey: monument.key });
     if (histData && histData.session_id && histData.messages?.length > 0) {
       setSessionId(histData.session_id);
       setChatHistory(histData.messages);
     } else {
-      setSessionId(uuidv4());
+      // No history: create a fresh session owned by the logged-in user.
+      // The access token is sent; the backend stamps the session with user_id.
+      try {
+        const created = await createSession({
+          chat_mode: 'ancient',
+          monument_key: monument.key,
+          language_mode: 'modern',
+        });
+        setSessionId(created.session_id);
+      } catch {
+        setSessionId(null); // lazily created by the backend on first message
+      }
       setChatHistory([]);
     }
-  }, [fetchChatHistory]);
+  }, [fetchChatHistory, createSession]);
 
   // ── Navigation helpers ──────────────────────────────────────────
   const handleBackToMap = useCallback(() => {

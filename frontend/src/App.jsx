@@ -10,6 +10,7 @@ import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Profile from './pages/Profile';
+import ChatHistory from './pages/ChatHistory';
 
 export default function App() {
   return (
@@ -37,6 +38,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <MapInteract />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/history"
+              element={
+                <ProtectedRoute>
+                  <ChatHistory />
                 </ProtectedRoute>
               }
             />

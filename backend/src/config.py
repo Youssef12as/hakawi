@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     DATABASE_URL: str = ""
     SUPABASE_URL: str = "https://hueymfgudrgdlmyaxeoi.supabase.co"
     SUPABASE_ANON_KEY: str = ""
+    # Supabase JWT secret (Dashboard -> Project Settings -> API -> JWT Secret).
+    # Used to verify HS256 access tokens sent by the frontend.
+    SUPABASE_JWT_SECRET: str = ""
 
     model_config = {
         "env_file": (_env_file, ".env"),

@@ -24,6 +24,8 @@ import logging
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
+logger = logging.getLogger(__name__)
+
 try:
     from opentelemetry import trace
     tracer = trace.get_tracer("hikawi.pipeline")
