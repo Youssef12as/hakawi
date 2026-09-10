@@ -11,7 +11,6 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     SPEECHMATICS_API_KEY: str = ""
     VOICE_API_URL: str = "https://8000-01kx664hbtgq4yqfk20rj2ycx1.cloudspaces.litng.ai"
-    DEEPGRAM_API_KEY: str = ""
     DATABASE_URL: str = ""
     SUPABASE_URL: str = "https://hueymfgudrgdlmyaxeoi.supabase.co"
     SUPABASE_ANON_KEY: str = ""

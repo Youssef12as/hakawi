@@ -2,20 +2,19 @@ import logging
 from typing import Any
 
 from src.chat.constants import DEFAULT_PERSONA_INSTRUCTION, PERSONA_FORMATTING_RULES
-from src.database import get_db_cursor
+from src.chat.historical_prompts import HISTORICAL_PERSONAS
 
 logger = logging.getLogger(__name__)
 
 
 def get_historical_persona(monument_name: str) -> tuple[dict[str, Any] | None, str]:
     """
-    Match a monument name (as stored in the RAG chunks) to a historical persona
-    directly from Supabase public.historical_prompts.
+    Match a monument name (as stored in the RAG chunks) to its locally loaded
+    historical persona. This keeps prompt lookup off the response-time
+    database path.
     Returns (persona_dict_or_None, matched_key_or_clean_name).
     """
     monument_clean = monument_name.replace("#", "").strip()
-
-    from src.seed_fixtures import HISTORICAL_PERSONAS
 
     for key, persona_dict in HISTORICAL_PERSONAS.items():
         # e.g. key = "أبو سمبل — رمسيس الثاني"

@@ -17,10 +17,10 @@ if hasattr(sys.stderr, "reconfigure"):
 from src.seed_fixtures import (
     DEFAULT_TREE_DATA,
     GOVERNORATES,
-    HISTORICAL_PERSONAS,
     MONUMENTS,
     VOICES,
 )
+from src.chat.historical_prompts import HISTORICAL_PERSONAS
 
 # Load .env
 load_dotenv(os.path.join(backend_dir, ".env"))
@@ -39,7 +39,7 @@ def seed():
 
     try:
         # 1. Governorates
-        print("📍 1/4 Seeding Governorates...")
+        print("📍 1/5 Seeding Governorates...")
         for gov in GOVERNORATES:
             cur.execute(
                 """
@@ -56,7 +56,7 @@ def seed():
         print(f"   ✓ Seeded {len(GOVERNORATES)} governorates.")
 
         # 2. Voice Personas
-        print("🎙️ 2/4 Seeding Voice Personas (personas.py)...")
+        print("🎙️ 2/5 Seeding Voice Personas...")
         for key, v in VOICES.items():
             cur.execute(
                 """
@@ -74,7 +74,7 @@ def seed():
         print(f"   ✓ Seeded {len(VOICES)} voice personas.")
 
         # 3. Historical Prompts
-        print("📜 3/4 Seeding Historical Prompts (prompts.py)...")
+        print("📜 3/5 Seeding Historical Prompts (local runtime definitions)...")
         prompt_id_map = {}
         for mon_name, p in HISTORICAL_PERSONAS.items():
             cur.execute(
@@ -107,7 +107,7 @@ def seed():
         print(f"   ✓ Seeded {len(HISTORICAL_PERSONAS)} historical persona prompts.")
 
         # 4. Monuments
-        print("🏛️ 4/4 Seeding Monuments (registry.py)...")
+        print("🏛️ 4/5 Seeding Monuments...")
         for mon in MONUMENTS:
             mon_name = mon["monument_name"]
             prompt_id = prompt_id_map.get(mon_name)
@@ -162,7 +162,7 @@ def seed():
         print(f"   ✓ Seeded {len(MONUMENTS)} monuments.")
 
         # 5. Family Oral Archive
-        print("🌳 5/5 Seeding Default Family Oral Archive (family/constants.py)...")
+        print("🌳 5/5 Seeding Default Family Oral Archive...")
         DEFAULT_TREE_ID = "00000000-0000-0000-0000-000000000001"
 
         # 5a. Insert/Update Root Family Tree

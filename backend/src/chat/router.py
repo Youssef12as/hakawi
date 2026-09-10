@@ -1,7 +1,7 @@
 import logging
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, WebSocket
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from src.auth import get_current_user_id
 from src.config import settings
@@ -39,10 +39,6 @@ from src.family.utils import build_family_prompt
 from src.governorates.utils import get_monument_by_key
 from src.integrations.gemini import generate
 from src.integrations.speechmatics import transcribe_audio as transcribe_audio_speechmatics
-from src.integrations.deepgram import (
-    proxy_deepgram_ws,
-    transcribe_audio_deepgram,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -50,21 +46,11 @@ router = APIRouter(tags=["chat"])
 
 
 def _transcribe_audio(audio_bytes: bytes, filename: str) -> str:
-    """
-    Transcribe audio with Deepgram Nova-3 as primary and Speechmatics as fallback.
-    """
-    if settings.DEEPGRAM_API_KEY:
-        try:
-            text = transcribe_audio_deepgram(audio_bytes, filename)
-            if text:
-                return text
-        except Exception as e:
-            logger.warning(f"Deepgram transcription failed, trying Speechmatics fallback: {e}")
+    """Transcribe Egyptian Arabic audio through Speechmatics."""
+    if not settings.SPEECHMATICS_API_KEY:
+        raise RuntimeError("SPEECHMATICS_API_KEY is not configured.")
 
-    if settings.SPEECHMATICS_API_KEY:
-        return transcribe_audio_speechmatics(audio_bytes, filename)
-
-    raise RuntimeError("No transcription service available (neither Deepgram nor Speechmatics configured).")
+    return transcribe_audio_speechmatics(audio_bytes, filename)
 
 
 def _ensure_session_access(session_id: str | None, user_id: str) -> None:
@@ -74,15 +60,6 @@ def _ensure_session_access(session_id: str | None, user_id: str) -> None:
     """
     if session_id and not verify_session_ownership(session_id, user_id):
         raise HTTPException(status_code=404, detail="الجلسة غير موجودة.")
-
-
-@router.websocket("/api/ws/stt")
-async def websocket_stt_endpoint(websocket: WebSocket):
-    """
-    Live streaming speech-to-text WebSocket proxy to Deepgram Nova-3.
-    """
-    await websocket.accept()
-    await proxy_deepgram_ws(websocket)
 
 
 # ─── Session management (authenticated) ────────────────────────────────────
