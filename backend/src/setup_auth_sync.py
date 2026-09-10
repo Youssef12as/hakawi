@@ -1,6 +1,15 @@
 """
-Migration script to synchronize auth.users and public.profiles,
-set up RLS policies, storage bucket policies, and deletion/update triggers.
+Database migrations file for Hakawi (Supabase PostgreSQL).
+All schema migrations live here and are idempotent (safe to re-run).
+
+Covers:
+1. RLS policies on public.profiles.
+2. storage bucket 'avatars' + policies.
+3. auth.users <-> public.profiles sync triggers (insert/update/delete).
+4. Sync existing auth.users into public.profiles.
+5. Chat tables rebuild: chat_sessions.user_id ownership + chat_messages
+   single-row turn schema (question + response per row). Old data is
+   discarded on rebuild.
 """
 
 import psycopg2
@@ -173,6 +182,43 @@ def run_migration():
         END,
         updated_at = NOW();
     """)
+
+    print("6. Rebuilding chat tables (question + response in one row)...")
+    # 5a. chat_sessions: ensure user_id ownership column with cascade delete.
+    #     (Column may already exist; ADD COLUMN IF NOT EXISTS keeps this idempotent.)
+    cur.execute("""
+        ALTER TABLE public.chat_sessions
+            ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+
+        DROP INDEX IF EXISTS idx_chat_sessions_user_updated;
+        CREATE INDEX idx_chat_sessions_user_updated
+            ON public.chat_sessions (user_id, updated_at DESC);
+    """)
+
+    # 5b. chat_messages: rebuild with the single-turn schema.
+    #     Old rows (role/content pairs) are garbage and discarded.
+    #     A turn always has a question; response is NULL until answered,
+    #     so a response can never exist without its question.
+    cur.execute("""
+        DROP TABLE IF EXISTS public.chat_messages;
+
+        CREATE TABLE public.chat_messages (
+            id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            session_id UUID NOT NULL REFERENCES public.chat_sessions(id) ON DELETE CASCADE,
+            question   TEXT NOT NULL,
+            response   TEXT,
+            metadata   JSONB NOT NULL DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+
+        CREATE INDEX idx_chat_messages_session_created
+            ON public.chat_messages (session_id, created_at);
+    """)
+
+    # 5c. Wipe legacy demo sessions (they had no owner: user_id was always NULL)
+    cur.execute("DELETE FROM public.chat_sessions WHERE user_id IS NULL;")
+    deleted = cur.rowcount
+    print(f"   Chat tables rebuilt. {deleted} legacy session(s) removed.")
 
     print("Migration completed successfully!")
     cur.close()

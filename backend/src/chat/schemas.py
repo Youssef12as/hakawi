@@ -57,3 +57,51 @@ class AncientChatResponse(BaseModel):
     persona_key: str
     display_name: str
     character_name: str
+
+
+# ─── Authenticated session management (chat history) ──────────────────────
+
+
+class SessionCreateRequest(BaseModel):
+    chat_mode: str = "regional"          # regional | family_member | ancient
+    governorate_key: str | None = None
+    monument_key: str | None = None
+    family_member_id: str | None = None
+    language_mode: str = "modern"
+    title: str | None = None
+    # Optional client-generated id (e.g. from the map page uuid)
+    session_id: str | None = None
+
+
+class SessionResponse(BaseModel):
+    session_id: str
+    chat_mode: str
+    title: str
+    created_at: int
+    updated_at: int
+
+
+class SessionSummary(BaseModel):
+    id: str
+    chat_mode: str
+    governorate_key: str | None = None
+    monument_key: str | None = None
+    family_member_id: str | None = None
+    language_mode: str = "modern"
+    title: str
+    created_at: int
+    updated_at: int
+    turn_count: int
+
+
+class SessionDetail(BaseModel):
+    id: str
+    chat_mode: str
+    governorate_key: str | None = None
+    monument_key: str | None = None
+    family_member_id: str | None = None
+    language_mode: str = "modern"
+    title: str
+    created_at: int
+    updated_at: int
+    messages: list[dict]

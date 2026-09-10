@@ -136,7 +136,7 @@ export default function FamilyTree() {
   const [chatHistory, setChatHistory] = useState([]);
   const [chatSessionId, setChatSessionId] = useState(null);
   const { isSpeaking, playResponseAudio, stopAudio } = useCharacterState();
-  const { sendTextMessage, sendAudioMessage, fetchTTS, fetchChatHistory, transcribeAudio, isLoading: chatLoading } = useChatApi();
+  const { sendTextMessage, sendAudioMessage, fetchTTS, fetchChatHistory, transcribeAudio, createSession, isLoading: chatLoading } = useChatApi();
 
   // Recording refs for Add Member
   const mediaRecorderRef = useRef(null);
@@ -329,7 +329,16 @@ export default function FamilyTree() {
       setChatSessionId(histData.session_id);
       setChatHistory(histData.messages);
     } else {
-      setChatSessionId(uuidv4());
+      try {
+        const created = await createSession({
+          chat_mode: 'family_member',
+          family_member_id: member.id,
+          title: member.name,
+        });
+        setChatSessionId(created.session_id || uuidv4());
+      } catch {
+        setChatSessionId(uuidv4());
+      }
       setChatHistory([]);
     }
   };

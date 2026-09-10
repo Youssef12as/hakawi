@@ -81,13 +81,13 @@ backend/
     ├── main.py                   # FastAPI app init, OTel/Phoenix tracing, router mounting, /health
     ├── config.py                 # Pydantic Settings loading .env
     ├── database.py               # psycopg2 ThreadedConnectionPool + cursor helpers
-    ├── auth.py                   # Optional user ID extraction from Supabase Bearer JWT
+    ├── auth.py                   # Verified get_current_user_id (required) + optional user extraction
     ├── cors.py                   # CORS middleware setup
     │
     ├── chat/                     # 💬 Conversation & Heritage AI Engine
-    │   ├── router.py             # /api/chat/*, /api/stt, /api/ws/stt endpoints
-    │   ├── schemas.py            # Chat request/response DTOs (text, audio, ancient, history)
-    │   ├── service.py            # Chat persistence (chat_sessions + chat_messages) & text cleanup
+    │   ├── router.py             # /api/chat/*, /api/chat/sessions CRUD, /api/stt, /api/ws/stt
+    │   ├── schemas.py            # Chat + session request/response DTOs
+    │   ├── service.py            # Session CRUD (user-scoped) + single-row turn persistence
     │   ├── rag_service.py        # In-memory numpy cosine search over embeddings.json + prompt building
     │   ├── ancient_translation.py# Dual Arabic + ancient-Egyptian transliteration output
     │   ├── utils.py              # Persona lookup (historical_prompts table) & instruction formatting
@@ -122,8 +122,11 @@ backend/
     │
     ├── seed_supabase.py          # One-off: seed all tables from seed_fixtures.py
     ├── seed_fixtures.py          # Hardcoded seed data (monuments, personas, voices, default tree)
-    ├── setup_auth_sync.py        # One-off: profiles RLS, auth triggers, avatars bucket
+    ├── setup_auth_sync.py        # THE migrations file: profiles/RLS/triggers + chat tables schema
     └── migrate_db_assets.py      # One-off: asset URL columns, characters bucket, asset uploads
+
+tests/                            # pytest suite (auth enforcement, ownership, turn persistence)
+tools/                            # Read-only DB inspection helpers
 ```
 
 ---
@@ -138,8 +141,8 @@ The backend talks to Postgres via a pooled direct connection (`DATABASE_URL`). K
 | `monuments` | Monuments per governorate: display names, builders, bios, GPS, chips (quick replies), voice keys, asset URLs |
 | `historical_prompts` | Persona definitions per monument (tone, language, vocabulary, example, avoid) |
 | `voice_personas` | Voice registry: ref audio path (Supabase Storage URL), ref text, `is_custom`/`is_cloned` flags, user ownership |
-| `chat_sessions` | One row per session: mode (regional/family_member/ancient), governorate/monument/member refs, title, timestamps |
-| `chat_messages` | Two rows per turn (`role='user'` + `role='assistant'`), linked by `session_id`; assistant rows carry a `metadata` JSON (builder, persona, tts_text) |
+| `chat_sessions` | One row per session: **owner (`user_id` → auth.users, cascade delete)**, mode (regional/family_member/ancient), governorate/monument/member refs, language mode, title, timestamps |
+| `chat_messages` | **One row per turn** (`question` + `response` + `metadata` JSON), linked by `session_id`; `question` is NOT NULL so a response can never exist without its question |
 | `family_trees` | Full tree JSON (`tree_data`) per user |
 | `family_members` | Flattened member rows synced from tree saves |
 | `family_relationships` / `family_occasions` | Kinship edges and member occasions |
@@ -171,22 +174,28 @@ Zero-shot voice cloning via an external Lightning TTS server. Voice personas liv
 
 ## 🔗 API Endpoints
 
-| Endpoint | Method | Domain | Description |
+**Authenticated endpoints** require `Authorization: Bearer <Supabase access token>`. The token is verified locally (HS256 signature against `SUPABASE_JWT_SECRET`, audience `authenticated`, expiry) and the user id is stamped on the session — **no guests allowed**. Users can only see and continue their own sessions (foreign session ids return 404).
+
+| Endpoint | Method | Auth | Description |
 |---|---|---|---|
-| `/health` | `GET` | System | Health check and RAG readiness status. |
-| `/api/governorates` | `GET` | Governorates | All governorates with nested monuments, GPS, voices, chips & asset URLs. |
-| `/api/chat/text` | `POST` | Chat | Text chat with a regional or family persona. |
-| `/api/chat/audio` | `POST` | Chat | Audio chat: transcribes (Deepgram → Speechmatics fallback), queries persona, returns response. |
-| `/api/chat/ancient` | `POST` | Chat | RAG-backed historical chat with monument-constrained retrieval, response modes (`direct`/`hikaya`/`presentation`) and language modes (`modern`/`ancient`). |
-| `/api/chat/history` | `GET` | Chat | Messages by `session_id`, or most recent session by monument/member/mode. |
-| `/api/stt` | `POST` | Chat | Transcription only (no AI response). |
-| `/api/ws/stt` | `WS` | Chat | Live streaming STT — WebSocket proxy to Deepgram Nova-3 (key stays server-side). |
-| `/api/tts` | `POST` | Characters | Text-to-speech with voice cloning. Returns `.wav` audio. |
-| `/api/characters/add` | `POST` | Characters | Registers a custom voice: saves audio to disk + Supabase Storage, upserts `voice_personas` (cloning deferred to first use). |
-| `/api/characters` | `GET` | Characters | Lists all voice keys from `voice_personas`. |
-| `/api/registry` | `GET` | Characters | Full `voice_personas` registry (audio refs, video/avatar URLs). |
-| `/api/family-tree` | `GET` | Family | Retrieves the family tree JSON. |
-| `/api/family-tree` | `POST` | Family | Saves the tree and syncs members into `family_members`. |
+| `/health` | `GET` | — | Health check and RAG readiness status. |
+| `/api/governorates` | `GET` | — | All governorates with nested monuments, GPS, voices, chips & asset URLs. |
+| `/api/chat/sessions` | `POST` | **Required** | Create a session owned by the authenticated user (sends token → backend extracts user_id). |
+| `/api/chat/sessions` | `GET` | **Required** | List the user's sessions (title, mode, monument, date, turn count). |
+| `/api/chat/sessions/{id}` | `GET` | **Required** | Session context + full transcript — owner only (404 otherwise). |
+| `/api/chat/sessions/{id}` | `DELETE` | **Required** | Delete a session and its turns — owner only. |
+| `/api/chat/text` | `POST` | **Required** | Text chat with a regional or family persona; lazy-creates an owned session. |
+| `/api/chat/audio` | `POST` | **Required** | Audio chat: transcribes (Deepgram → Speechmatics fallback), queries persona, returns response. |
+| `/api/chat/ancient` | `POST` | **Required** | RAG-backed historical chat with monument-constrained retrieval, response modes (`direct`/`hikaya`/`presentation`) and language modes (`modern`/`ancient`). |
+| `/api/chat/history` | `GET` | **Required** | The user's messages by `session_id` (ownership enforced) or their most recent session for a monument/member/mode. |
+| `/api/stt` | `POST` | — | Transcription only (no AI response). |
+| `/api/ws/stt` | `WS` | — | Live streaming STT — WebSocket proxy to Deepgram Nova-3 (key stays server-side). |
+| `/api/tts` | `POST` | — | Text-to-speech with voice cloning. Returns `.wav` audio. |
+| `/api/characters/add` | `POST` | Optional | Registers a custom voice: saves audio to disk + Supabase Storage, upserts `voice_personas` (cloning deferred to first use). |
+| `/api/characters` | `GET` | — | Lists all voice keys from `voice_personas`. |
+| `/api/registry` | `GET` | — | Full `voice_personas` registry (audio refs, video/avatar URLs). |
+| `/api/family-tree` | `GET` | — | Retrieves the family tree JSON. |
+| `/api/family-tree` | `POST` | Optional | Saves the tree and syncs members into `family_members`. |
 
 ---
 
@@ -201,7 +210,7 @@ POST /api/chat/ancient
   → build anti-hallucination prompt (mode-aware: direct / hikaya / presentation)
   → Gemini generation (low temperature)
   → ancient mode: dual Arabic + old-Egyptian output for TTS
-  → persist turn (chat_sessions upsert + 2 chat_messages rows)
+  → persist turn (chat_sessions upsert + single chat_messages row)
   → return response, tts_text, character_name
 ```
 
@@ -224,12 +233,13 @@ POST /api/chat/ancient
   DATABASE_URL=postgresql://...        # Supabase Postgres connection string
   SUPABASE_URL=https://<project>.supabase.co
   SUPABASE_ANON_KEY=your_anon_key      # used for Storage uploads
+  SUPABASE_JWT_SECRET=your_jwt_secret  # Dashboard → Project Settings → API → JWT Secret
   ```
 
 ### One-off setup scripts (run from `backend/`)
 ```bash
+python -m src.setup_auth_sync     # ALL schema migrations: profiles/RLS/triggers + chat tables rebuild
 python -m src.seed_supabase       # seed governorates, monuments, personas, voices, default family tree
-python -m src.setup_auth_sync     # profiles RLS + auth triggers + avatars bucket
 python -m src.migrate_db_assets   # asset URL columns + characters bucket + asset uploads
 ```
 
@@ -249,6 +259,13 @@ python prepare_data2.py
 python index_data.py   # requires GEMINI_API_KEY env var
 ```
 This updates `data/rag/embeddings.json`. Restart the backend to reload the new index into memory.
+
+### Running Tests
+```bash
+pip install -r requirements/dev.txt
+python -m pytest tests -v
+```
+The suite covers auth enforcement (401 for missing/expired/forged tokens), session ownership isolation between users, single-row turn persistence, and the "no response without question" schema constraint. Tests run against the real Supabase database using throwaway users that are cleaned up automatically.
 
 ---
 
