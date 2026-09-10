@@ -26,8 +26,7 @@ graph TD
 
     subgraph Integrations ["Integrations (src/integrations/)"]
         Gemini["gemini.py (gemini-3.1-flash-lite + retry)"]
-        Deepgram["deepgram.py (Nova-3 REST + live WebSocket proxy)"]
-        STT["speechmatics.py (batch ASR fallback)"]
+        STT["speechmatics.py (primary batch ASR)"]
     end
 
     DB["src/database.py (psycopg2 pool → Supabase Postgres)"]
@@ -42,7 +41,6 @@ graph TD
     App --> Fam
 
     Chat --> Gemini
-    Chat --> Deepgram
     Chat --> STT
     Chat --> DB
     Gov --> DB
@@ -52,7 +50,6 @@ graph TD
     Chars --> Auth
 
     Gemini --> Config
-    Deepgram --> Config
     STT --> Config
     DB --> Config
 ```
@@ -85,12 +82,12 @@ backend/
     ├── cors.py                   # CORS middleware setup
     │
     ├── chat/                     # 💬 Conversation & Heritage AI Engine
-    │   ├── router.py             # /api/chat/*, /api/chat/sessions CRUD, /api/stt, /api/ws/stt
+    │   ├── router.py             # /api/chat/*, /api/chat/sessions CRUD, /api/stt
     │   ├── schemas.py            # Chat + session request/response DTOs
     │   ├── service.py            # Session CRUD (user-scoped) + single-row turn persistence
     │   ├── rag_service.py        # In-memory numpy cosine search over embeddings.json + prompt building
     │   ├── ancient_translation.py# Dual Arabic + ancient-Egyptian transliteration output
-    │   ├── utils.py              # Persona lookup (historical_prompts table) & instruction formatting
+    │   ├── utils.py              # Local persona lookup & instruction formatting
     │   ├── constants.py          # Arabic persona/diacritics prompt rules
     │   ├── prompts.py            # Backwards-compat re-exports
     │   └── metrics.py            # PipelineMetrics observability (Phoenix/OTel spans)
@@ -117,11 +114,10 @@ backend/
     │
     ├── integrations/             # 🔌 External API Clients
     │   ├── gemini.py             # Gemini client with retry + rate-limit handling + OTel spans
-    │   ├── deepgram.py           # Deepgram Nova-3 REST transcription + live WS proxy
-    │   └── speechmatics.py       # Speechmatics batch STT (fallback)
+    │   └── speechmatics.py       # Speechmatics primary batch STT
     │
-    ├── seed_supabase.py          # One-off: seed all tables from seed_fixtures.py
-    ├── seed_fixtures.py          # Hardcoded seed data (monuments, personas, voices, default tree)
+    ├── seed_supabase.py          # One-off: seed tables from local fixture modules
+    ├── seed_fixtures.py          # Hardcoded seed data (monuments, voices, default tree)
     ├── setup_auth_sync.py        # THE migrations file: profiles/RLS/triggers + chat tables schema
     └── migrate_db_assets.py      # One-off: asset URL columns, characters bucket, asset uploads
 
@@ -185,11 +181,10 @@ Zero-shot voice cloning via an external Lightning TTS server. Voice personas liv
 | `/api/chat/sessions/{id}` | `GET` | **Required** | Session context + full transcript — owner only (404 otherwise). |
 | `/api/chat/sessions/{id}` | `DELETE` | **Required** | Delete a session and its turns — owner only. |
 | `/api/chat/text` | `POST` | **Required** | Text chat with a regional or family persona; lazy-creates an owned session. |
-| `/api/chat/audio` | `POST` | **Required** | Audio chat: transcribes (Deepgram → Speechmatics fallback), queries persona, returns response. |
+| `/api/chat/audio` | `POST` | **Required** | Audio chat: transcribes with Speechmatics, queries persona, returns response. |
 | `/api/chat/ancient` | `POST` | **Required** | RAG-backed historical chat with monument-constrained retrieval, response modes (`direct`/`hikaya`/`presentation`) and language modes (`modern`/`ancient`). |
 | `/api/chat/history` | `GET` | **Required** | The user's messages by `session_id` (ownership enforced) or their most recent session for a monument/member/mode. |
 | `/api/stt` | `POST` | — | Transcription only (no AI response). |
-| `/api/ws/stt` | `WS` | — | Live streaming STT — WebSocket proxy to Deepgram Nova-3 (key stays server-side). |
 | `/api/tts` | `POST` | — | Text-to-speech with voice cloning. Returns `.wav` audio. |
 | `/api/characters/add` | `POST` | Optional | Registers a custom voice: saves audio to disk + Supabase Storage, upserts `voice_personas` (cloning deferred to first use). |
 | `/api/characters` | `GET` | — | Lists all voice keys from `voice_personas`. |
@@ -227,8 +222,7 @@ POST /api/chat/ancient
 - `.env` file in `backend/`:
   ```env
   GEMINI_API_KEY=your_key
-  DEEPGRAM_API_KEY=your_key            # primary STT
-  SPEECHMATICS_API_KEY=your_key        # STT fallback (optional)
+  SPEECHMATICS_API_KEY=your_key        # primary batch STT for Egyptian Arabic
   VOICE_API_URL=your_tts_server_url
   DATABASE_URL=postgresql://...        # Supabase Postgres connection string
   SUPABASE_URL=https://<project>.supabase.co

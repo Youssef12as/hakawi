@@ -41,7 +41,7 @@
 | `DELETE /api/chat/sessions/{id}` | Required | Owner-only delete (turns cascade) |
 | `POST /api/chat/text` / `audio` / `ancient` | **Required (new)** | Ownership-checked `session_id`; no session → lazily creates owned one. Turn metadata now stores `character_name`, `tts_text`, `member_name`, `relation` |
 | `GET /api/chat/history` | Required | User-scoped; `session_id` ownership enforced; monument/member/mode lookups return **the user's** most recent session |
-| `/api/governorates`, `/api/tts`, `/api/stt`, `/api/ws/stt`, `/api/registry` | Public (unchanged) |
+| `/api/governorates`, `/api/tts`, `/api/stt`, `/api/registry` | Public (unchanged) |
 
 ### Chat history UI
 
@@ -51,7 +51,7 @@
 
 ## 3. Files changed
 
-**Backend (modified):** `src/auth.py` (verified dependency), `src/config.py` (`SUPABASE_JWT_SECRET`), `src/chat/service.py` (full rewrite: single-row turns, `create_session`, `list_user_sessions`, `get_session_detail`, `delete_session`, `verify_session_ownership`, `SessionNotFound`/`SessionForbidden`), `src/chat/router.py` (session CRUD + auth on chat endpoints), `src/chat/schemas.py` (session DTOs), `src/chat/metrics.py` (fixed pre-existing missing-`logger` bug), `src/setup_auth_sync.py` (step 6 migration), `requirements/base.txt` (+`psycopg2-binary`, `PyJWT`, `websockets` — previously working by accident).
+**Backend (modified):** `src/auth.py` (verified dependency), `src/config.py` (`SUPABASE_JWT_SECRET`), `src/chat/service.py` (full rewrite: single-row turns, `create_session`, `list_user_sessions`, `get_session_detail`, `delete_session`, `verify_session_ownership`, `SessionNotFound`/`SessionForbidden`), `src/chat/router.py` (session CRUD + auth on chat endpoints), `src/chat/schemas.py` (session DTOs), `src/chat/metrics.py` (fixed pre-existing missing-`logger` bug), `src/setup_auth_sync.py` (step 6 migration), `requirements/base.txt` (+`psycopg2-binary`, `PyJWT` — previously working by accident).
 
 **Backend (new):** `tests/conftest.py`, `tests/test_auth.py`, `tests/test_chat_sessions.py`, `tools/inspect_chat_schema.py`, `tools/inspect_chat_fks.py`, `tools/inspect_auth_users.py` (read-only DB inspection).
 
@@ -107,7 +107,7 @@ cd frontend && npm run dev
 ### Known non-goals / notes
 
 - Family trees remain **global** (`DEFAULT_TREE_ID`), not per-user (out of scope).
-- `/api/tts`, `/api/stt`, `/api/ws/stt` intentionally public (asset/STT utilities).
+- `/api/tts` and `/api/stt` are intentionally public (asset/STT utilities).
 - Root `package-lock.json` (untracked) is a stray artifact — do not commit.
 - `backend/tools/*` are read-only DB inspection helpers; safe to keep.
 - Test suite runs against the **real Supabase DB** using throwaway users cleaned up by the profiles trigger — never run it against a database with data you can't afford to lose (chat tables are wiped only for the test users, but be aware).
