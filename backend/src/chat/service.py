@@ -63,7 +63,7 @@ def get_history(session_id: str) -> list[dict]:
         with get_db_cursor() as cur:
             cur.execute(
                 """
-                SELECT role, content
+                SELECT question, response
                 FROM public.chat_messages
                 WHERE session_id = %s
                 ORDER BY created_at ASC;
@@ -74,11 +74,16 @@ def get_history(session_id: str) -> list[dict]:
 
         history = []
         for r in rows:
-            gemini_role = "user" if r["role"] == "user" else "model"
-            history.append({
-                "role": gemini_role,
-                "parts": [{"text": r["content"]}]
-            })
+            if r.get("question"):
+                history.append({
+                    "role": "user",
+                    "parts": [{"text": r["question"]}]
+                })
+            if r.get("response"):
+                history.append({
+                    "role": "model",
+                    "parts": [{"text": r["response"]}]
+                })
         return history
 
     except Exception as e:
@@ -228,22 +233,13 @@ def save_chat_turn(
                 )
             )
 
-            # 2. Insert User Message
+            # 2. Insert chat message (question + response in one row)
             cur.execute(
                 """
-                INSERT INTO public.chat_messages (session_id, role, content)
-                VALUES (%s, 'user', %s);
+                INSERT INTO public.chat_messages (session_id, question, response, metadata)
+                VALUES (%s, %s, %s, %s);
                 """,
-                (safe_session_id, user_text)
-            )
-
-            # 3. Insert Assistant Message
-            cur.execute(
-                """
-                INSERT INTO public.chat_messages (session_id, role, content, metadata)
-                VALUES (%s, 'assistant', %s, %s);
-                """,
-                (safe_session_id, assistant_text, Json(metadata or {}))
+                (safe_session_id, user_text, assistant_text, Json(metadata or {}))
             )
 
     except Exception as e:

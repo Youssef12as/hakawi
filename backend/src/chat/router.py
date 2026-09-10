@@ -88,6 +88,15 @@ async def chat_text(request: TextChatRequest):
         else:
             persona, _ = get_historical_persona(request.region)
             system_prompt = format_persona_instructions(persona)
+            
+            # 🖼️ Inject local images for Aswan's Am Othman
+            if "aswan" in request.region.lower() or "عثمان" in request.region:
+                system_prompt += (
+                    "\n\n[أوامر بصرية إجبارية]:\n"
+                    "أنت مبرمج لعرض صور حقيقية للزائر. يجب عليك نسخ كود الصورة حرفياً ووضعه في نهاية إجابتك إذا تحقق الشرط التالي:\n"
+                    "- إذا ذكرت أو وصفت 'البيوت النوبية' أو 'القرى النوبية' أو 'النوبة'، أضف في نهاية ردك: ![بيوت النوبة](/images/monuments/nubian_village.jpg)\n"
+                    "- إذا ذكرت أو وصفت 'الفلوكة' أو 'المراكب' أو 'نيل أسوان'، أضف في نهاية ردك: ![الفلوكة في نيل أسوان](/images/monuments/aswan_nile.jpg)\n"
+                )
 
         with timed_section(metrics, "generation"):
             ai_response = generate(

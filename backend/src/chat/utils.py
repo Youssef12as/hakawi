@@ -15,35 +15,18 @@ def get_historical_persona(monument_name: str) -> tuple[dict[str, Any] | None, s
     """
     monument_clean = monument_name.replace("#", "").strip()
 
-    try:
-        with get_db_cursor() as cur:
-            cur.execute(
-                """
-                SELECT monument_name, tone, language, vocabulary, on_unknown, example, avoid
-                FROM public.historical_prompts;
-                """
-            )
-            rows = cur.fetchall()
+    from src.seed_fixtures import HISTORICAL_PERSONAS
 
-        for r in rows:
-            key = r["monument_name"]
-            key_words = key.split("—")[0].strip()
-            if any(
-                word in monument_clean
-                for word in key_words.split()
-                if len(word) > 2
-            ):
-                persona_dict = {
-                    "tone": r["tone"],
-                    "language": r["language"],
-                    "vocabulary": r["vocabulary"],
-                    "on_unknown": r["on_unknown"],
-                    "example": r.get("example") or "",
-                    "avoid": r.get("avoid") or "",
-                }
-                return persona_dict, key
-    except Exception as e:
-        logger.error(f"Error querying historical_prompts from Supabase: {e}")
+    for key, persona_dict in HISTORICAL_PERSONAS.items():
+        # e.g. key = "أبو سمبل — رمسيس الثاني"
+        # We check if the monument part (e.g. "أبو سمبل") is in our clean name
+        key_words = key.split("—")[0].strip()
+        if any(
+            word in monument_clean
+            for word in key_words.split()
+            if len(word) > 2
+        ):
+            return persona_dict, key
 
     return None, monument_clean
 
