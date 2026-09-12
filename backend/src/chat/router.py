@@ -405,6 +405,13 @@ async def chat_ancient(
                 response_mode=request.response_mode,
             )
 
+        if request.response_mode == "direct":
+                dynamic_temp = 0.1
+        elif request.response_mode == "hikaya":
+                dynamic_temp = 0.5
+        else:
+                dynamic_temp = 0.3  
+
         # Extract confidence score (top chunk's cosine similarity)
         if payload.get("chunks"):
             metrics.confidence_score = payload["chunks"][0][0]  # top score
@@ -423,7 +430,7 @@ async def chat_ancient(
                     user_prompt=payload["user_prompt"],
                     base_system_prompt=payload["system_prompt"],
                     history=history,
-                    temperature=0.4,
+                    temperature=dynamic_temp,
                     max_output_tokens=800,
                     thinking_budget=0,
                 )
@@ -432,7 +439,7 @@ async def chat_ancient(
                     user_text=payload["user_prompt"],
                     system_prompt=payload["system_prompt"],
                     history=history,
-                    temperature=0.4,
+                    temperature=dynamic_temp,
                     max_output_tokens=400,
                     thinking_budget=0,
                 )

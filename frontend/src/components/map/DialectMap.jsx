@@ -5,7 +5,7 @@ import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 const CITY_TO_REGION = {
   alexandria: 'alexandria',
   cairo: 'cairo',
-  giza: 'cairo',
+  giza: 'giza',
   luxor: 'luxor',
   aswan: 'aswan',
 };
