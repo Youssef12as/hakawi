@@ -1,9 +1,15 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 export default function CharacterStage({ isSpeaking, idleSrc, talkingSrc }) {
   const [videosReady, setVideosReady] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const readyCount = useRef(0);
+
+  useEffect(() => {
+    readyCount.current = 0;
+    setVideosReady(false);
+    setVideoError(false);
+  }, [idleSrc, talkingSrc]);
 
   const handleVideoReady = () => {
     readyCount.current += 1;

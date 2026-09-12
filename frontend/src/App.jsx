@@ -14,7 +14,7 @@ import Profile from './pages/Profile';
 export default function App() {
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-sand font-cairo">
+      <div className="min-h-screen bg-[#0e0b08] text-[#f0e0c8] font-cairo selection:bg-[#c89830]/30 selection:text-[#fff8ee]">
         <Navbar />
         <main>
           <Routes>

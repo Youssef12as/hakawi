@@ -37,8 +37,8 @@ export default function AncientMode() {
       elder: mon?.builder || (regionId === 'aswan' ? 'رمسيس الثاني' : 'حكيم مصر'),
       title: mon?.title || 'فرعون مصر العظيم',
       bio: mon?.bio || 'من أعماق التاريخ المصري، أروي لك حكايات الخلود وبناء الحضارة.',
-      idleSrc: mon?.idle_video_url,
-      talkingSrc: mon?.talking_video_url,
+      idleSrc: mon?.idle_video_url || (mon?.key === 'khufu_pyramid' ? '/character/khufu_idle.mp4' : undefined),
+      talkingSrc: mon?.talking_video_url || (mon?.key === 'khufu_pyramid' ? '/character/khufu_speaking.mp4' : undefined),
       chips: mon?.chips?.length ? mon.chips : ['هرم خوفو', 'معبد حتشبسوت', 'مقبرة توت عنخ آمون', 'أبو سمبل', 'معبد فيلة'],
       monumentKey: mon?.key,
     };

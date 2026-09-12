@@ -54,6 +54,7 @@ export default function DialectMap({ regions, selectedRegion, onSelectRegion }) 
       const containerRect = containerRef.current.getBoundingClientRect();
 
       setPopup({
+        cityKey,
         regionKey,
         region,
         x: rect.left + rect.width / 2 - containerRect.left,
@@ -68,23 +69,30 @@ export default function DialectMap({ regions, selectedRegion, onSelectRegion }) 
 
   const handleConfirm = () => {
     if (popup) {
-      if (popup.regionKey === 'aswan' && transformRef.current) {
-        setPopup(null); // Hide popup before zooming
-        const aswanNode = document.querySelector('[data-city="aswan"]');
-        if (aswanNode) {
+      const targetRegionKey = popup.regionKey;
+      const targetCity = popup.cityKey || popup.regionKey;
+      setPopup(null); // Instantly dismiss popup before camera zoom
+
+      // Smooth camera zoom straight into the clicked governorate marker
+      if (transformRef.current) {
+        const cityNode =
+          document.querySelector(`[data-city="${targetCity}"]`) ||
+          document.getElementById(`marker-${targetCity}`) ||
+          document.querySelector(`[data-city="${targetRegionKey}"]`);
+
+        if (cityNode) {
           const { zoomToElement } = transformRef.current;
-          // Zoom into Aswan region
-          zoomToElement(aswanNode, 3.5, 900, 'easeOut');
-          
-          // Wait for zoom to finish before changing the view
+          zoomToElement(cityNode, 3.2, 600, 'easeOut');
+
+          // Transition smoothly into the governorate map as the zoom settles
           setTimeout(() => {
-            onSelectRegion(popup.regionKey);
-          }, 900);
+            onSelectRegion(targetRegionKey);
+          }, 450);
           return;
         }
       }
-      onSelectRegion(popup.regionKey);
-      setPopup(null);
+
+      onSelectRegion(targetRegionKey);
     }
   };
 
@@ -187,9 +195,12 @@ export default function DialectMap({ regions, selectedRegion, onSelectRegion }) 
               {popup.region.name}
             </h3>
             <p className="text-xs text-[#c4a06a]/70 mb-3 font-medium">
-              {(popup.region.monuments?.length || 0) > 0
-                ? `${popup.region.monuments.length} معالم أثرية`
-                : 'قريبًا...'}
+              {(() => {
+                const realMonuments = (popup.region.monuments || []).filter(m => !m.key?.endsWith('-general'));
+                return realMonuments.length > 0
+                  ? `${realMonuments.length} معالم أثرية`
+                  : 'قريبًا...';
+              })()}
             </p>
             <button
               onClick={handleConfirm}
