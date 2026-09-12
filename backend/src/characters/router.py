@@ -9,7 +9,6 @@ from src.characters.constants import CHARACTERS_AUDIO_DIR
 from src.characters.schemas import TTSRequest
 from src.characters.service import (
     save_character,
-    saved_characters,
     synthesize_speech,
 )
 from src.characters.utils import sanitize_character_name
@@ -111,8 +110,8 @@ async def add_character(
         with get_db_cursor(commit=True) as cur:
             cur.execute(
                 """
-                INSERT INTO public.voice_personas (key, name, ref_audio_path, ref_text, user_id, is_custom, is_cloned)
-                VALUES (%s, %s, %s, %s, %s, true, false)
+                INSERT INTO public.voice_personas (key, name, ref_audio_path, ref_text, user_id, is_custom)
+                VALUES (%s, %s, %s, %s, %s, true)
                 ON CONFLICT (key) DO UPDATE SET
                     name = EXCLUDED.name,
                     ref_audio_path = EXCLUDED.ref_audio_path,
@@ -149,7 +148,7 @@ async def list_characters():
         return {"characters": [r["key"] for r in rows]}
     except Exception as e:
         logger.error(f"Error listing characters from Supabase: {e}")
-        return {"characters": saved_characters}
+        return {"characters": []}
 
 
 @router.get("/api/registry")
