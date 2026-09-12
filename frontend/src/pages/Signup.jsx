@@ -135,11 +135,16 @@ export default function Signup() {
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
           }}
         >
-          {/* Header */}
           <div className="text-center mb-8">
-            <Link to="/" className="inline-flex items-center gap-2 mb-4 group">
-              <span className="text-2xl">🏛️</span>
-              <span className="text-2xl font-black text-[#f0e0c8] tracking-tight">
+            <Link to="/" className="inline-flex items-center gap-3 mb-4 group hover-lift">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#c89830]/30 to-[#c89830]/10 border border-[#c89830]/40 flex items-center justify-center shadow-[0_0_20px_rgba(200,152,48,0.2)]">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e8bc58" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 21h18" />
+                  <path d="M4 21V10l8-6 8 6v11" />
+                  <path d="M9 21v-7a3 3 0 0 1 6 0v7" />
+                </svg>
+              </div>
+              <span className="text-2xl font-black text-[#fff8ee] tracking-tight font-heading">
                 حكاوي<span className="text-[#c89830]">.</span>
               </span>
             </Link>

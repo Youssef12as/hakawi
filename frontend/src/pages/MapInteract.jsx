@@ -57,33 +57,46 @@ export default function MapInteract() {
   // ── Fetch governorates on mount ─────────────────────────────────
   useEffect(() => {
     fetchGovernorates().then((data) => {
-      if (data) setGovernorates(data.governorates || data);
+      if (data) {
+        const rawGovs = data.governorates || data;
+        let processedGovs = Array.isArray(rawGovs) ? [...rawGovs] : [];
+
+        // Ensure Giza is separated cleanly if bundled in Cairo
+        const cairoGov = processedGovs.find((g) => g.key === 'cairo');
+        if (cairoGov && !processedGovs.some((g) => g.key === 'giza')) {
+          const gizaKeys = ['khufu_pyramid', 'great-pyramid', 'sphinx', 'step-pyramid', 'bent-pyramid'];
+          const cairoKeys = ['azhar', 'citadel', 'sultan-hassan', 'ibn-tulun', 'hanging-church'];
+
+          const gizaMonuments = (cairoGov.monuments || []).filter((m) => gizaKeys.includes(m.key));
+          const cairoMonuments = (cairoGov.monuments || []).filter((m) => cairoKeys.includes(m.key));
+
+          processedGovs = processedGovs.map((g) => (g.key === 'cairo' ? { ...g, monuments: cairoMonuments, name: 'القاهرة' } : g));
+          processedGovs.push({
+            key: 'giza',
+            name: 'الجيزة',
+            name_en: 'Giza',
+            lat: 29.9753,
+            lng: 31.1376,
+            monuments: gizaMonuments,
+          });
+        }
+
+        setGovernorates(processedGovs);
+      }
     });
   }, [fetchGovernorates]);
 
-  // ── Stage 1 → Stage 2: pick a governorate (with cross-fade) ────
+  // ── Stage 1 → Stage 2: pick a governorate (smooth cinematic reveal) ────
   const handleSelectGovernorate = useCallback(
     (govKey) => {
       stopAudio();
       const gov = governorates?.find((g) => g.key === govKey);
       if (gov) {
-        // Start cross-fade transition
-        pendingGovRef.current = gov;
-        setIsTransitioning(true);
-        setFadePhase('out');
-
-        // After the map fades out, commit the state and fade in
+        setSelectedGovernorate(gov);
+        setFadePhase('in');
         setTimeout(() => {
-          setSelectedGovernorate(gov);
-          setFadePhase('in');
-
-          // Clean up transition state after fade-in completes
-          setTimeout(() => {
-            setIsTransitioning(false);
-            setFadePhase('idle');
-            pendingGovRef.current = null;
-          }, CROSSFADE_MS);
-        }, CROSSFADE_MS);
+          setFadePhase('idle');
+        }, 500);
       }
     },
     [stopAudio, governorates],
@@ -208,30 +221,30 @@ export default function MapInteract() {
 
   // Cross-fade inline styles
   const crossfadeStyles = `
-    .map-crossfade-out {
-      animation: mapFadeOut ${CROSSFADE_MS}ms ease-in-out forwards;
+    @keyframes govMapReveal {
+      0% {
+        opacity: 0;
+        transform: scale(0.96);
+        filter: blur(4px);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
+      }
     }
-    .map-crossfade-in {
-      animation: mapFadeIn ${CROSSFADE_MS}ms ease-in-out forwards;
-    }
-    @keyframes mapFadeOut {
-      0%   { opacity: 1; transform: scale(1); }
-      100% { opacity: 0; transform: scale(1.08); }
-    }
-    @keyframes mapFadeIn {
-      0%   { opacity: 0; transform: scale(0.96); }
-      100% { opacity: 1; transform: scale(1); }
+    .gov-map-reveal {
+      animation: govMapReveal 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
   `;
 
-  // ── Stage 1: Map view (or transitioning out of it) ──────────────
+  // ── Stage 1: Map view ───────────────────────────────────────────
   if (!selectedGovernorate) {
     return (
       <PageShell className="bg-espresso/5">
         <style>{crossfadeStyles}</style>
         <div className="h-[calc(100vh-4rem)] flex flex-col lg:flex-row relative">
-          {/* Map — with cross-fade-out when transitioning */}
-          <div className={`w-full h-full p-3 sm:p-4 ${fadePhase === 'out' ? 'map-crossfade-out' : 'animate-fade-in'}`}>
+          <div className="w-full h-full p-3 sm:p-4 animate-fade-in">
             <DialectMap
               regions={governorates || []}
               onSelectRegion={handleSelectGovernorate}
@@ -252,12 +265,12 @@ export default function MapInteract() {
     );
   }
 
-  // ── Stage 2: Monument selector (with cross-fade-in) ─────────────
+  // ── Stage 2: Monument selector (smooth zoom reveal) ─────────────
   if (!selectedMonument) {
     return (
       <PageShell className="bg-espresso/5">
         <style>{crossfadeStyles}</style>
-        <div className={`h-[calc(100vh-4rem)] ${fadePhase === 'in' ? 'map-crossfade-in' : 'animate-fade-in'}`}>
+        <div className="h-[calc(100vh-4rem)] gov-map-reveal">
           <MonumentSelector
             governorate={selectedGovernorate}
             monuments={selectedGovernorate.monuments}
@@ -337,8 +350,8 @@ export default function MapInteract() {
             ) : (
               <CharacterStage
                 isSpeaking={isSpeaking}
-                idleSrc={monument.idle_video_url}
-                talkingSrc={monument.talking_video_url}
+                idleSrc={monument.idle_video_url || (monument.key === 'khufu_pyramid' ? '/character/khufu_idle.mp4' : undefined)}
+                talkingSrc={monument.talking_video_url || (monument.key === 'khufu_pyramid' ? '/character/khufu_speaking.mp4' : undefined)}
               />
             )}
           </div>
