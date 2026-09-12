@@ -60,14 +60,13 @@ def seed():
         for key, v in VOICES.items():
             cur.execute(
                 """
-                INSERT INTO public.voice_personas (key, name, ref_audio_path, ref_text, is_custom, is_cloned)
-                VALUES (%s, %s, %s, %s, false, true)
+                INSERT INTO public.voice_personas (key, name, ref_audio_path, ref_text, is_custom)
+                VALUES (%s, %s, %s, %s, false)
                 ON CONFLICT (key) DO UPDATE SET
                     name = EXCLUDED.name,
                     ref_audio_path = EXCLUDED.ref_audio_path,
                     ref_text = EXCLUDED.ref_text,
-                    is_custom = false,
-                    is_cloned = true;
+                    is_custom = false;
                 """,
                 (key, v["name"], v["ref_audio_path"], v["ref_text"])
             )

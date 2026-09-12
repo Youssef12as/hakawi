@@ -94,7 +94,7 @@ backend/
     │
     ├── characters/               # 🎙️ Voice & Voice-Cloning Domain
     │   ├── router.py             # /api/tts, /api/characters/add, /api/characters, /api/registry
-    │   ├── service.py            # Lightning TTS client, lazy zero-shot cloning, Storage audio fetch
+    │   ├── service.py            # Lightning TTS thin proxy client with auto-retry
     │   ├── utils.py              # voice_personas DB lookups (get_voice, resolve_character_ref)
     │   ├── schemas.py            # TTSRequest schema
     │   ├── personas.py           # Backwards-compat re-exports (personas live in DB now)
@@ -136,7 +136,7 @@ The backend talks to Postgres via a pooled direct connection (`DATABASE_URL`). K
 | `governorates` | Governorate keys, Arabic/English names, map coordinates |
 | `monuments` | Monuments per governorate: display names, builders, bios, GPS, chips (quick replies), voice keys, asset URLs |
 | `historical_prompts` | Persona definitions per monument (tone, language, vocabulary, example, avoid) |
-| `voice_personas` | Voice registry: ref audio path (Supabase Storage URL), ref text, `is_custom`/`is_cloned` flags, user ownership |
+| `voice_personas` | Voice registry: ref audio path (Supabase Storage URL), ref text, `is_custom` flag, user ownership |
 | `chat_sessions` | One row per session: **owner (`user_id` → auth.users, cascade delete)**, mode (regional/family_member/ancient), governorate/monument/member refs, language mode, title, timestamps |
 | `chat_messages` | **One row per turn** (`question` + `response` + `metadata` JSON), linked by `session_id`; `question` is NOT NULL so a response can never exist without its question |
 | `family_trees` | Full tree JSON (`tree_data`) per user |
@@ -148,23 +148,30 @@ The backend talks to Postgres via a pooled direct connection (`DATABASE_URL`). K
 
 ## 🎙️ Voice System (Text-to-Speech)
 
-Zero-shot voice cloning via an external Lightning TTS server. Voice personas live in the `voice_personas` table (no longer hardcoded).
+Zero-shot voice cloning via an external Lightning TTS server. Voice personas live in the `voice_personas` table. Voice reference files (`.wav` + `.txt`) are stored **locally on the Lightning server's persistent disk** so that cloning state survives server restarts without any database dependency.
+
+### Architecture
+- **Lightning server (`server.py`)** is **self-sufficient**: built-in voice files live in `pre_existing_voices/` on its persistent NVMe disk and are pre-loaded into RAM on startup.
+- **Hakawi backend** is a **thin proxy**: it sends `{text, character_name}` to the Lightning server and returns the `.wav` response.
+- **Auto-retry with inline audio**: if the Lightning server reports a character is missing (e.g. a custom voice after a fresh deploy), the backend resolves the reference audio from Supabase and retries with the audio attached inline. The Lightning server auto-saves it to disk for future calls.
 
 ### How it works
 1. Each monument row defines `modern_voice_key` / `ancient_voice_key` (e.g. `"am-othman"`, `"ramsis"`).
 2. The frontend sends the `character_name` to `/api/tts` along with the text.
-3. `src/characters/service.py` checks if the voice is already cloned (in-memory cache + `voice_personas.is_cloned`).
-4. If not, it **lazily clones on first generation**: fetches the reference audio from Supabase Storage, sends it with `ref_text` to the TTS server (`action: "save_character"`), and marks `is_cloned = true` in the DB.
-5. It then requests speech generation (`action: "generate"`) and returns the decoded `.wav`.
+3. `src/characters/service.py` sends `{action: "generate", text, char_name}` to the Lightning TTS server.
+4. If the Lightning server has the voice locally → generates speech immediately.
+5. If the voice is missing → returns "not found" → backend retries once with inline `audio_prompt` + `ref_text` → Lightning auto-saves and generates.
+6. The decoded `.wav` audio is returned to the frontend.
 
 ### How to add a new voice
 1. **Register in DB**: insert into `voice_personas` (or use `POST /api/characters/add`, which also uploads audio to the `characters` Storage bucket):
    ```sql
-   INSERT INTO public.voice_personas (key, name, ref_audio_path, ref_text, is_custom, is_cloned)
-   VALUES ('new_voice', 'اسم الشخصية', '<audio URL or local path>', 'النص المكتوب الذي يقال في المقطع الصوتي بالضبط', false, false);
+   INSERT INTO public.voice_personas (key, name, ref_audio_path, ref_text, is_custom)
+   VALUES ('new_voice', 'اسم الشخصية', '<audio URL or local path>', 'النص المكتوب الذي يقال في المقطع الصوتي بالضبط', false);
    ```
-2. **Assign**: set `modern_voice_key` / `ancient_voice_key` on the desired monument rows.
-3. **UI Assets**: ensure the frontend (or the `characters` Storage bucket) has the idle/talking videos and avatar.
+2. **Place on Lightning server**: copy the `.wav` and `.txt` files into the `pre_existing_voices/` directory on the Lightning Studio.
+3. **Assign**: set `modern_voice_key` / `ancient_voice_key` on the desired monument rows.
+4. **UI Assets**: ensure the frontend (or the `characters` Storage bucket) has the idle/talking videos and avatar.
 
 ---
 

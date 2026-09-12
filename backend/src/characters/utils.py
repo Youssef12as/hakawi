@@ -21,7 +21,7 @@ def get_voice(voice_name: str) -> dict[str, Any] | None:
         with get_db_cursor() as cur:
             cur.execute(
                 """
-                SELECT key, name, ref_audio_path, ref_text, is_custom, is_cloned
+                SELECT key, name, ref_audio_path, ref_text, is_custom
                 FROM public.voice_personas
                 WHERE key = %s OR key = %s OR name = %s
                 LIMIT 1;
