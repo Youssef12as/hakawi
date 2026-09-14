@@ -51,7 +51,7 @@ export default function AbuSimbelTour() {
       {!chatOpen && (
         <button 
           onClick={goBack}
-          className="absolute top-6 left-6 z-40 flex items-center gap-2 px-4 py-2 bg-black/70 text-white rounded-full hover:bg-amber-600 transition-colors border border-amber-500/30 backdrop-blur-sm"
+          className="absolute top-24 left-6 z-40 flex items-center gap-2 px-4 py-2 bg-black/70 text-white rounded-full hover:bg-amber-600 transition-colors border border-amber-500/30 backdrop-blur-sm"
         >
           <ArrowLeft size={20} />
           {level > 1 ? 'العودة للخلف' : 'الرجوع للخريطة'}
@@ -61,12 +61,22 @@ export default function AbuSimbelTour() {
       {/* الخريطة (هتاخد الشاشة كلها دايماً) */}
       <div className="w-full h-full">
         <TransformWrapper initialScale={1} minScale={1} maxScale={4} limitToBounds={true}>
-          <TransformComponent wrapperClass="w-full h-full cursor-move" contentClass="w-full h-full">
-            <svg viewBox="0 0 1920 1080" className="w-full h-full object-cover">
+          <TransformComponent 
+            wrapperStyle={{ width: '100%', height: '100%' }}
+            contentStyle={{ width: '100%', height: '100%' }}
+            wrapperClass="w-full h-full cursor-move" 
+            contentClass="w-full h-full"
+          >
+            <svg 
+              viewBox="0 0 1920 1080" 
+              className="w-full h-full select-none"
+              style={{ width: '100%', height: '100%', display: 'block' }}
+              preserveAspectRatio="xMidYMid slice"
+            >
               
               {level === 1 && (
                 <>
-                  <image href="/images/abu_simbel_1_exterior.jpg" width="1920" height="1080" />
+                  <image href="/images/abu_simbel_1_exterior.jpg" width="1920" height="1080" preserveAspectRatio="xMidYMid slice" />
                   
                   {/* التمثال المكسور */}
                   <Hotspot cx="475" cy="500" onClick={() => handleHotspotClick("إيه قصة التمثال المكسور ده؟ وليه متصلحش؟")} />
@@ -81,7 +91,7 @@ export default function AbuSimbelTour() {
 
               {level === 2 && (
                 <>
-                  <image href="/images/abu_simbel_2_hall.jpg" width="1920" height="1080" />
+                  <image href="/images/abu_simbel_2_hall.jpg" width="1920" height="1080" preserveAspectRatio="xMidYMid slice" />
                   
                   <Hotspot cx="525" cy="550" onClick={() => handleHotspotClick("ليه شكل التماثيل اللي جوه دي مختلف ومكتف إيده؟")} />
                   <Hotspot cx="250" cy="550" onClick={() => handleHotspotClick("احكيلي عن المعركة الطاحنة اللي مرسومة على الحيطة دي.")} />
@@ -93,7 +103,7 @@ export default function AbuSimbelTour() {
 
               {level === 3 && (
                 <>
-                  <image href="/images/abu_simbel_3_sanctuary.jpg" width="1920" height="1080" />
+                  <image href="/images/abu_simbel_3_sanctuary.jpg" width="1920" height="1080" preserveAspectRatio="xMidYMid slice" />
                   
                   <Hotspot cx="950" cy="625" onClick={() => handleHotspotClick("إيه السر ورا تعامد الشمس في الأوضة دي بالذات؟")} />
                   <Hotspot cx="1350" cy="500" onClick={() => handleHotspotClick("مين الآلهة اللي مرسومين معاك على الحيطة هنا؟")} />
