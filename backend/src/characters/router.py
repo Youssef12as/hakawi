@@ -2,9 +2,10 @@ import json
 import logging
 import os
 
-from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, Depends
 from fastapi.responses import FileResponse
 
+from src.auth import get_current_user_id
 from src.characters.constants import CHARACTERS_AUDIO_DIR
 from src.characters.schemas import TTSRequest
 from src.characters.service import (
@@ -57,14 +58,13 @@ async def add_character(
     char_name: str = Form(...),
     ref_text: str = Form(...),
     audio_file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user_id),
 ):
     """
     Save a new voice character to Supabase voice_personas table.
     Optionally registers the voice with the Lightning TTS model (non-blocking).
     """
     try:
-        from src.auth import get_optional_user_id
-        user_id = get_optional_user_id(request)
 
         if not char_name.strip():
             raise HTTPException(status_code=400, detail="Character name is required")

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect, Component } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Plus, Mic, Square, RotateCcw, Upload, Calendar, MessageCircle, ChevronLeft, Volume2, Clock, Sparkles, X, Loader2 } from 'lucide-react';
+import { Plus, Mic, Square, RotateCcw, Upload, Calendar, MessageCircle, ChevronLeft, Volume2, Clock, Sparkles, X, Loader2, Edit2, Check } from 'lucide-react';
 import PageShell from '../components/layout/PageShell';
 import ConsentScreen from '../components/consent/ConsentScreen';
 import CharacterStage from '../components/character/CharacterStage';
@@ -9,6 +9,7 @@ import ChatPanel from '../components/chat/ChatPanel';
 import { useAppContext } from '../context/AppContext';
 import { useChatApi } from '../hooks/useChatApi';
 import { useCharacterState } from '../hooks/useCharacterState';
+import { getAuthHeaders } from '../utils/apiAuth';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -89,12 +90,16 @@ export default function FamilyTree() {
   // Tree Data State
   const [treeData, setTreeData] = useState(null);
   const [addingToNodeId, setAddingToNodeId] = useState(null);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState('');
 
   // Sync with Backend
   useEffect(() => {
     const fetchTree = async () => {
       try {
-        const res = await fetch('/api/family-tree');
+        const res = await fetch('/api/family-tree', {
+          headers: await getAuthHeaders(),
+        });
         if (res.ok) {
           const data = await res.json();
           setTreeData(data);
@@ -111,7 +116,7 @@ export default function FamilyTree() {
     try {
       await fetch('/api/family-tree', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(newTreeData)
       });
     } catch (err) {
@@ -224,6 +229,7 @@ export default function FamilyTree() {
 
       const res = await fetch('/api/characters/add', {
         method: 'POST',
+        headers: await getAuthHeaders(),
         body: formData,
       });
 
@@ -925,9 +931,40 @@ export default function FamilyTree() {
 
             {/* Header */}
             <div className="text-center mb-16 animate-fade-in-up relative w-full sticky left-0 right-0 max-w-4xl mx-auto" dir="rtl">
-              <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#f8ebd5] via-[#c4a06a] to-[#f8ebd5] mb-4 drop-shadow-[0_2px_10px_rgba(196,160,106,0.2)]" style={{ fontFamily: 'var(--font-heading)' }}>
-                شجرة العيلة
-              </h1>
+              {isEditingTitle ? (
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <input
+                    type="text"
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                    className="bg-transparent border-b-2 border-[#c4a06a] text-[#f8ebd5] text-4xl md:text-5xl font-bold outline-none text-center"
+                    style={{ fontFamily: 'var(--font-heading)' }}
+                    autoFocus
+                  />
+                  <button onClick={() => {
+                    setIsEditingTitle(false);
+                    const newTreeData = { ...treeData, title: editedTitle || "شجرة العيلة" };
+                    updateTreeState(newTreeData);
+                  }} className="text-[#c4a06a] hover:text-[#f8ebd5]">
+                    <Check className="w-8 h-8" />
+                  </button>
+                  <button onClick={() => setIsEditingTitle(false)} className="text-red-400 hover:text-red-300">
+                    <X className="w-8 h-8" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-4 mb-4">
+                  <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#f8ebd5] via-[#c4a06a] to-[#f8ebd5] drop-shadow-[0_2px_10px_rgba(196,160,106,0.2)]" style={{ fontFamily: 'var(--font-heading)' }}>
+                    {treeData?.title || "شجرة العيلة"}
+                  </h1>
+                  <button onClick={() => {
+                    setEditedTitle(treeData?.title || "شجرة العيلة");
+                    setIsEditingTitle(true);
+                  }} className="text-[#c4a06a]/50 hover:text-[#c4a06a] transition-colors mt-2">
+                    <Edit2 className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
               <p className="text-[#c4a06a]/90 text-sm md:text-base max-w-xl mx-auto leading-relaxed font-medium">
                 صوّت حبايبك وذكرياتهم هتفضل حية، تحكي قصصهم لأجيال بعد أجيال.
               </p>
