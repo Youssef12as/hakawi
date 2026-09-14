@@ -3,9 +3,10 @@ import logging
 import os
 import uuid
 from psycopg2.extras import Json
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 
 from src.database import get_db_cursor
+from src.auth import get_current_user_id
 from src.family.constants import DEFAULT_TREE_ID
 from src.family.utils import collect_tree_members, is_character_in_tree, prune_tree_members
 
@@ -15,37 +16,72 @@ router = APIRouter(tags=["family"])
 
 
 @router.get("/api/family-tree")
-async def get_family_tree():
+async def get_family_tree(user_id: str = Depends(get_current_user_id)):
     """Retrieve family tree directly from Supabase, synchronizing with public.family_members."""
     try:
         with get_db_cursor(commit=True) as cur:
+            # Check if user has a tree
             cur.execute(
-                "SELECT id, tree_data FROM public.family_trees WHERE id = %s;",
-                (DEFAULT_TREE_ID,)
+                "SELECT id, tree_data FROM public.family_trees WHERE user_id = %s LIMIT 1;",
+                (user_id,)
             )
             row = cur.fetchone()
-            if not row or not row.get("tree_data"):
-                # Fallback if specific ID not found: get first tree in table
-                cur.execute("SELECT id, tree_data FROM public.family_trees ORDER BY created_at ASC LIMIT 1;")
-                row = cur.fetchone()
-
+            
             if row and row.get("tree_data"):
+                # User has a tree, return it
                 tree_id = str(row["id"])
                 tree_data = row["tree_data"]
-
+                
                 # Prune any members that were deleted directly from public.family_members
                 cur.execute("SELECT id FROM public.family_members WHERE tree_id = %s;", (tree_id,))
                 valid_ids = {str(r["id"]) for r in cur.fetchall()}
-
+                
                 if valid_ids and prune_tree_members(tree_data, valid_ids):
                     cur.execute(
                         "UPDATE public.family_trees SET tree_data = %s WHERE id = %s;",
                         (Json(tree_data), tree_id)
                     )
-
+                
                 return tree_data
+            
+            # First time user: Clone the default tree
+            cur.execute(
+                "SELECT id, tree_data FROM public.family_trees WHERE id = %s;",
+                (DEFAULT_TREE_ID,)
+            )
+            default_row = cur.fetchone()
+            if not default_row or not default_row.get("tree_data"):
+                raise HTTPException(status_code=404, detail="Default family tree not found in database to clone.")
+                
+            default_tree_data = default_row["tree_data"]
+            new_tree_id = str(uuid.uuid4())
+            
+            # Recursive function to regenerate UUIDs for all members
+            def regenerate_ids(node):
+                if "members" in node:
+                    for member in node["members"]:
+                        member["id"] = str(uuid.uuid4())
+                if "children" in node:
+                    for child in node["children"]:
+                        regenerate_ids(child)
+                return node
+                
+            new_tree_data = regenerate_ids(json.loads(json.dumps(default_tree_data))) # Deep copy and regenerate
+            
+            # Insert the new tree for this user
+            cur.execute(
+                """
+                INSERT INTO public.family_trees (id, title, tree_data, user_id, updated_at)
+                VALUES (%s, %s, %s, %s, timezone('utc'::text, now()))
+                """,
+                (new_tree_id, new_tree_data.get("title", "عائلتي"), Json(new_tree_data), user_id)
+            )
+            
+            # Sync the members to public.family_members
+            _sync_family_members(cur, new_tree_id, new_tree_data)
+            
+            return new_tree_data
 
-        raise HTTPException(status_code=404, detail="Family tree not found in database")
     except HTTPException:
         raise
     except Exception as e:
@@ -100,32 +136,38 @@ def _sync_family_members(cur, tree_id: str, tree_data: dict):
 
 
 @router.post("/api/family-tree")
-async def save_family_tree(request: Request):
+async def save_family_tree(request: Request, user_id: str = Depends(get_current_user_id)):
     """Save updated family tree directly to Supabase."""
     try:
-        from src.auth import get_optional_user_id
-        user_id = get_optional_user_id(request)
         tree_data = await request.json()
 
         with get_db_cursor(commit=True) as cur:
-            # 1. Update family_trees hierarchical structure
+            # Find user's tree_id
+            cur.execute("SELECT id FROM public.family_trees WHERE user_id = %s LIMIT 1;", (user_id,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="User family tree not found to update.")
+            
+            tree_id = str(row["id"])
+
+            # 1. Update family_trees hierarchical structure and title
+            new_title = tree_data.get("title", "عائلتي")
             cur.execute(
                 """
-                INSERT INTO public.family_trees (id, title, tree_data, user_id, updated_at)
-                VALUES (%s, %s, %s, %s, timezone('utc'::text, now()))
-                ON CONFLICT (id) DO UPDATE SET
-                    tree_data = EXCLUDED.tree_data,
-                    user_id = COALESCE(EXCLUDED.user_id, public.family_trees.user_id),
-                    updated_at = timezone('utc'::text, now());
+                UPDATE public.family_trees 
+                SET title = %s, tree_data = %s, updated_at = timezone('utc'::text, now())
+                WHERE id = %s AND user_id = %s;
                 """,
-                (DEFAULT_TREE_ID, tree_data.get("title", "عائلتي"), Json(tree_data), user_id)
+                (new_title, Json(tree_data), tree_id, user_id)
             )
 
             # 2. Sync individual member rows into public.family_members
-            _sync_family_members(cur, DEFAULT_TREE_ID, tree_data)
+            _sync_family_members(cur, tree_id, tree_data)
 
         logger.info("Family tree and members successfully synced to Supabase.")
         return {"status": "success"}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error saving family tree to Supabase: {e}")
         raise HTTPException(status_code=500, detail="Failed to save tree to database")
