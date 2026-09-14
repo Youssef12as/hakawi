@@ -118,9 +118,15 @@ The app will be running at `http://localhost:5173`
 │   │   └── character/       # Character video files (idle + talking)
 │   └── src/
 │       ├── components/      # Reusable UI components
-│       ├── pages/           # App pages (Landing, Map, Chat, Ancient)
+│       ├── context/         # App-wide state (Auth, MapContext)
 │       ├── hooks/           # Custom React hooks (chat API, audio)
-│       └── context/         # App-wide state
+│       ├── pages/
+│       │   ├── map/         # Nested map routes (MapLayout → Overview → Gov → Chat)
+│       │   ├── Landing.jsx
+│       │   ├── AncientMode.jsx
+│       │   ├── FamilyTree.jsx
+│       │   └── ...
+│       └── utils/           # Helpers (monumentSlugs, apiAuth)
 │
 └── hikawi_master_spec.md    # Technical specification
 ```

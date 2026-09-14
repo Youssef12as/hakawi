@@ -35,9 +35,13 @@ Understanding how user state is managed is critical before looking at the UI.
 Follow the primary user flow: from landing page, to the map, and into a chat.
 
 7. **Landing:** [`frontend/src/pages/Landing.jsx`](frontend/src/pages/Landing.jsx) — The majestic, animated homepage.
-8. **Map View:** [`frontend/src/pages/MapInteract.jsx`](frontend/src/pages/MapInteract.jsx) — The main interaction hub.
-   - It relies heavily on [`frontend/src/components/map/DialectMap.jsx`](frontend/src/components/map/DialectMap.jsx) (the interactive SVG map).
-   - And [`frontend/src/components/map/MonumentSelector.jsx`](frontend/src/components/map/MonumentSelector.jsx) (drilling down into specific historical monuments).
+8. **Map Navigation (nested routes under `/map`):**
+   - [`frontend/src/context/MapContext.jsx`](frontend/src/context/MapContext.jsx) — Fetches and caches governorate data for all map sub-routes.
+   - [`frontend/src/pages/map/MapLayout.jsx`](frontend/src/pages/map/MapLayout.jsx) — Wraps sub-routes with `MapProvider` + `<Outlet />`.
+   - [`frontend/src/pages/map/MapOverview.jsx`](frontend/src/pages/map/MapOverview.jsx) — `/map` — The Egypt-wide interactive SVG map ([`DialectMap.jsx`](frontend/src/components/map/DialectMap.jsx)).
+   - [`frontend/src/pages/map/GovernorateView.jsx`](frontend/src/pages/map/GovernorateView.jsx) — `/map/:govKey` — Monument selector for a specific governorate ([`MonumentSelector.jsx`](frontend/src/components/map/MonumentSelector.jsx)).
+   - [`frontend/src/pages/map/MonumentChat.jsx`](frontend/src/pages/map/MonumentChat.jsx) — `/map/:govKey/:monumentSlug` — Full character chat with TTS, history drawer, and language toggle.
+   - [`frontend/src/utils/monumentSlugs.js`](frontend/src/utils/monumentSlugs.js) — Maps between DB monument keys and URL-friendly slugs (e.g. `aswan-general` ↔ `hawari`).
 9. **Chat Modes:**
    - **Ancient Mode (RAG):** [`frontend/src/pages/AncientMode.jsx`](frontend/src/pages/AncientMode.jsx) — Chatting with historical figures (e.g. Ramses).
    - **Chat UI Components:** Explore [`frontend/src/components/chat/ChatPanel.jsx`](frontend/src/components/chat/ChatPanel.jsx) and [`frontend/src/components/chat/ChatInput.jsx`](frontend/src/components/chat/ChatInput.jsx).
