@@ -209,12 +209,28 @@ def _search_internal(
     return [(float(scores[i]), _chunks[i]) for i in top_idx]
 
 
-def build_context(chunks: list[tuple[float, dict]], max_chars_per_chunk: int = 800) -> str:
+def build_context(chunks: list[tuple[float, dict]], max_chars_per_chunk: int = 800, monument_name: str = "") -> str:
     """Stitch retrieved chunks into a single context string for the prompt."""
     parts: list[str] = []
+    is_abu_simbel = False
     for _score, chunk in chunks:
         text = chunk["text"][:max_chars_per_chunk]
         parts.append(text)
+        if "أبو سمبل" in chunk.get("monument", "") or "سمبل" in text:
+            is_abu_simbel = True
+            
+    if "أبو سمبل" in monument_name or is_abu_simbel:
+        abu_simbel_facts = (
+            "حقائق تاريخية موثقة عن أبو سمبل يجب ذكرها في الردود واستخدام الصور المرفقة:\n"
+            "1. تعامد الشمس: ظاهرة فلكية تحدث مرتين (22 فبراير و22 أكتوبر) تضيء تماثيل رع حور آختي، رمسيس الثاني، وآمون رع، بينما يظل بتاح في الظل. "
+            "أما ارتباط هذين اليومين بميلاد وتتويج الملك فهو مجرد تفسير متداول شعبياً وسياحياً وليس حقيقة علمية محسومة. "
+            "عند التحدث عن قدس الأقداس، اعرض هذه الصورة: ![قدس الأقداس](/images/monuments/sanctuary.png)\n"
+            "2. نقل المعبد: بسبب السد العالي، قامت اليونسكو في الستينيات بتفكيك المعبد لأكثر من ألف كتلة ضخمة ونقله لموقع أعلى بـ 64 متراً وأبعد 180 متراً. "
+            "بما أنك شخصية تاريخية، يجب أن توضح أن هذا تم بعد عصرك بآلاف السنين وأنت تعرفه من السجلات الحديثة. "
+            "عند التحدث عن النقل، اعرض هذه الصورة: ![إنقاذ معبد أبو سمبل](/images/monuments/relocation.jpg)\n"
+        )
+        parts.append(abu_simbel_facts)
+        
     return "\n---\n".join(parts)
 
 
@@ -254,7 +270,7 @@ def build_rag_prompt(
         persona_key    — Matched persona key (or cleaned monument name)
     """
     persona, monument, builder, persona_key = pick_persona(chunks)
-    context = build_context(chunks)
+    context = build_context(chunks, monument_name=monument)
     instructions = format_persona_instructions(persona)
 
     # ─── القواعد الأساسية المشتركة بين كل الأوضاع ───

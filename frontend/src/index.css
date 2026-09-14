@@ -273,3 +273,4 @@ body {
 .map-container .leaflet-container {
   border-radius: var(--radius-soft);
 }
+@keyframes light-ray { 0% { transform: translateX(-150%) rotate(35deg); opacity: 0; } 50% { opacity: 1; } 100% { transform: translateX(150%) rotate(35deg); opacity: 0; } }
