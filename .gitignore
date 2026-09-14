@@ -20,6 +20,10 @@ frontend/dist/
 .vscode/
 .idea/
 
+# Debug / generated artifacts
+*.sqlite3
+hikawi_db/
+
 # OS
 .DS_Store
 Thumbs.db
