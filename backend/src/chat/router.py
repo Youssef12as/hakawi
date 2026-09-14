@@ -6,6 +6,9 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from src.auth import get_current_user_id
 from src.config import settings
 from src.chat.ancient_translation import generate_with_ancient
+from src.chat.othman_images import (
+    OTHMAN_IMAGE_INSTRUCTIONS, add_othman_image, is_othman, strip_images,
+)
 from src.chat.rag_service import is_ready as rag_is_ready, retrieve_and_build
 from src.chat.schemas import (
     AncientChatRequest,
@@ -164,14 +167,8 @@ async def chat_text(
             persona, _ = get_historical_persona(request.region)
             system_prompt = format_persona_instructions(persona)
             
-            # 🖼️ Inject local images for Aswan's Am Othman
-            if "aswan" in request.region.lower() or "عثمان" in request.region:
-                system_prompt += (
-                    "\n\n[أوامر بصرية إجبارية]:\n"
-                    "أنت مبرمج لعرض صور حقيقية للزائر. يجب عليك نسخ كود الصورة حرفياً ووضعه في نهاية إجابتك إذا تحقق الشرط التالي:\n"
-                    "- إذا ذكرت أو وصفت 'البيوت النوبية' أو 'القرى النوبية' أو 'النوبة'، أضف في نهاية ردك: ![بيوت النوبة](/images/monuments/nubian_village.jpg)\n"
-                    "- إذا ذكرت أو وصفت 'الفلوكة' أو 'المراكب' أو 'نيل أسوان'، أضف في نهاية ردك: ![الفلوكة في نيل أسوان](/images/monuments/aswan_nile.jpg)\n"
-                )
+            if is_othman(request.region):
+                system_prompt += OTHMAN_IMAGE_INSTRUCTIONS
 
         with timed_section(metrics, "generation"):
             ai_response = generate(
@@ -182,6 +179,8 @@ async def chat_text(
                 max_output_tokens=500,
             )
         ai_response = clean_text_formatting(ai_response)
+        if not is_family:
+            ai_response = add_othman_image(ai_response, request.text, request.region)
 
         # Log metrics
         log_pipeline_metrics(metrics)
@@ -296,6 +295,8 @@ async def chat_audio(
         else:
             persona_obj, _ = get_historical_persona(region)
             system_prompt = format_persona_instructions(persona_obj)
+            if is_othman(region):
+                system_prompt += OTHMAN_IMAGE_INSTRUCTIONS
             chat_mode = "regional"
 
         ai_response = generate(
@@ -306,6 +307,9 @@ async def chat_audio(
             max_output_tokens=500,
         )
         ai_response = clean_text_formatting(ai_response)
+
+        if not is_family:
+            ai_response = add_othman_image(ai_response, transcribed_text, region)
 
         session_id = save_chat_turn(
             session_id=session_id,
@@ -447,6 +451,10 @@ async def chat_ancient(
 
         ai_response = clean_text_formatting(ai_response)
         tts_text = clean_text_formatting(tts_text)
+        image_context = request.monument_key or payload.get("persona_key")
+        if is_othman(image_context):
+            ai_response = add_othman_image(ai_response, request.text, image_context)
+            tts_text = strip_images(tts_text)
 
         if request.monument_key:
             builder = payload["builder"] or display_name
