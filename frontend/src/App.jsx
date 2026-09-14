@@ -3,7 +3,10 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Navbar from './components/layout/Navbar';
 import Landing from './pages/Landing';
-import MapInteract from './pages/MapInteract';
+import MapLayout from './pages/map/MapLayout';
+import MapOverview from './pages/map/MapOverview';
+import GovernorateView from './pages/map/GovernorateView';
+import MonumentChat from './pages/map/MonumentChat';
 import FamilyTree from './pages/FamilyTree';
 import AncientMode from './pages/AncientMode';
 import Settings from './pages/Settings';
@@ -36,10 +39,14 @@ export default function App() {
               path="/map"
               element={
                 <ProtectedRoute>
-                  <MapInteract />
+                  <MapLayout />
                 </ProtectedRoute>
               }
-            />
+            >
+              <Route index element={<MapOverview />} />
+              <Route path=":govKey" element={<GovernorateView />} />
+              <Route path=":govKey/:monumentSlug" element={<MonumentChat />} />
+            </Route>
             <Route
               path="/ancient/:regionId"
               element={

@@ -1,18 +1,25 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+/**
+ * MonumentChat — /map/:govKey/:monumentSlug
+ *
+ * Full-screen character chat for a single monument.
+ * Resolves the monument from URL params via MapContext + slugToKey(),
+ * creates a fresh chat session on mount, and provides TTS, language
+ * toggle (modern/ancient Egyptian for Aswan), chat history drawer,
+ * and the "منقوشاتنا" living-wall feature for *-general monuments.
+ */
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { X, Languages, History } from 'lucide-react';
-import PageShell from '../components/layout/PageShell';
-import DialectMap from '../components/map/DialectMap';
-import MonumentSelector from '../components/map/MonumentSelector';
-import CharacterStage from '../components/character/CharacterStage';
-import CharacterCard from '../components/character/CharacterCard';
-import ChatPanel from '../components/chat/ChatPanel';
-import ChatHistoryDrawer from '../components/chat/ChatHistoryDrawer';
-import AIBadge from '../components/consent/AIBadge';
-import { useCharacterState } from '../hooks/useCharacterState';
-import { useChatApi } from '../hooks/useChatApi';
-
-/* ── Cross-fade transition duration (ms) ── */
-const CROSSFADE_MS = 600;
+import PageShell from '../../components/layout/PageShell';
+import CharacterStage from '../../components/character/CharacterStage';
+import CharacterCard from '../../components/character/CharacterCard';
+import ChatPanel from '../../components/chat/ChatPanel';
+import ChatHistoryDrawer from '../../components/chat/ChatHistoryDrawer';
+import AIBadge from '../../components/consent/AIBadge';
+import { useCharacterState } from '../../hooks/useCharacterState';
+import { useChatApi } from '../../hooks/useChatApi';
+import { useMapContext } from '../../context/MapContext';
+import { slugToKey } from '../../utils/monumentSlugs';
 
 /* ── Wall Symbols (from Landing Page) ── */
 const WALL_SYMBOLS = [
@@ -24,103 +31,53 @@ const WALL_SYMBOLS = [
   { id: 'luxor-carpet', name: 'سجادة الأقصر', desc: 'استُلهمت زخارفها من المعابد وأعمدة الكرنك والطبيعة المحيطة بالنيل.', img: '/image/noqush.png', top: '42%', left: '90%' },
 ];
 
-export default function MapInteract() {
+export default function MonumentChat() {
+  const { govKey, monumentSlug } = useParams();
+  const navigate = useNavigate();
+  const { governorates } = useMapContext();
 
-
-  // 3-stage state: null → governorate → monument
-  const [governorates, setGovernorates] = useState(null);
-  const [selectedGovernorate, setSelectedGovernorate] = useState(null);
-  const [selectedMonument, setSelectedMonument] = useState(null);
-
-  // New state for "Great Wall" feature
-  const [showWall, setShowWall] = useState(false);
-  const [selectedSymbol, setSelectedSymbol] = useState(null);
-
-  // Cross-fade transition state
-  // When transitioning from map → monument selector, we briefly render both
-  // layers and animate opacity so the switch feels like a continuous movement.
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [fadePhase, setFadePhase] = useState('idle'); // 'idle' | 'out' | 'in'
-  const pendingGovRef = useRef(null);
+  const governorate = useMemo(
+    () => governorates?.find((g) => g.key === govKey),
+    [governorates, govKey]
+  );
+  
+  const monumentKey = useMemo(
+    () => slugToKey(govKey, monumentSlug),
+    [govKey, monumentSlug]
+  );
+  
+  const monument = useMemo(
+    () => governorate?.monuments?.find((m) => m.key === monumentKey),
+    [governorate, monumentKey]
+  );
 
   const [sessionId, setSessionId] = useState(null);
   const [chatHistory, setChatHistory] = useState([]);
   const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
-  // Language mode for TTS: 'modern' = Arabic voice, 'ancient' = old Egyptian voice
   const [languageMode, setLanguageMode] = useState('modern');
-  // Response style: 'direct' = factual, 'hikaya' = storytelling, 'presentation' = TED talk
   const [responseMode, setResponseMode] = useState('direct');
 
+  const [showWall, setShowWall] = useState(false);
+  const [selectedSymbol, setSelectedSymbol] = useState(null);
+
   const { isSpeaking, playResponseAudio, stopAudio } = useCharacterState();
-  const { sendTextMessage, sendAncientMessage, fetchTTS, fetchGovernorates, fetchChatHistory, fetchSessionDetail, transcribeAudio, createSession, isLoading } = useChatApi();
+  const { sendAncientMessage, fetchTTS, fetchChatHistory, fetchSessionDetail, transcribeAudio, createSession, isLoading } = useChatApi();
 
-  // ── Fetch governorates on mount ─────────────────────────────────
   useEffect(() => {
-    fetchGovernorates().then((data) => {
-      if (data) {
-        const rawGovs = data.governorates || data;
-        let processedGovs = Array.isArray(rawGovs) ? [...rawGovs] : [];
-
-        // Ensure Giza is separated cleanly if bundled in Cairo
-        const cairoGov = processedGovs.find((g) => g.key === 'cairo');
-        if (cairoGov && !processedGovs.some((g) => g.key === 'giza')) {
-          const gizaKeys = ['khufu_pyramid', 'great-pyramid', 'sphinx', 'step-pyramid', 'bent-pyramid'];
-          const cairoKeys = ['azhar', 'citadel', 'sultan-hassan', 'ibn-tulun', 'hanging-church'];
-
-          const gizaMonuments = (cairoGov.monuments || []).filter((m) => gizaKeys.includes(m.key));
-          const cairoMonuments = (cairoGov.monuments || []).filter((m) => cairoKeys.includes(m.key));
-
-          processedGovs = processedGovs.map((g) => (g.key === 'cairo' ? { ...g, monuments: cairoMonuments, name: 'القاهرة' } : g));
-          processedGovs.push({
-            key: 'giza',
-            name: 'الجيزة',
-            name_en: 'Giza',
-            lat: 29.9753,
-            lng: 31.1376,
-            monuments: gizaMonuments,
-          });
-        }
-
-        setGovernorates(processedGovs);
-      }
-    });
-  }, [fetchGovernorates]);
-
-  // ── Stage 1 → Stage 2: pick a governorate (smooth cinematic reveal) ────
-  const handleSelectGovernorate = useCallback(
-    (govKey) => {
-      stopAudio();
-      const gov = governorates?.find((g) => g.key === govKey);
-      if (gov) {
-        setSelectedGovernorate(gov);
-        setFadePhase('in');
-        setTimeout(() => {
-          setFadePhase('idle');
-        }, 500);
-      }
-    },
-    [stopAudio, governorates],
-  );
-
-  // ── Stage 2 → Stage 3: pick a monument ─────────────────────────
-  // By default, each monument entered starts with a fresh new chat.
-  const handleSelectMonument = useCallback(async (monument) => {
-    setSelectedMonument(monument);
+    if (!monument) return;
     setChatHistory([]);
-    try {
-      const created = await createSession({
-        chat_mode: 'ancient',
-        monument_key: monument.key,
-        language_mode: 'modern',
-        title: monument.builder || monument.display_name,
-      });
+    createSession({
+      chat_mode: 'ancient',
+      monument_key: monument.key,
+      language_mode: 'modern',
+      title: monument.builder || monument.display_name,
+    }).then((created) => {
       setSessionId(created?.session_id || null);
-    } catch {
-      setSessionId(null); // lazily created by the backend on first message
-    }
-  }, [createSession]);
+    }).catch(() => {
+      setSessionId(null);
+    });
+  }, [monument?.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Switch to a previous session from the history drawer ────────
   const handleSelectHistorySession = useCallback(async (selectedSid) => {
     try {
       const detail = await fetchSessionDetail(selectedSid);
@@ -145,23 +102,6 @@ export default function MapInteract() {
     }
   }, [fetchSessionDetail]);
 
-  // ── Navigation helpers ──────────────────────────────────────────
-  const handleBackToMap = useCallback(() => {
-    stopAudio();
-    setSelectedGovernorate(null);
-    setSelectedMonument(null);
-    setSessionId(null);
-    setChatHistory([]);
-  }, [stopAudio]);
-
-  const handleBackToMonuments = useCallback(() => {
-    stopAudio();
-    setSelectedMonument(null);
-    setSessionId(null);
-    setChatHistory([]);
-  }, [stopAudio]);
-
-  // ── Text Chat (RAG-backed via /api/chat/ancient) ────────────────
   const handleSendText = useCallback(
     async (text) => {
       setChatHistory((prev) => [
@@ -170,10 +110,9 @@ export default function MapInteract() {
       ]);
 
       try {
-        const data = await sendAncientMessage(text, sessionId, selectedMonument?.key, languageMode, responseMode);
+        const data = await sendAncientMessage(text, sessionId, monument?.key, languageMode, responseMode);
         setSessionId(data.session_id);
         const aiResponseText = data.response;
-        // Use tts_text for TTS (old Egyptian when ancient mode, same as response when modern)
         const ttsText = data.tts_text || aiResponseText;
 
         const msgId = Date.now();
@@ -188,8 +127,7 @@ export default function MapInteract() {
           },
         ]);
 
-        // TTS — always use the character's voice, but text differs by language mode
-        const characterName = data.character_name || selectedMonument?.character_name || 'am-othman';
+        const characterName = data.character_name || monument?.character_name || 'am-othman';
         const audioBlob = await fetchTTS(ttsText, characterName);
 
         if (audioBlob) {
@@ -212,78 +150,28 @@ export default function MapInteract() {
         ]);
       }
     },
-    [sessionId, selectedMonument, languageMode, responseMode, sendAncientMessage, fetchTTS, playResponseAudio],
+    [sessionId, monument, languageMode, responseMode, sendAncientMessage, fetchTTS, playResponseAudio],
   );
 
-  // ══════════════════════════════════════════════════════════════════
-  //  RENDER
-  // ══════════════════════════════════════════════════════════════════
+  const handleClose = useCallback(() => {
+    stopAudio();
+    navigate(`/map/${govKey}`);
+  }, [stopAudio, navigate, govKey]);
 
-  // Cross-fade inline styles
-  const crossfadeStyles = `
-    @keyframes govMapReveal {
-      0% {
-        opacity: 0;
-        transform: scale(0.96);
-        filter: blur(4px);
-      }
-      100% {
-        opacity: 1;
-        transform: scale(1);
-        filter: blur(0);
-      }
-    }
-    .gov-map-reveal {
-      animation: govMapReveal 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-  `;
-
-  // ── Stage 1: Map view ───────────────────────────────────────────
-  if (!selectedGovernorate) {
+  if (!governorates) {
     return (
       <PageShell className="bg-espresso/5">
-        <style>{crossfadeStyles}</style>
-        <div className="h-[calc(100vh-4rem)] flex flex-col lg:flex-row relative">
-          <div className="w-full h-full p-3 sm:p-4 animate-fade-in">
-            <DialectMap
-              regions={governorates || []}
-              onSelectRegion={handleSelectGovernorate}
-            />
-          </div>
-
-          {/* Loading overlay */}
-          {!governorates && (
-            <div className="absolute inset-0 flex items-center justify-center bg-[#0b0a08]/60 backdrop-blur-sm z-10">
-              <div className="text-center">
-                <div className="w-10 h-10 border-[3px] border-[#c4a06a]/20 border-t-[#c4a06a] rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-[#c4a06a]/60 text-sm">جاري تحميل المعالم...</p>
-              </div>
-            </div>
-          )}
+        <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+          <div className="w-10 h-10 border-[3px] border-[#c4a06a]/20 border-t-[#c4a06a] rounded-full animate-spin" />
         </div>
       </PageShell>
     );
   }
 
-  // ── Stage 2: Monument selector (smooth zoom reveal) ─────────────
-  if (!selectedMonument) {
-    return (
-      <PageShell className="bg-espresso/5">
-        <style>{crossfadeStyles}</style>
-        <div className="h-[calc(100vh-4rem)] gov-map-reveal">
-          <MonumentSelector
-            governorate={selectedGovernorate}
-            monuments={selectedGovernorate.monuments}
-            onSelectMonument={handleSelectMonument}
-            onBack={handleBackToMap}
-          />
-        </div>
-      </PageShell>
-    );
+  if (!monument) {
+    navigate(`/map/${govKey}`, { replace: true });
+    return null;
   }
-
-  // ── Stage 3: Character + Chat (RAG-backed) ─────────────────────
-  const monument = selectedMonument;
 
   return (
     <PageShell className="bg-espresso/5">
@@ -302,7 +190,7 @@ export default function MapInteract() {
               </span>
             </div>
             <button
-              onClick={handleBackToMonuments}
+              onClick={handleClose}
               className="text-sand/30 hover:text-sand transition-colors p-1.5 rounded-lg hover:bg-sand/8"
               aria-label="إغلاق المحادثة"
               id="close-panel-btn"
@@ -350,8 +238,8 @@ export default function MapInteract() {
             ) : (
               <CharacterStage
                 isSpeaking={isSpeaking}
-                idleSrc={monument.idle_video_url || (monument.key === 'khufu_pyramid' ? '/character/khufu_idle.mp4' : undefined)}
-                talkingSrc={monument.talking_video_url || (monument.key === 'khufu_pyramid' ? '/character/khufu_speaking.mp4' : undefined)}
+                idleSrc={governorate?.key === 'giza' ? '/character/khufu_idle.mp4' : monument.idle_video_url}
+                talkingSrc={governorate?.key === 'giza' ? '/character/khufu_speaking.mp4' : monument.talking_video_url}
               />
             )}
           </div>
@@ -386,7 +274,7 @@ export default function MapInteract() {
 
             {/* Left side (RTL end): Language Toggle (Aswan monuments) + منقوشاتنا */}
             <div className="flex items-center gap-3">
-              {selectedGovernorate?.key === 'aswan' && monument.key !== 'aswan-general' && (
+              {governorate?.key === 'aswan' && monument.key !== 'aswan-general' && (
                 <div className="flex items-center gap-2">
                   <Languages className="w-3.5 h-3.5 text-[#c4a06a]/60" />
                   <span
@@ -413,7 +301,7 @@ export default function MapInteract() {
                 </div>
               )}
 
-              {selectedGovernorate?.key === 'aswan' && monument.key === 'aswan-general' && (
+              {governorate?.key === 'aswan' && monument.key === 'aswan-general' && (
                 <button
                   onClick={() => setShowWall((prev) => !prev)}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all duration-300 text-xs font-medium ${showWall ? 'bg-[#c4a06a]/20 border-[#c4a06a]/50 text-[#c4a06a]' : 'bg-transparent border-[#c4a06a]/20 text-[#c4a06a]/70 hover:bg-[#c4a06a]/10 hover:text-[#c4a06a]'}`}
