@@ -28,6 +28,8 @@ jobs:
           pip install -r requirements/dev.txt
           
       - name: Run deployment tests
+        env:
+          GEMINI_API_KEY: "dummy_key_for_tests"
         # We only run the deployment test since it doesn't require a DB
         run: pytest tests/test_deployment.py -v
 
