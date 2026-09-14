@@ -7,6 +7,7 @@ import MapLayout from './pages/map/MapLayout';
 import MapOverview from './pages/map/MapOverview';
 import GovernorateView from './pages/map/GovernorateView';
 import MonumentChat from './pages/map/MonumentChat';
+import AbuSimbelTour from './pages/map/AbuSimbelTour';
 import FamilyTree from './pages/FamilyTree';
 import AncientMode from './pages/AncientMode';
 import Settings from './pages/Settings';
@@ -45,6 +46,7 @@ export default function App() {
             >
               <Route index element={<MapOverview />} />
               <Route path=":govKey" element={<GovernorateView />} />
+              <Route path=":govKey/abu-simbel" element={<AbuSimbelTour />} />
               <Route path=":govKey/:monumentSlug" element={<MonumentChat />} />
             </Route>
             <Route

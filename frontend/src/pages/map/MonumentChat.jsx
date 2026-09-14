@@ -31,8 +31,15 @@ const WALL_SYMBOLS = [
   { id: 'luxor-carpet', name: 'سجادة الأقصر', desc: 'استُلهمت زخارفها من المعابد وأعمدة الكرنك والطبيعة المحيطة بالنيل.', img: '/image/noqush.png', top: '42%', left: '90%' },
 ];
 
-export default function MonumentChat() {
-  const { govKey, monumentSlug } = useParams();
+export default function MonumentChat({ overrideSlug, initialContext, isOverlay }) {
+
+  const Wrapper = isOverlay ? 'div' : PageShell;
+  const wrapperProps = isOverlay ? { className: 'w-full h-full bg-[#111010]' } : { className: 'bg-espresso/5' };
+  const innerClass = isOverlay 
+    ? 'h-full grid lg:grid-cols-[1.15fr_0.85fr] animate-slide-in-end overflow-hidden'
+    : 'h-[calc(100vh-4rem)] grid lg:grid-cols-[1.15fr_0.85fr] animate-slide-in-end overflow-hidden';
+  const { govKey, monumentSlug: urlSlug } = useParams();
+  const monumentSlug = overrideSlug || urlSlug;
   const navigate = useNavigate();
   const { governorates } = useMapContext();
 
@@ -58,6 +65,7 @@ export default function MonumentChat() {
   const [responseMode, setResponseMode] = useState('direct');
 
   const [showWall, setShowWall] = useState(false);
+  const [hasSentInitialContext, setHasSentInitialContext] = useState(false);
   const [selectedSymbol, setSelectedSymbol] = useState(null);
 
   const { isSpeaking, playResponseAudio, stopAudio } = useCharacterState();
@@ -158,13 +166,12 @@ export default function MonumentChat() {
     navigate(`/map/${govKey}`);
   }, [stopAudio, navigate, govKey]);
 
-  if (!governorates) {
-    return (
-      <PageShell className="bg-espresso/5">
-        <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
+  if (!governorates) {return (
+      <Wrapper {...wrapperProps}>
+          <div className={isOverlay ? "h-full flex items-center justify-center" : "h-[calc(100vh-4rem)] flex items-center justify-center"}>
           <div className="w-10 h-10 border-[3px] border-[#c4a06a]/20 border-t-[#c4a06a] rounded-full animate-spin" />
         </div>
-      </PageShell>
+      </Wrapper>
     );
   }
 
@@ -173,10 +180,18 @@ export default function MonumentChat() {
     return null;
   }
 
+
+  useEffect(() => {
+    if (initialContext && sessionId && !hasSentInitialContext) {
+      handleSendText(initialContext);
+      setHasSentInitialContext(true);
+    }
+  }, [initialContext, sessionId, hasSentInitialContext, handleSendText]);
+
   return (
-    <PageShell className="bg-espresso/5">
+    <Wrapper {...wrapperProps}>
       <div
-        className="h-[calc(100vh-4rem)] grid lg:grid-cols-[1.15fr_0.85fr] animate-slide-in-end overflow-hidden"
+        className={innerClass}
         style={{ background: 'radial-gradient(circle at center, #111010 0%, #0b0a08 100%)' }}
       >
         {/* Character Portal & Bio Side (Right Column in RTL) */}
@@ -355,6 +370,6 @@ export default function MonumentChat() {
           />
         </div>
       </div>
-    </PageShell>
+    </Wrapper>
   );
 }
