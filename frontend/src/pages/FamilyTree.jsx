@@ -132,7 +132,7 @@ export default function FamilyTree() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
 
-  // Chat State — original hooks identical to MapInteract
+  // Chat State — same pattern as pages/map/MonumentChat
   const [chatHistory, setChatHistory] = useState([]);
   const [chatSessionId, setChatSessionId] = useState(null);
   const { isSpeaking, playResponseAudio, stopAudio } = useCharacterState();
@@ -318,7 +318,7 @@ export default function FamilyTree() {
     setView('add');
   };
 
-  // ── Chat handlers — mirrored exactly from MapInteract ──────────────
+  // ── Chat handlers — same pattern as pages/map/MonumentChat ──────────────
   const openChat = async (member) => {
     setSelectedMember(member);
     stopAudio();

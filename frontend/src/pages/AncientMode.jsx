@@ -94,7 +94,7 @@ export default function AncientMode() {
   }, [sendAncientMessage, sessionId, activeData.monumentKey]);
 
   const handleClose = () => {
-    navigate('/map');
+    navigate(`/map/${regionId}`);
   };
 
   return (
