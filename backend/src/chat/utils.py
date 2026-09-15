@@ -35,6 +35,8 @@ def format_persona_instructions(persona: dict[str, Any] | None) -> str:
     if not persona:
         return DEFAULT_PERSONA_INSTRUCTION
 
+    guidance = persona.get("guidance", "")
+    grounding_instructions = f"إرشادات الاستناد إلى المصادر: {guidance}\n\n" if guidance else ""
     return (
         f"النبرة: {persona['tone']}\n"
         f"اللغة: {persona['language']}\n"
@@ -42,5 +44,6 @@ def format_persona_instructions(persona: dict[str, Any] | None) -> str:
         f"إذا سُئلت عن شيء لا تعرفه إطلاقاً أو خارج عن نطاق عصرك تماماً، يمكنك الرد بـ: \"{persona['on_unknown']}\"\n"
         f"مثال على أسلوبك: \"{persona['example']}\"\n"
         f"تجنب: {persona['avoid']}\n\n"
+        f"{grounding_instructions}"
         f"{PERSONA_FORMATTING_RULES}\n"
     )

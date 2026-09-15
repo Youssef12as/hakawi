@@ -1,5 +1,6 @@
 import { Volume2 } from 'lucide-react';
 import { arabicToHieroglyphs } from '../../utils/hieroglyphs';
+import { chatImageCredits } from '../../utils/chatImageCredits';
 
 export default function ChatBubble({ sender, text, isError, elderName, audioBlob, languageMode }) {
   const isAI = sender === 'ai';
@@ -39,16 +40,46 @@ export default function ChatBubble({ sender, text, isError, elderName, audioBlob
       }
 
       // 2. Add the image itself
+      const credit = chatImageCredits[cleanUrl];
+      const creditLinks = credit && (
+        <span className="block mt-1">
+          {!credit.compact && 'تصوير: '}
+          <a href={credit.source} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+            <bdi>{credit.photographer}</bdi>
+          </a>
+          {' · '}
+          <a href={credit.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/'} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+            <bdi>{credit.license || 'CC BY-SA 4.0'}</bdi>
+          </a>
+        </span>
+      );
       parts.push(
-        <div key={`img-wrapper-${match.index}`} className="flex justify-center w-full my-3">
+        <figure key={`img-wrapper-${match.index}`} className="flex flex-col items-center w-full my-3">
           <img 
             src={cleanUrl} 
             alt={match[1]} 
-            className="max-w-full rounded-lg shadow-md border-2 border-[#c4a06a]/30 object-cover"
+            className="max-w-full w-auto h-auto rounded-lg shadow-md border-2 border-[#c4a06a]/30 object-contain"
             loading="lazy"
+            width={credit?.width}
+            height={credit?.height}
             style={{ maxHeight: '250px' }}
           />
-        </div>
+          {credit && (
+            <figcaption className="mt-2 text-center text-xs leading-relaxed text-[#d6c4a5]" dir="rtl">
+              {credit.compact ? (
+                <details>
+                  <summary className="cursor-pointer px-3 py-2 min-h-11 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">حقوق الصورة</summary>
+                  {creditLinks}
+                </details>
+              ) : (
+                <>
+                  <span className="block">{match[1]}</span>
+                  {creditLinks}
+                </>
+              )}
+            </figcaption>
+          )}
+        </figure>
       );
       
       lastIndex = regex.lastIndex;

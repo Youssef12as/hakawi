@@ -31,11 +31,7 @@ for i, chunk in enumerate(good_chunks):
             contents=chunk["text"]
         )
         results.append({
-            "id": chunk["id"],
-            "monument": chunk["monument"],
-            "builder": chunk["builder"],
-            "section": chunk["section"],
-            "text": chunk["text"],
+            **chunk,
             "embedding": response.embeddings[0].values
         })
         print(f"  ✅ {i+1}/{len(good_chunks)} — {chunk['monument'][:35]}")

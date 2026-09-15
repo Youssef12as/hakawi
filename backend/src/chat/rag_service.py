@@ -26,6 +26,7 @@ import numpy as np
 from google import genai
 
 from src.config import settings
+from src.chat.othman_images import OTHMAN_IMAGE_INSTRUCTIONS, is_othman
 from src.chat.utils import (
     format_persona_instructions,
     get_historical_persona,
@@ -216,6 +217,12 @@ def build_context(chunks: list[tuple[float, dict]], max_chars_per_chunk: int = 8
     for _score, chunk in chunks:
         text = chunk["text"][:max_chars_per_chunk]
         parts.append(text)
+        # Keep curated media attached to its retrieved evidence even when the
+        # reference text is truncated. The model still writes the reply.
+        if chunk.get("image_markdown"):
+            parts.append(chunk["image_markdown"])
+            if chunk.get("image_credit"):
+                parts.append(chunk["image_credit"])
         if "أبو سمبل" in chunk.get("monument", "") or "سمبل" in text:
             is_abu_simbel = True
             
@@ -344,6 +351,8 @@ def build_rag_prompt(
         user_ending = "ردك كشخصية (طول الرد مناسب لنوع السؤال، بجمل قصيرة):"
 
     system_prompt = mode_instructions
+    if is_othman(persona_key):
+        system_prompt += OTHMAN_IMAGE_INSTRUCTIONS
 
     user_prompt = (
         f"أنت شخصية تاريخية من {monument}.\n"

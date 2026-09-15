@@ -166,6 +166,19 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
     navigate(`/map/${govKey}`);
   }, [stopAudio, navigate, govKey]);
 
+  useEffect(() => {
+    if (governorates && !monument) {
+      navigate(`/map/${govKey}`, { replace: true });
+    }
+  }, [governorates, monument, navigate, govKey]);
+
+  useEffect(() => {
+    if (monument && initialContext && sessionId && !hasSentInitialContext) {
+      handleSendText(initialContext);
+      setHasSentInitialContext(true);
+    }
+  }, [monument, initialContext, sessionId, hasSentInitialContext, handleSendText]);
+
   if (!governorates) {return (
       <Wrapper {...wrapperProps}>
           <div className={isOverlay ? "h-full flex items-center justify-center" : "h-[calc(100vh-4rem)] flex items-center justify-center"}>
@@ -176,17 +189,8 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
   }
 
   if (!monument) {
-    navigate(`/map/${govKey}`, { replace: true });
     return null;
   }
-
-
-  useEffect(() => {
-    if (initialContext && sessionId && !hasSentInitialContext) {
-      handleSendText(initialContext);
-      setHasSentInitialContext(true);
-    }
-  }, [initialContext, sessionId, hasSentInitialContext, handleSendText]);
 
   return (
     <Wrapper {...wrapperProps}>
