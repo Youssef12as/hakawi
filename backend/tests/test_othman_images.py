@@ -59,13 +59,38 @@ def test_photo_links_and_captions_are_not_spoken():
     assert strip_images(f"أبدأ بيك من النيل.\n\n{FELUCCA_IMAGE}") == "أبدأ بيك من النيل."
 
 
-def test_tts_endpoint_strips_images_from_regional_reply(monkeypatch):
+@pytest.mark.parametrize("character", ["am-othman", "ramsis", "amr-abdeen-modern", "khufu"])
+def test_tts_endpoint_strips_images_for_every_character(monkeypatch, character):
     synthesize = Mock(return_value=("test.wav", None))
     monkeypatch.setattr(characters, "synthesize_speech", synthesize)
     characters.text_to_speech(TTSRequest(
-        text=f"النيل جميل.\n\n{FELUCCA_IMAGE}", character_name="am-othman",
+        text=f"النيل جميل.\n\n{FELUCCA_IMAGE}", character_name=character,
     ))
     assert synthesize.call_args.kwargs["text"] == "النيل جميل."
+
+
+@pytest.mark.parametrize("mode", ["modern", "ancient"])
+def test_ramses_chat_keeps_photo_visible_but_out_of_speech(photo_api, monkeypatch, mode):
+    client, save = photo_api
+    picture = "![إنقاذ معبد أبو سمبل](/images/monuments/relocation.jpg)"
+    reply = f"نقلوا معبدي لإنقاذه.\n{picture}\nثم أعادوا تركيبه."
+    monkeypatch.setattr(chat, "get_monument_by_key", lambda _: {
+        "monument_name": "أبو سمبل — رمسيس الثاني", "display_name": "أبو سمبل",
+        "character_name": "ramsis",
+    })
+    monkeypatch.setattr(chat, "generate", lambda **kw: reply)
+    monkeypatch.setattr(chat, "generate_with_ancient", lambda **kw: (reply, reply))
+    response = client.post("/api/chat/ancient", json={
+        "text": "كيف تم نقل المعبد؟", "monument_key": "abu-simbel", "language_mode": mode,
+    })
+    assert response.status_code == 200
+    data = response.json()
+    assert picture in data["response"]
+    assert "إنقاذ معبد أبو سمبل" not in data["tts_text"]
+    assert "/images/" not in data["tts_text"]
+    assert "نقلوا معبدي" in data["tts_text"]
+    assert "أعادوا تركيبه" in data["tts_text"]
+    assert save.call_args.kwargs["metadata"]["tts_text"] == data["tts_text"]
 
 
 def test_curated_assets_exist_in_frontend():

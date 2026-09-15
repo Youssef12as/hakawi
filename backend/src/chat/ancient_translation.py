@@ -10,6 +10,7 @@ import logging
 import re
 
 from src.integrations.gemini import generate
+from src.chat.othman_images import strip_images
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,8 @@ DUAL_OUTPUT_SYSTEM_PROMPT = (
     "[نفس الرد بالمصرية القديمة بحروف عربية]\n\n"
     "لا تضف أي شيء قبل ===ARABIC=== أو بعد النص القديم.\n"
     "حافظ على شخصيتك التاريخية ونبرتك في كلا الردين.\n"
+    "الصور للعرض فقط في القسم العربي. في القسم القديم، حوّل الكلام فقط؛ "
+    "لا تنطق أو تترجم وصف الصور أو روابطها أو صيغة الماركدون.\n"
 )
 
 # ─── Fallback: translate-only prompt ──────────────────────────────────────
@@ -88,7 +91,7 @@ def generate_with_ancient(
         parsed = _parse_dual_response(raw)
         if parsed:
             logger.info("Dual-output parse succeeded (single call)")
-            return parsed
+            return parsed[0], strip_images(parsed[1])
         else:
             logger.warning("Dual-output parse failed, raw=%s...", raw[:120])
     except Exception as e:
@@ -109,11 +112,11 @@ def generate_with_ancient(
 
     # Call 2: translate the Arabic response to old Egyptian
     ancient_text = generate(
-        user_text=arabic_text,
+        user_text=strip_images(arabic_text),
         system_prompt=TRANSLATE_ONLY_SYSTEM_PROMPT,
         temperature=0.3,
         max_output_tokens=max_output_tokens // 2,
         thinking_budget=0,
     )
 
-    return arabic_text, ancient_text
+    return arabic_text, strip_images(ancient_text)

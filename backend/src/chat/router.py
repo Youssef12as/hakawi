@@ -454,7 +454,7 @@ async def chat_ancient(
         image_context = request.monument_key or payload.get("persona_key")
         if is_othman(image_context):
             ai_response = add_othman_image(ai_response, request.text, image_context)
-            tts_text = strip_images(tts_text)
+        tts_text = strip_images(tts_text)
 
         if request.monument_key:
             builder = payload["builder"] or display_name
