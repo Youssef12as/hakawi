@@ -41,6 +41,18 @@ export default function ChatBubble({ sender, text, isError, elderName, audioBlob
 
       // 2. Add the image itself
       const credit = chatImageCredits[cleanUrl];
+      const creditLinks = credit && (
+        <span className="block mt-1">
+          {!credit.compact && 'تصوير: '}
+          <a href={credit.source} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+            <bdi>{credit.photographer}</bdi>
+          </a>
+          {' · '}
+          <a href={credit.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/'} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+            <bdi>{credit.license || 'CC BY-SA 4.0'}</bdi>
+          </a>
+        </span>
+      );
       parts.push(
         <figure key={`img-wrapper-${match.index}`} className="flex flex-col items-center w-full my-3">
           <img 
@@ -54,16 +66,17 @@ export default function ChatBubble({ sender, text, isError, elderName, audioBlob
           />
           {credit && (
             <figcaption className="mt-2 text-center text-xs leading-relaxed text-[#d6c4a5]" dir="rtl">
-              <span className="block">{match[1]}</span>
-              <span className="block mt-1">
-                تصوير: <a href={credit.source} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
-                  <bdi>{credit.photographer}</bdi>
-                </a>
-                {' · '}
-                <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
-                  <bdi>CC BY-SA 4.0</bdi>
-                </a>
-              </span>
+              {credit.compact ? (
+                <details>
+                  <summary className="cursor-pointer px-3 py-2 min-h-11 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">حقوق الصورة</summary>
+                  {creditLinks}
+                </details>
+              ) : (
+                <>
+                  <span className="block">{match[1]}</span>
+                  {creditLinks}
+                </>
+              )}
             </figcaption>
           )}
         </figure>

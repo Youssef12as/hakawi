@@ -217,6 +217,12 @@ def build_context(chunks: list[tuple[float, dict]], max_chars_per_chunk: int = 8
     for _score, chunk in chunks:
         text = chunk["text"][:max_chars_per_chunk]
         parts.append(text)
+        # Keep curated media attached to its retrieved evidence even when the
+        # reference text is truncated. The model still writes the reply.
+        if chunk.get("image_markdown"):
+            parts.append(chunk["image_markdown"])
+            if chunk.get("image_credit"):
+                parts.append(chunk["image_credit"])
         if "أبو سمبل" in chunk.get("monument", "") or "سمبل" in text:
             is_abu_simbel = True
             
