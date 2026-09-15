@@ -13,7 +13,7 @@ from src.characters.service import (
     synthesize_speech,
 )
 from src.characters.utils import sanitize_character_name
-from src.chat.othman_images import is_othman, strip_images
+from src.chat.othman_images import strip_images
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def text_to_speech(request: TTSRequest):
     """
     try:
         filepath, error = synthesize_speech(
-            text=strip_images(request.text) if is_othman(request.character_name) else request.text,
+            text=strip_images(request.text),
             character_name=request.character_name,
         )
 
