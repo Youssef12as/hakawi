@@ -59,6 +59,22 @@ def test_photo_links_and_captions_are_not_spoken():
     assert strip_images(f"أبدأ بيك من النيل.\n\n{FELUCCA_IMAGE}") == "أبدأ بيك من النيل."
 
 
+@pytest.mark.parametrize("question", [
+    "حدثني عن السلال النوبية", "احكيلي عن الأكل النوبي", "صباح الخير",
+    "أول مرة أعمل سلة نوبية، أبدأ إزاي؟",
+])
+@pytest.mark.parametrize("photo", ["", FELUCCA_IMAGE, PANORAMA_IMAGE])
+def test_incidental_nile_mention_does_not_attach_curated_photos(question, photo):
+    reply = "السلال من خوص النخيل، وكل سلة فيها ريحة النيل ودفء الشمس."
+    result = add_othman_image(f"{reply}\n\n{photo}", question, "aswan-general")
+    assert result == reply
+
+
+def test_unrelated_photo_is_preserved_for_craft_question():
+    reply = "حرفة نوبية. ![سلة](/images/basket.jpg)"
+    assert add_othman_image(reply, "حدثني عن السلال النوبية", "aswan-general") == reply
+
+
 @pytest.mark.parametrize("character", ["am-othman", "ramsis", "amr-abdeen-modern", "khufu"])
 def test_tts_endpoint_strips_images_for_every_character(monkeypatch, character):
     synthesize = Mock(return_value=("test.wav", None))

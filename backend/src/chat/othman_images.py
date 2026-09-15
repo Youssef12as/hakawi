@@ -45,7 +45,10 @@ def _topic_image(text: str) -> str | None:
         return PANORAMA_IMAGE
     if any(word in text for word in (
         "نيل", "فلوك", "مراكب", "شراع", "nile", "felucca", "sailing",
-        "اول مره", "اول زياره", "first visit", "first time",
+    )):
+        return FELUCCA_IMAGE
+    if ("اسوان" in text or "aswan" in text) and any(phrase in text for phrase in (
+        "اجي اسوان", "ازور اسوان", "زياره اسوان", "اول زياره", "first visit", "visiting aswan",
     )):
         return FELUCCA_IMAGE
     return None
@@ -54,22 +57,33 @@ def _topic_image(text: str) -> str | None:
 def add_othman_image(response: str, question: str, context: str | None) -> str:
     """Attach one relevant photo before saving, even when generation omits it.
 
-    The visitor's explicit topic takes precedence over incidental reply words.
-    Unrelated replies and other characters retain their existing images.
+    Select from the visitor's question only. Incidental words in a generated
+    answer must not trigger these photos. Remove these two curated photos from
+    off-topic replies even if the model copied them from its prompt.
     """
     if not response or not response.strip() or not is_othman(context):
         return response
-    selected = _topic_image(question) or _topic_image(response)
+    selected = _topic_image(question)
     if selected is None:
-        return response
+        curated_urls = {
+            "/images/monuments/aswan_felucca.jpg",
+            "/images/monuments/aswan_panorama.jpg",
+            "/images/monuments/aswan_nile.jpg",
+        }
+        return _IMAGE.sub(
+            lambda match: "" if match.group(0).rsplit("(", 1)[1][:-1].strip() in curated_urls else match.group(0),
+            response,
+        ).strip()
     # Replace model-selected/old photos and avoid duplicates on repeated calls.
     return f"{strip_images(response)}\n\n{selected}"
 
 
 OTHMAN_IMAGE_INSTRUCTIONS = (
     "\n\nصور حكاوي أسوان المعتمدة:\n"
-    f"- عند الحديث عن النيل أو ركوب الفلوكة: {FELUCCA_IMAGE}\n"
-    f"- عند الحديث عن تنوع أسوان أو هل كل أهلها نوبيون: {PANORAMA_IMAGE}\n"
+    f"- فقط إذا كان سؤال الزائر عن النيل أو ركوب الفلوكة أو زيارة أسوان: {FELUCCA_IMAGE}\n"
+    f"- فقط إذا كان سؤال الزائر عن تنوع أسوان أو هل كل أهلها نوبيون: {PANORAMA_IMAGE}\n"
     "استخدم صورة واحدة مناسبة لموضوع السؤال، ولا تخترع روابط صور. "
+    "ذكر النيل مجازًا أو عرضًا في إجابتك لا يبرر إضافة صورته. "
+    "لا تضف صور النيل أو بانوراما أسوان لأسئلة السلال أو الحرف أو الأكل أو التحية. "
     "إذا كان السؤال عن تنوع أهل أسوان، اختر البانوراما حتى لو ذكرت النيل."
 )
