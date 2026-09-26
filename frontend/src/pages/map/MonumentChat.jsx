@@ -13,6 +13,7 @@ import { X, Languages, History } from 'lucide-react';
 import PageShell from '../../components/layout/PageShell';
 import CharacterStage from '../../components/character/CharacterStage';
 import CharacterCard from '../../components/character/CharacterCard';
+import RamsisLegacyStage from '../../components/character/RamsisLegacyStage';
 import ChatPanel from '../../components/chat/ChatPanel';
 import ChatHistoryDrawer from '../../components/chat/ChatHistoryDrawer';
 import AIBadge from '../../components/consent/AIBadge';
@@ -32,12 +33,6 @@ const WALL_SYMBOLS = [
 ];
 
 export default function MonumentChat({ overrideSlug, initialContext, isOverlay }) {
-
-  const Wrapper = isOverlay ? 'div' : PageShell;
-  const wrapperProps = isOverlay ? { className: 'w-full h-full bg-[#111010]' } : { className: 'bg-espresso/5' };
-  const innerClass = isOverlay 
-    ? 'h-full grid lg:grid-cols-[1.15fr_0.85fr] animate-slide-in-end overflow-hidden'
-    : 'h-[calc(100vh-4rem)] grid lg:grid-cols-[1.15fr_0.85fr] animate-slide-in-end overflow-hidden';
   const { govKey, monumentSlug: urlSlug } = useParams();
   const monumentSlug = overrideSlug || urlSlug;
   const navigate = useNavigate();
@@ -192,14 +187,41 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
     return null;
   }
 
+  const isRamsis = monument.character_name === 'ramsis' || monument.key === 'abu-simbel';
+  const Wrapper = isOverlay ? 'div' : PageShell;
+  const wrapperProps = isOverlay
+    ? { className: 'h-full w-full bg-[#111010]' }
+    : { className: isRamsis ? 'bg-espresso/5 max-lg:!p-0' : 'bg-espresso/5' };
+  const innerClass = isOverlay
+    ? 'h-full grid lg:grid-cols-[1.15fr_0.85fr] animate-slide-in-end overflow-hidden'
+    : 'h-[calc(100vh-4rem)] grid lg:grid-cols-[1.15fr_0.85fr] animate-slide-in-end overflow-hidden';
+  const ramsisLayoutClass = isRamsis
+    ? isOverlay
+      ? 'relative !h-full grid-rows-[52%_minmax(0,48%)] !overflow-hidden lg:grid-rows-1'
+      : 'relative grid-rows-[52svh_minmax(0,48svh)] !overflow-hidden max-lg:fixed max-lg:inset-0 max-lg:z-[400] max-lg:!h-[100svh] lg:!h-[calc(100vh-4rem)] lg:grid-rows-1'
+    : '';
+
   return (
     <Wrapper {...wrapperProps}>
       <div
-        className={innerClass}
+        className={`${innerClass} ${ramsisLayoutClass}`}
         style={{ background: 'radial-gradient(circle at center, #111010 0%, #0b0a08 100%)' }}
       >
         {/* Character Portal & Bio Side (Right Column in RTL) */}
-        <div className="flex flex-col border-b lg:border-b-0 lg:border-l border-[#c4a06a]/20 overflow-y-auto custom-scrollbar">
+        <div className={`flex min-h-0 flex-col border-b border-[#c4a06a]/20 lg:border-b-0 lg:border-l custom-scrollbar ${isRamsis ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+          {isRamsis ? (
+            <RamsisLegacyStage
+              isSpeaking={isSpeaking}
+              name={monument.builder}
+              location={monument.display_name}
+              title={monument.title}
+              bio={monument.bio}
+              chips={monument.chips || []}
+              onChipClick={(question) => handleSendText(question)}
+              onClose={handleClose}
+            />
+          ) : (
+            <>
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-sand/8 flex-shrink-0 bg-espresso/50">
             <div className="flex items-center gap-3">
@@ -272,13 +294,21 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
             chips={monument.chips || []}
             onChipClick={(question) => handleSendText(question)}
           />
+            </>
+          )}
         </div>
 
         {/* Chat Side (Left Column in RTL) */}
-        <div className="relative flex flex-col min-h-0 bg-[#111010]">
+        <div className={`relative flex min-h-0 flex-col bg-[#111010] ${isRamsis ? 'z-40 h-full overflow-hidden rounded-t-[2.25rem] border-t border-[#c4a06a]/45 shadow-[0_-18px_55px_rgba(0,0,0,0.72)] lg:z-auto lg:h-auto lg:rounded-none lg:border-t-0 lg:shadow-none' : ''}`}>
+
+          {isRamsis && (
+            <div className="flex h-6 shrink-0 items-center justify-center lg:hidden" aria-hidden="true">
+              <span className="h-1 w-12 rounded-full bg-[#c4a06a]/55" />
+            </div>
+          )}
 
           {/* Chat Side Header — "محادثاتي" icon + Language Toggle */}
-          <div className="flex items-center justify-between px-4 py-2 border-b border-[#c4a06a]/15 bg-[#14120e]/95 backdrop-blur z-20">
+          <div className={`items-center justify-between px-4 py-2 border-b border-[#c4a06a]/15 bg-[#14120e]/95 backdrop-blur z-20 ${isRamsis ? 'hidden lg:flex' : 'flex'}`}>
             {/* Right side (RTL start): Chat History Button */}
             <div className="flex items-center gap-2">
               <button
@@ -371,6 +401,8 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
             languageMode={languageMode}
             responseMode={responseMode}
             onResponseModeChange={setResponseMode}
+            immersiveMobile={isRamsis}
+            suggestions={monument.chips || []}
           />
         </div>
       </div>
