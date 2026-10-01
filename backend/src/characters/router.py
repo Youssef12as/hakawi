@@ -59,10 +59,11 @@ async def add_character(
     char_name: str = Form(...),
     ref_text: str = Form(...),
     audio_file: UploadFile = File(...),
+    consent_given: bool = Form(True),
     user_id: str = Depends(get_current_user_id),
 ):
     """
-    Save a new voice character to Supabase voice_personas table.
+    Save a new voice character to Supabase voice_personas table with consent record.
     Optionally registers the voice with the Lightning TTS model (non-blocking).
     """
     try:
@@ -106,29 +107,50 @@ async def add_character(
         except Exception as upload_err:
             logger.warning(f"Could not upload character audio to Supabase Storage: {upload_err}")
 
-        # Save to Supabase voice_personas table
+        # Save to Supabase voice_personas table with linked consent
         from src.database import get_db_cursor
         with get_db_cursor(commit=True) as cur:
             cur.execute(
                 """
-                INSERT INTO public.voice_personas (key, name, ref_audio_path, ref_text, user_id, is_custom)
-                VALUES (%s, %s, %s, %s, %s, true)
+                INSERT INTO public.voice_personas (key, name, ref_audio_path, ref_text, user_id, is_custom, consent_given, consent_date)
+                VALUES (%s, %s, %s, %s, %s, true, %s, timezone('utc'::text, now()))
                 ON CONFLICT (key) DO UPDATE SET
                     name = EXCLUDED.name,
                     ref_audio_path = EXCLUDED.ref_audio_path,
                     ref_text = EXCLUDED.ref_text,
                     user_id = COALESCE(EXCLUDED.user_id, public.voice_personas.user_id),
-                    is_custom = true;
+                    is_custom = true,
+                    consent_given = EXCLUDED.consent_given,
+                    consent_date = timezone('utc'::text, now());
                 """,
-                (safe_char_name, char_name.strip(), storage_audio_url, ref_text.strip(), user_id)
+                (safe_char_name, char_name.strip(), storage_audio_url, ref_text.strip(), user_id, consent_given)
             )
 
-        logger.info(f"Character '{char_name}' saved to Supabase voice_personas (cloning deferred to first generation).")
+            # Record in character_consents table
+            try:
+                cur.execute(
+                    """
+                    INSERT INTO public.character_consents (user_id, character_key, character_name, consent_given, consent_text)
+                    VALUES (%s, %s, %s, %s, %s);
+                    """,
+                    (
+                        user_id,
+                        safe_char_name,
+                        char_name.strip(),
+                        consent_given,
+                        "أوافق على أن هذا التسجيل سيتم تخزينه واستخدامه لبناء نموذج ذكاء اصطناعي صوتي."
+                    )
+                )
+            except Exception as consent_err:
+                logger.warning(f"Could not log to character_consents: {consent_err}")
+
+        logger.info(f"Character '{char_name}' saved to Supabase voice_personas with consent_given={consent_given}.")
 
         return {
             "message": "Character saved successfully. Voice will clone on first generation.",
             "character_name": safe_char_name,
             "ref_audio_path": storage_audio_url,
+            "consent_given": consent_given,
         }
 
     except HTTPException:
