@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 export default function Signup() {
-  const { signUpWithEmail, signInWithGoogle, signInWithFacebook } = useAuth();
+  const { signUpWithEmail, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef(null);
@@ -27,7 +27,7 @@ export default function Signup() {
   const [avatarLoading, setAvatarLoading] = useState(false);
 
   const [loading, setLoading] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
@@ -101,19 +101,15 @@ export default function Signup() {
     }
   };
 
-  const handleOAuth = async (provider) => {
-    setOauthLoading(provider);
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
     setError(null);
     try {
-      if (provider === 'google') {
-        await signInWithGoogle();
-      } else if (provider === 'facebook') {
-        await signInWithFacebook();
-      }
+      await signInWithGoogle();
     } catch (err) {
-      console.error(`${provider} OAuth error:`, err);
-      setError(`تعذر التسجيل عبر ${provider === 'google' ? 'Google' : 'Facebook'}. يرجى المحاولة مرة أخرى.`);
-      setOauthLoading(null);
+      console.error('Google OAuth error:', err);
+      setError('تعذر التسجيل عبر Google. يرجى المحاولة مرة أخرى.');
+      setGoogleLoading(false);
     }
   };
 
@@ -171,14 +167,15 @@ export default function Signup() {
           )}
 
           {/* Social OAuth Buttons */}
-          <div className="space-y-3 mb-6">
+          <div className="mb-6">
+            {/* Google */}
             <button
               type="button"
-              onClick={() => handleOAuth('google')}
-              disabled={loading || oauthLoading !== null}
+              onClick={handleGoogleSignIn}
+              disabled={loading || googleLoading}
               className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-200 border border-white/10 hover:border-white/25 bg-white/5 hover:bg-white/10 text-[#f0e0c8] disabled:opacity-50"
             >
-              {oauthLoading === 'google' ? (
+              {googleLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin text-[#c89830]" />
               ) : (
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -201,22 +198,6 @@ export default function Signup() {
                 </svg>
               )}
               <span>التسجيل عبر Google</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleOAuth('facebook')}
-              disabled={loading || oauthLoading !== null}
-              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-200 border border-blue-500/20 hover:border-blue-500/40 bg-blue-600/10 hover:bg-blue-600/20 text-[#f0e0c8] disabled:opacity-50"
-            >
-              {oauthLoading === 'facebook' ? (
-                <Loader2 className="w-5 h-5 animate-spin text-[#c89830]" />
-              ) : (
-                <svg className="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                </svg>
-              )}
-              <span>التسجيل عبر Facebook</span>
             </button>
           </div>
 
