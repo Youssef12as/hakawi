@@ -7,7 +7,7 @@
  * toggle (modern/ancient Egyptian for Aswan), chat history drawer,
  * and the "منقوشاتنا" living-wall feature for *-general monuments.
  */
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { X, Languages, History } from 'lucide-react';
 import PageShell from '../../components/layout/PageShell';
@@ -31,6 +31,10 @@ const WALL_SYMBOLS = [
   { id: 'woven-textile', name: 'قطعة نسيج يدوية', desc: 'كل لون ونقشة يحملان دلالة خاصة ترتبط بالمكان والمناسبة.', img: '/image/ramz.png', top: '81%', left: '74%' },
   { id: 'luxor-carpet', name: 'سجادة الأقصر', desc: 'استُلهمت زخارفها من المعابد وأعمدة الكرنك والطبيعة المحيطة بالنيل.', img: '/image/noqush.png', top: '42%', left: '90%' },
 ];
+
+const DEFAULT_MOBILE_HERO_SIZE = 52;
+const MIN_MOBILE_HERO_SIZE = 30;
+const MAX_MOBILE_HERO_SIZE = 68;
 
 export default function MonumentChat({ overrideSlug, initialContext, isOverlay }) {
   const { govKey, monumentSlug: urlSlug } = useParams();
@@ -62,6 +66,9 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
   const [showWall, setShowWall] = useState(false);
   const [hasSentInitialContext, setHasSentInitialContext] = useState(false);
   const [selectedSymbol, setSelectedSymbol] = useState(null);
+  const [mobileHeroSize, setMobileHeroSize] = useState(DEFAULT_MOBILE_HERO_SIZE);
+  const [isResizingMobile, setIsResizingMobile] = useState(false);
+  const layoutRef = useRef(null);
 
   const { isSpeaking, playResponseAudio, stopAudio } = useCharacterState();
   const { sendAncientMessage, fetchTTS, fetchChatHistory, fetchSessionDetail, transcribeAudio, createSession, isLoading } = useChatApi();
@@ -161,6 +168,69 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
     navigate(`/map/${govKey}`);
   }, [stopAudio, navigate, govKey]);
 
+  const updateMobileSplit = useCallback((clientY) => {
+    const layout = layoutRef.current;
+    if (!layout) return;
+
+    const bounds = layout.getBoundingClientRect();
+    const nextSize = ((clientY - bounds.top) / bounds.height) * 100;
+    const clampedSize = Math.min(
+      MAX_MOBILE_HERO_SIZE,
+      Math.max(MIN_MOBILE_HERO_SIZE, nextSize),
+    );
+
+    setMobileHeroSize(clampedSize);
+  }, []);
+
+  const handleResizePointerDown = useCallback((event) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setIsResizingMobile(true);
+    updateMobileSplit(event.clientY);
+  }, [updateMobileSplit]);
+
+  const handleResizePointerMove = useCallback((event) => {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    updateMobileSplit(event.clientY);
+  }, [updateMobileSplit]);
+
+  const handleResizePointerEnd = useCallback((event) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setIsResizingMobile(false);
+  }, []);
+
+  const handleResizeKeyDown = useCallback((event) => {
+    const keySteps = {
+      ArrowUp: -4,
+      ArrowDown: 4,
+      PageUp: -10,
+      PageDown: 10,
+    };
+
+    if (event.key === 'Home') {
+      event.preventDefault();
+      setMobileHeroSize(MIN_MOBILE_HERO_SIZE);
+      return;
+    }
+
+    if (event.key === 'End') {
+      event.preventDefault();
+      setMobileHeroSize(MAX_MOBILE_HERO_SIZE);
+      return;
+    }
+
+    const step = keySteps[event.key];
+    if (!step) return;
+
+    event.preventDefault();
+    setMobileHeroSize((current) => Math.min(
+      MAX_MOBILE_HERO_SIZE,
+      Math.max(MIN_MOBILE_HERO_SIZE, current + step),
+    ));
+  }, []);
+
   useEffect(() => {
     if (governorates && !monument) {
       navigate(`/map/${govKey}`, { replace: true });
@@ -197,15 +267,19 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
     : 'h-[calc(100vh-4rem)] grid lg:grid-cols-[1.15fr_0.85fr] animate-slide-in-end overflow-hidden';
   const ramsisLayoutClass = isRamsis
     ? isOverlay
-      ? 'relative !h-full grid-rows-[52%_minmax(0,48%)] !overflow-hidden lg:grid-rows-1'
-      : 'relative grid-rows-[52svh_minmax(0,48svh)] !overflow-hidden max-lg:fixed max-lg:inset-0 max-lg:z-[400] max-lg:!h-[100svh] lg:!h-[calc(100vh-4rem)] lg:grid-rows-1'
+      ? 'ramsis-chat-layout relative !h-full !overflow-hidden lg:grid-rows-1'
+      : 'ramsis-chat-layout relative !overflow-hidden max-lg:fixed max-lg:inset-0 max-lg:z-[400] max-lg:!h-[100svh] lg:!h-[calc(100vh-4rem)] lg:grid-rows-1'
     : '';
 
   return (
     <Wrapper {...wrapperProps}>
       <div
+        ref={layoutRef}
         className={`${innerClass} ${ramsisLayoutClass}`}
-        style={{ background: 'radial-gradient(circle at center, #111010 0%, #0b0a08 100%)' }}
+        style={{
+          background: 'radial-gradient(circle at center, #111010 0%, #0b0a08 100%)',
+          ...(isRamsis ? { '--ramsis-hero-size': `${mobileHeroSize}%` } : {}),
+        }}
       >
         {/* Character Portal & Bio Side (Right Column in RTL) */}
         <div className={`flex min-h-0 flex-col border-b border-[#c4a06a]/20 lg:border-b-0 lg:border-l custom-scrollbar ${isRamsis ? 'overflow-hidden' : 'overflow-y-auto'}`}>
@@ -302,8 +376,28 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
         <div className={`relative flex min-h-0 flex-col bg-[#111010] ${isRamsis ? 'z-40 h-full overflow-hidden rounded-t-[2.25rem] border-t border-[#c4a06a]/45 shadow-[0_-18px_55px_rgba(0,0,0,0.72)] lg:z-auto lg:h-auto lg:rounded-none lg:border-t-0 lg:shadow-none' : ''}`}>
 
           {isRamsis && (
-            <div className="flex h-6 shrink-0 items-center justify-center lg:hidden" aria-hidden="true">
-              <span className="h-1 w-12 rounded-full bg-[#c4a06a]/55" />
+            <div className="relative flex h-6 shrink-0 items-center justify-center lg:hidden">
+              <div
+                role="separator"
+                tabIndex={0}
+                aria-label="تغيير حجم صورة رمسيس والمحادثة"
+                aria-orientation="horizontal"
+                aria-valuemin={MIN_MOBILE_HERO_SIZE}
+                aria-valuemax={MAX_MOBILE_HERO_SIZE}
+                aria-valuenow={Math.round(mobileHeroSize)}
+                aria-valuetext={`${Math.round(mobileHeroSize)}٪ للصورة`}
+                title="اسحب لتغيير الحجم، واضغط مرتين لإعادة الضبط"
+                onPointerDown={handleResizePointerDown}
+                onPointerMove={handleResizePointerMove}
+                onPointerUp={handleResizePointerEnd}
+                onPointerCancel={handleResizePointerEnd}
+                onLostPointerCapture={() => setIsResizingMobile(false)}
+                onDoubleClick={() => setMobileHeroSize(DEFAULT_MOBILE_HERO_SIZE)}
+                onKeyDown={handleResizeKeyDown}
+                className="absolute inset-x-0 top-1/2 z-50 flex h-11 -translate-y-1/2 touch-none cursor-row-resize select-none items-center justify-center"
+              >
+                <span className={`h-1 w-12 rounded-full transition-all ${isResizingMobile ? 'w-16 bg-[#e6b768] shadow-[0_0_12px_rgba(230,183,104,0.55)]' : 'bg-[#c4a06a]/55'}`} />
+              </div>
             </div>
           )}
 
