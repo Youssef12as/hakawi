@@ -15,7 +15,7 @@ function DismissButton({ label, onClick, className = '' }) {
   );
 }
 
-export default function RamsisLegacyStage({
+export default function ImmersiveCharacterStage({
   isSpeaking,
   name,
   location,
@@ -24,6 +24,16 @@ export default function RamsisLegacyStage({
   chips = [],
   onChipClick,
   onClose,
+  imageSrc = '/map/ramsis-legacy.jpg',
+  imageAlt,
+  imageWidth = 1356,
+  imageHeight = 1159,
+  imageClassName = 'object-[28%_30%] lg:object-[45%_34%]',
+  idleVideoSrc = '/character/ramsis_legacy_idle.mp4',
+  speakingVideoSrc = '/character/ramsis_legacy_speaking.mp4',
+  eyebrow = 'مَلِكُ الملوك',
+  suggestionsTitle = 'اسأل رمسيس',
+  closeLabel,
 }) {
   const idleVideoRef = useRef(null);
   const speakingVideoRef = useRef(null);
@@ -52,13 +62,14 @@ export default function RamsisLegacyStage({
   useEffect(() => {
     const idleVideo = idleVideoRef.current;
     const speakingVideo = speakingVideoRef.current;
-    if (!idleVideo || !speakingVideo) return;
+    if (!idleVideoSrc || !speakingVideoSrc || !idleVideo || !speakingVideo) return;
 
     idleVideo.play().catch(() => {});
     speakingVideo.play().catch(() => {});
-  }, []);
+  }, [idleVideoSrc, speakingVideoSrc]);
 
-  const showSpeakingVideo = isSpeaking && speakingReady;
+  const hasAnimatedMedia = Boolean(idleVideoSrc && speakingVideoSrc);
+  const showSpeakingVideo = hasAnimatedMedia && isSpeaking && speakingReady;
 
   return (
     <section
@@ -66,56 +77,60 @@ export default function RamsisLegacyStage({
       aria-label={`واجهة ${name}`}
     >
       <img
-        src="/map/ramsis-legacy.jpg"
-        alt={`تمثال فرعوني يجسد ${name} داخل معبد مصري قديم`}
-        width="1356"
-        height="1159"
+        src={imageSrc}
+        alt={imageAlt || `صورة ${name}`}
+        width={imageWidth}
+        height={imageHeight}
         fetchPriority="high"
-        className="absolute inset-0 h-full w-full object-cover object-[28%_30%] lg:object-[45%_34%]"
+        className={`absolute inset-0 h-full w-full object-cover ${imageClassName}`}
       />
-      <video
-        ref={idleVideoRef}
-        src="/character/ramsis_legacy_idle.mp4"
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="auto"
-        poster="/map/ramsis-legacy.jpg"
-        aria-hidden="true"
-        className={`absolute inset-0 h-full w-full object-cover object-[28%_30%] transition-opacity duration-500 lg:object-[45%_34%] ${
-          showSpeakingVideo ? 'opacity-0' : 'opacity-100'
-        }`}
-      />
-      <video
-        ref={speakingVideoRef}
-        src="/character/ramsis_legacy_speaking.mp4"
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="auto"
-        onPlaying={markSpeakingFrameReady}
-        poster="/map/ramsis-legacy.jpg"
-        aria-hidden="true"
-        className={`absolute inset-0 h-full w-full object-cover object-[28%_30%] transition-opacity duration-500 lg:object-[45%_34%] ${
-          showSpeakingVideo ? 'opacity-100' : 'opacity-0'
-        }`}
-      />
+      {hasAnimatedMedia && (
+        <>
+          <video
+            ref={idleVideoRef}
+            src={idleVideoSrc}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            poster={imageSrc}
+            aria-hidden="true"
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${imageClassName} ${
+              showSpeakingVideo ? 'opacity-0' : 'opacity-100'
+            }`}
+          />
+          <video
+            ref={speakingVideoRef}
+            src={speakingVideoSrc}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            onPlaying={markSpeakingFrameReady}
+            poster={imageSrc}
+            aria-hidden="true"
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${imageClassName} ${
+              showSpeakingVideo ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
+        </>
+      )}
 
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,6,4,0.34)_0%,rgba(8,6,4,0.03)_32%,rgba(8,6,4,0.42)_72%,rgba(8,6,4,0.94)_100%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,6,4,0.62)_0%,transparent_45%,rgba(8,6,4,0.42)_100%)]" />
       <div className="ramsis-legacy__light pointer-events-none absolute -top-24 left-[16%] h-[72%] w-40 -rotate-12 bg-[#ffd48b]/15 blur-3xl" />
 
       <DismissButton
-        label="إغلاق صفحة رمسيس"
+        label={closeLabel || `إغلاق صفحة ${name}`}
         onClick={onClose}
         className="absolute left-4 top-4 z-30 hidden h-9 w-9 lg:flex sm:left-5 sm:top-5"
       />
 
       <article className="ramsis-legacy__intro ramsis-legacy__intro-copy absolute bottom-5 right-5 z-20 w-[min(18rem,calc(100%-2.5rem))] lg:bottom-auto lg:right-8 lg:top-[27%] lg:w-[min(20rem,calc(100%-3.5rem))]">
           <p className="mb-1 text-[0.68rem] font-bold tracking-[0.15em] text-[#edc47e]">
-            مَلِكُ الملوك
+            {eyebrow}
           </p>
           <h1 className="font-amiri text-4xl font-bold leading-tight text-[#fff0d2] sm:text-[2.75rem]">
             {name}
@@ -134,7 +149,7 @@ export default function RamsisLegacyStage({
       {showSuggestions && visibleSuggestions.length > 0 && (
         <section className="ramsis-legacy__suggestions absolute inset-x-3 bottom-3 z-30 mx-auto hidden max-w-4xl rounded-[1.15rem] border border-[#e6b768]/22 bg-[#0b0907]/72 p-2.5 shadow-[0_16px_45px_rgba(0,0,0,0.42)] backdrop-blur-xl lg:block lg:inset-x-4 lg:bottom-4 lg:p-3">
           <div className="mb-2 flex items-center justify-between gap-4 px-0.5">
-            <h2 className="font-amiri text-lg font-bold text-[#ffe2b3] sm:text-xl">اسأل رمسيس</h2>
+            <h2 className="font-amiri text-lg font-bold text-[#ffe2b3] sm:text-xl">{suggestionsTitle}</h2>
             <DismissButton
               label="إخفاء كل الأسئلة المقترحة"
               onClick={() => setShowSuggestions(false)}

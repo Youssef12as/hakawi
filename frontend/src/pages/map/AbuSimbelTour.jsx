@@ -145,7 +145,7 @@ export default function AbuSimbelTour() {
             <span className="text-sand/50 text-sm hidden md:block">اضغط على علامة X للعودة للاستكشاف</span>
           </div>
           
-          <div className="flex-1 w-full max-w-7xl mx-auto relative overflow-hidden">
+          <div className="flex-1 w-full relative overflow-hidden">
              <div className="absolute inset-0">
                <MonumentChat 
                   overrideSlug="abu-simbel" 
