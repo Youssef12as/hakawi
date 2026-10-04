@@ -18,6 +18,14 @@ def get_api_url() -> str:
     return url
 
 
+def _get_headers() -> dict:
+    """Build request headers, including Bearer auth if a VOICE_API_KEY is set."""
+    headers = {"Content-Type": "application/json"}
+    if settings.VOICE_API_KEY:
+        headers["Authorization"] = f"Bearer {settings.VOICE_API_KEY}"
+    return headers
+
+
 def _get_audio_bytes(ref_path: str) -> bytes | None:
     """Fetch audio bytes from Supabase Storage URL or local file path."""
     if not ref_path:
@@ -74,7 +82,7 @@ def save_character(
         }
 
         logger.info(f"Saving character {char_name} to {url}...")
-        response = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=10)
+        response = requests.post(url, json=payload, headers=_get_headers(), timeout=10)
         response.raise_for_status()
 
         data = response.json()
@@ -127,7 +135,7 @@ def synthesize_speech(text: str, character_name: str) -> tuple[str, None] | tupl
         payload = _build_generate_payload(text, character_name, include_ref=False)
 
         logger.info(f"Requesting TTS generation for character '{character_name}', text: '{text[:20]}...'")
-        response = requests.post(url, json=payload, headers={"Content-Type": "application/json"})
+        response = requests.post(url, json=payload, headers=_get_headers())
         response.raise_for_status()
 
         data = response.json()
@@ -136,7 +144,7 @@ def synthesize_speech(text: str, character_name: str) -> tuple[str, None] | tupl
         if data.get("status") == "error" and "not found" in data.get("message", "").lower():
             logger.info(f"Character '{character_name}' not on Lightning server — retrying with inline reference audio.")
             payload = _build_generate_payload(text, character_name, include_ref=True)
-            response = requests.post(url, json=payload, headers={"Content-Type": "application/json"})
+            response = requests.post(url, json=payload, headers=_get_headers())
             response.raise_for_status()
             data = response.json()
 

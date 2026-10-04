@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo, Component } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Plus, Mic, Square, RotateCcw, Upload, Calendar, MessageCircle, ChevronLeft, Volume2, Clock, Sparkles, X, Loader2, Edit2, Check, Users } from 'lucide-react';
+import { Plus, Mic, Square, RotateCcw, Upload, Calendar, MessageCircle, ChevronLeft, Volume2, Clock, Sparkles, X, Loader2, Edit2, Check, Users, ShieldCheck } from 'lucide-react';
 import PageShell from '../components/layout/PageShell';
 import ConsentScreen from '../components/consent/ConsentScreen';
 import CharacterStage from '../components/character/CharacterStage';
@@ -83,7 +83,8 @@ async function convertWebMToWav(webmBlob) {
 }
 
 export default function FamilyTree() {
-  const { consentGiven, setConsentGiven } = useAppContext();
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [charConsentGiven, setCharConsentGiven] = useState(false);
   const [view, setView] = useState('tree');
   const [selectedMember, setSelectedMember] = useState(null);
 
@@ -161,6 +162,10 @@ export default function FamilyTree() {
   }, []);
 
   const startRecording = useCallback(async () => {
+    if (!charConsentGiven) {
+      setShowConsentModal(true);
+      return;
+    }
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(mediaStream);
@@ -200,7 +205,7 @@ export default function FamilyTree() {
     } catch {
       alert('لم نتمكن من الوصول إلى الميكروفون');
     }
-  }, []);
+  }, [charConsentGiven]);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -218,6 +223,10 @@ export default function FamilyTree() {
 
   const handleAddMember = async () => {
     if (!newName.trim() || !refText.trim() || !audioBlob) return;
+    if (!charConsentGiven) {
+      setShowConsentModal(true);
+      return;
+    }
     setIsSaving(true);
     setSaveError(null);
 
@@ -226,6 +235,7 @@ export default function FamilyTree() {
       formData.append('char_name', newName.trim());
       formData.append('ref_text', refText.trim());
       formData.append('audio_file', audioBlob, `${newName.trim().replace(/\s+/g, '_')}.mp3`);
+      formData.append('consent_given', 'true');
 
       const res = await fetch('/api/characters/add', {
         method: 'POST',
@@ -249,6 +259,8 @@ export default function FamilyTree() {
         memories: 0,
         occasions: [],
         avatar: null,
+        consentGiven: true,
+        consentDate: new Date().toISOString(),
       };
 
       // Recursive helper to insert the new member before the clicked add node
@@ -291,6 +303,8 @@ export default function FamilyTree() {
       setNewRelation('');
       setRefText('');
       setAddingToNodeId(null);
+      setCharConsentGiven(false);
+      setShowConsentModal(false);
       resetRecording();
       setView('tree');
     } catch (err) {
@@ -308,6 +322,8 @@ export default function FamilyTree() {
       setRefText('');
       setSaveError(null);
       resetRecording();
+      setCharConsentGiven(false);
+      setShowConsentModal(true);
       setView('add');
     } else {
       setView('detail');
@@ -321,6 +337,8 @@ export default function FamilyTree() {
     setSaveError(null);
     setAddingToNodeId(nodeId);
     resetRecording();
+    setCharConsentGiven(false);
+    setShowConsentModal(true);
     setView('add');
   };
 
@@ -504,19 +522,7 @@ export default function FamilyTree() {
     );
   };
 
-  // ── Consent Gate ─────────────────────────────────────────────────
-  if (!consentGiven) {
-    return (
-      <ErrorBoundary>
-        <PageShell>
-          <ConsentScreen isOpen={true} onConsent={() => setConsentGiven(true)} />
-          <div className="flex items-center justify-center min-h-[60vh] bg-[#0b0a08]">
-            <p className="text-[#c4a06a] text-lg" style={{ fontFamily: 'var(--font-heading)' }}>لازم توافق على الشروط الأول يا صديقي</p>
-          </div>
-        </PageShell>
-      </ErrorBoundary>
-    );
-  }
+
 
   // ── Member Detail View ──────────────────────────────────────────
   if (view === 'detail' && selectedMember) {
@@ -739,6 +745,19 @@ export default function FamilyTree() {
 
     return (
       <PageShell>
+        <ConsentScreen
+          isOpen={showConsentModal}
+          showClose={true}
+          onClose={() => {
+            setShowConsentModal(false);
+            if (!charConsentGiven) setView('tree');
+          }}
+          onConsent={() => {
+            setCharConsentGiven(true);
+            setShowConsentModal(false);
+          }}
+        />
+
         <div className="min-h-screen bg-[#0b0a08] text-[#e8d1a7] py-12 px-4 relative overflow-hidden" dir="rtl">
           <div className="absolute top-[20%] right-[-10%] w-[40%] h-[40%] bg-[#c4a06a] blur-[150px] opacity-[0.05] pointer-events-none rounded-full" />
 
@@ -802,13 +821,41 @@ export default function FamilyTree() {
                   </div>
                 </div>
 
+                {/* Consent Status Card */}
+                <div className={`p-4 rounded-2xl border transition-all ${
+                  charConsentGiven 
+                    ? 'bg-[#c4a06a]/10 border-[#c4a06a]/40 text-[#f8ebd5]' 
+                    : 'bg-red-500/10 border-red-500/30 text-red-300'
+                }`}>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <ShieldCheck className={`w-6 h-6 flex-shrink-0 ${charConsentGiven ? 'text-[#c4a06a]' : 'text-red-400'}`} />
+                      <div>
+                        <p className="text-sm font-bold">
+                          {charConsentGiven ? 'تمت الموافقة على شروط التسجيل وحفظ الصوت' : 'مطلوب الموافقة على شروط التسجيل أولاً'}
+                        </p>
+                        <p className="text-xs text-[#9d9167] mt-0.5">
+                          {charConsentGiven ? 'مربوط ببيانات الشخصية الجديدة في قاعدة البيانات' : 'اضغط للموافقة ومتابعة تسجيل الصوت'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowConsentModal(true)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#1a1815] border border-[#c4a06a]/30 text-[#c4a06a] hover:bg-[#c4a06a]/20 transition-colors whitespace-nowrap"
+                    >
+                      {charConsentGiven ? 'تعديل / مراجعة' : 'الموافقة الآن'}
+                    </button>
+                  </div>
+                </div>
+
                 {/* Voice Recording */}
                 <div className="pt-6 border-t border-[#c4a06a]/10">
                   <label className="block text-center text-lg font-bold text-[#f8ebd5] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>سجّل الصوت دلوقتي</label>
                   <p className="text-center text-[#9d9167] text-sm mb-8">أقصى مدة ١٠ ثواني — اقرأ النص المرجعي اللي كتبته فوق</p>
 
                   <div className="flex flex-col items-center">
-                    {/* Record button — disabled until ref text is typed */}
+                    {/* Record button — disabled until ref text is typed and consent is checked */}
                     <button
                       onClick={toggleRecording}
                       disabled={!refText.trim() && !isRecording}
@@ -834,9 +881,11 @@ export default function FamilyTree() {
                       }`}>
                       {!refText.trim() && !isRecording
                         ? 'اكتب النص المرجعي الأول ☝️'
-                        : isRecording
-                          ? 'بيتسجل... اضغط لما تخلص'
-                          : 'اضغط وابدأ الكلام'
+                        : !charConsentGiven
+                          ? 'يلزم الموافقة على الشروط للتسجيل'
+                          : isRecording
+                            ? 'بيتسجل... اضغط لما تخلص'
+                            : 'اضغط وابدأ الكلام'
                       }
                     </p>
 
@@ -869,8 +918,8 @@ export default function FamilyTree() {
                 <div className="pt-6">
                   <button
                     onClick={handleAddMember}
-                    disabled={!newName.trim() || !refText.trim() || !audioBlob || isSaving}
-                    className={`w-full flex items-center justify-center gap-3 py-5 rounded-xl font-bold text-lg transition-all duration-300 ${newName.trim() && refText.trim() && audioBlob && !isSaving
+                    disabled={!newName.trim() || !refText.trim() || !audioBlob || !charConsentGiven || isSaving}
+                    className={`w-full flex items-center justify-center gap-3 py-5 rounded-xl font-bold text-lg transition-all duration-300 ${newName.trim() && refText.trim() && audioBlob && charConsentGiven && !isSaving
                         ? 'bg-[#c4a06a] text-[#0b0a08] hover:bg-[#d4b483] shadow-[0_4px_20px_rgba(196,160,106,0.3)] hover:-translate-y-1'
                         : 'bg-[#1a1815] text-[#9d9167] border border-[#c4a06a]/10 cursor-not-allowed'
                       }`}

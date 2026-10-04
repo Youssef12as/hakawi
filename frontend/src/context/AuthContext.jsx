@@ -281,7 +281,7 @@ export function AuthProvider({ children }) {
     return data;
   };
 
-  // OAuth Sign In (Google or Facebook)
+  // OAuth Sign In (Google)
   const signInWithOAuth = async (provider) => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
@@ -294,7 +294,6 @@ export function AuthProvider({ children }) {
   };
 
   const signInWithGoogle = () => signInWithOAuth('google');
-  const signInWithFacebook = () => signInWithOAuth('facebook');
 
   // Sign Out
   const signOut = async () => {
@@ -304,12 +303,29 @@ export function AuthProvider({ children }) {
     setSession(null);
   };
 
-  // Password reset request
+  // Password reset request via backend API (backend handles Supabase)
   const resetPassword = async (email) => {
-    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/settings`,
+    const res = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email,
+        redirect_to: `${window.location.origin}/reset-password`,
+      }),
     });
-    if (error) throw error;
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      let errorMsg = 'فشل إرسال رابط استعادة كلمة المرور';
+      if (typeof data?.detail === 'string') {
+        errorMsg = data.detail;
+      } else if (Array.isArray(data?.detail) && data.detail[0]?.msg) {
+        errorMsg = data.detail[0].msg;
+      }
+      throw new Error(errorMsg);
+    }
     return data;
   };
 
@@ -321,7 +337,6 @@ export function AuthProvider({ children }) {
     signInWithEmail,
     signInWithOAuth,
     signInWithGoogle,
-    signInWithFacebook,
     updateProfile,
     updatePassword,
     signOut,

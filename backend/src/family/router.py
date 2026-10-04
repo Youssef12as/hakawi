@@ -102,13 +102,14 @@ def _sync_family_members(cur, tree_id: str, tree_data: dict):
 
         raw_char = m.get("characterName") or m.get("name")
         persona_key = raw_char if raw_char in valid_persona_keys else None
+        consent_val = m.get("consentGiven", True if not m.get("isAddNode") else False)
 
         cur.execute(
             """
             INSERT INTO public.family_members (
-                id, tree_id, name, role, avatar_url, is_me, is_add_node, status, voice_persona_key, memories_count
+                id, tree_id, name, role, avatar_url, is_me, is_add_node, status, voice_persona_key, memories_count, consent_given, consent_date
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, timezone('utc'::text, now())))
             ON CONFLICT (id) DO UPDATE SET
                 tree_id = EXCLUDED.tree_id,
                 name = EXCLUDED.name,
@@ -118,7 +119,9 @@ def _sync_family_members(cur, tree_id: str, tree_data: dict):
                 is_add_node = EXCLUDED.is_add_node,
                 status = EXCLUDED.status,
                 voice_persona_key = EXCLUDED.voice_persona_key,
-                memories_count = EXCLUDED.memories_count;
+                memories_count = EXCLUDED.memories_count,
+                consent_given = EXCLUDED.consent_given,
+                consent_date = EXCLUDED.consent_date;
             """,
             (
                 str(member_id),
@@ -131,6 +134,8 @@ def _sync_family_members(cur, tree_id: str, tree_data: dict):
                 m.get("status", "preserved"),
                 persona_key,
                 m.get("memories", 0),
+                consent_val,
+                m.get("consentDate"),
             ),
         )
 

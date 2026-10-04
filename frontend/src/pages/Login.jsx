@@ -4,14 +4,14 @@ import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 
 export default function Login() {
-  const { signInWithEmail, signInWithGoogle, signInWithFacebook } = useAuth();
+  const { signInWithEmail, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState(null); // 'google' | 'facebook'
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const destination = location.state?.from?.pathname || '/';
@@ -47,19 +47,15 @@ export default function Login() {
     }
   };
 
-  const handleOAuth = async (provider) => {
-    setOauthLoading(provider);
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
     setError(null);
     try {
-      if (provider === 'google') {
-        await signInWithGoogle();
-      } else if (provider === 'facebook') {
-        await signInWithFacebook();
-      }
+      await signInWithGoogle();
     } catch (err) {
-      console.error(`${provider} OAuth error:`, err);
-      setError(`تعذر تسجيل الدخول عبر ${provider === 'google' ? 'Google' : 'Facebook'}. يرجى المحاولة مرة أخرى.`);
-      setOauthLoading(null);
+      console.error('Google OAuth error:', err);
+      setError('تعذر تسجيل الدخول عبر Google. يرجى المحاولة مرة أخرى.');
+      setGoogleLoading(false);
     }
   };
 
@@ -111,15 +107,15 @@ export default function Login() {
           )}
 
           {/* Social OAuth Buttons */}
-          <div className="space-y-3 mb-6">
+          <div className="mb-6">
             {/* Google */}
             <button
               type="button"
-              onClick={() => handleOAuth('google')}
-              disabled={loading || oauthLoading !== null}
+              onClick={handleGoogleSignIn}
+              disabled={loading || googleLoading}
               className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-200 border border-white/10 hover:border-white/25 bg-white/5 hover:bg-white/10 text-[#f0e0c8] disabled:opacity-50"
             >
-              {oauthLoading === 'google' ? (
+              {googleLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin text-[#c89830]" />
               ) : (
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -142,23 +138,6 @@ export default function Login() {
                 </svg>
               )}
               <span>تسجيل الدخول عبر Google</span>
-            </button>
-
-            {/* Facebook */}
-            <button
-              type="button"
-              onClick={() => handleOAuth('facebook')}
-              disabled={loading || oauthLoading !== null}
-              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-200 border border-blue-500/20 hover:border-blue-500/40 bg-blue-600/10 hover:bg-blue-600/20 text-[#f0e0c8] disabled:opacity-50"
-            >
-              {oauthLoading === 'facebook' ? (
-                <Loader2 className="w-5 h-5 animate-spin text-[#c89830]" />
-              ) : (
-                <svg className="w-5 h-5" fill="#1877F2" viewBox="0 0 24 24">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                </svg>
-              )}
-              <span>تسجيل الدخول عبر Facebook</span>
             </button>
           </div>
 
@@ -191,9 +170,17 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#f0e0c8]/80 mb-2">
-                كلمة المرور
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-semibold text-[#f0e0c8]/80">
+                  كلمة المرور
+                </label>
+                <Link
+                  to="/forgot-password"
+                  className="text-xs text-[#c89830] hover:text-[#e8bc58] transition-colors hover:underline"
+                >
+                  نسيت كلمة المرور؟
+                </Link>
+              </div>
               <div className="relative">
                 <input
                   type="password"
@@ -209,7 +196,7 @@ export default function Login() {
 
             <button
               type="submit"
-              disabled={loading || oauthLoading !== null}
+              disabled={loading || googleLoading}
               className="w-full mt-2 py-3 px-4 rounded-xl font-bold text-sm text-[#0e0b08] bg-gradient-to-r from-[#e8bc58] via-[#c89830] to-[#b08020] hover:brightness-110 active:scale-[0.99] transition-all shadow-lg shadow-[#c89830]/20 flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {loading ? (

@@ -107,6 +107,7 @@ export default function RecordPreserve() {
       formData.append('char_name', charName.trim());
       formData.append('ref_text', refText.trim());
       formData.append('audio_file', audioBlob, 'recording.webm');
+      formData.append('consent_given', 'true');
 
       const res = await fetch('/api/characters/add', {
         method: 'POST',
