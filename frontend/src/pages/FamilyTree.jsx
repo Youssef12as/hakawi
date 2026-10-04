@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useRef, useEffect, Component } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo, Component } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Plus, Mic, Square, RotateCcw, Upload, Calendar, MessageCircle, ChevronLeft, Volume2, Clock, Sparkles, X, Loader2, Edit2, Check } from 'lucide-react';
+import { Plus, Mic, Square, RotateCcw, Upload, Calendar, MessageCircle, ChevronLeft, Volume2, Clock, Sparkles, X, Loader2, Edit2, Check, Users } from 'lucide-react';
 import PageShell from '../components/layout/PageShell';
 import ConsentScreen from '../components/consent/ConsentScreen';
 import CharacterStage from '../components/character/CharacterStage';
@@ -407,63 +407,85 @@ export default function FamilyTree() {
     }
   }, [selectedMember, chatSessionId, sendAudioMessage, fetchTTS, playResponseAudio]);
 
+  const familyMembers = useMemo(() => {
+    const members = [];
+    const visit = (node) => {
+      node?.members?.forEach((member) => {
+        if (!member.isAddNode) members.push(member);
+      });
+      node?.children?.forEach(visit);
+    };
+    visit(treeData);
+    return members;
+  }, [treeData]);
+
+  const familyGenerations = useMemo(() => {
+    const generations = [];
+    const visit = (node, depth = 0) => {
+      if (!node) return;
+      if (!generations[depth]) generations[depth] = [];
+      node.members?.forEach((member) => generations[depth].push(member));
+      node.children?.forEach((child) => visit(child, depth + 1));
+    };
+    visit(treeData);
+    return generations.filter((generation) => generation.length > 0);
+  }, [treeData]);
+
   // ── Recursive Node Renderer ─────────────────────────────────────────
   const FamilyNode = ({ node }) => {
     return (
       <li>
         <div className="flex flex-col items-center">
-          {/* Node Wrapper containing spouses/members */}
-          <div className="relative inline-flex items-center gap-6">
+          <div className="relative inline-flex items-start gap-8">
             {node.members.map((m, idx) => (
-              <div key={m.id} className="relative flex flex-col items-center">
-
-                {/* Horizontal marriage line between members */}
+              <div key={m.id} className="relative flex w-28 flex-col items-center">
                 {idx > 0 && (
-                  <div className="absolute top-[45px] right-[100%] w-6 h-[2px] bg-[#c4a06a] shadow-[0_0_5px_rgba(196,160,106,0.5)] -translate-y-1/2 z-0" />
+                  <div className="absolute right-[calc(100%-0.1rem)] top-11 h-px w-8 bg-[#c4a06a]/70 shadow-[0_0_8px_rgba(196,160,106,0.35)]" aria-hidden="true" />
                 )}
 
-                {/* Add Node or Person Card */}
                 {m.isAddNode ? (
-                  <div
-                    className="w-32 flex flex-col items-center justify-center bg-gradient-to-br from-[#111010]/80 to-[#0b0a08]/80 backdrop-blur-md rounded-[20px] p-4 h-32 border border-dashed border-[#c4a06a]/40 hover:border-[#c4a06a] hover:bg-[#c4a06a]/5 transition-all duration-300 cursor-pointer z-10 group"
+                  <button
+                    type="button"
+                    aria-label={`إضافة ${m.role}`}
+                    className="group relative z-10 flex min-h-11 w-28 flex-col items-center rounded-2xl px-2 py-1 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e8bd72]"
                     onClick={() => handleAddClick(m.role, m.id)}
                   >
-                    <div className="w-12 h-12 rounded-full bg-[#1a1815] border border-[#c4a06a]/30 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(196,160,106,0.1)] group-hover:shadow-[0_0_20px_rgba(196,160,106,0.4)]">
-                      <Plus className="w-6 h-6 text-[#c4a06a]" />
-                    </div>
-                    <p className="text-[#9d9167] text-[10px] font-bold text-center mt-1">إضافة<br />{m.role}</p>
-                  </div>
+                    <span className="mb-2 flex h-[4.75rem] w-[4.75rem] items-center justify-center rounded-full border border-dashed border-[#c4a06a]/55 bg-[#17130f]/90 shadow-[0_8px_30px_rgba(0,0,0,0.35)] transition-all duration-300 group-hover:scale-105 group-hover:border-[#e8bd72] group-hover:bg-[#c4a06a]/10">
+                      <Plus className="h-6 w-6 text-[#d8ae68]" aria-hidden="true" />
+                    </span>
+                    <span className="text-[0.7rem] font-bold leading-5 text-[#bca782]">إضافة {m.role}</span>
+                  </button>
                 ) : (
-                  <div
-                    className={`w-32 flex flex-col items-center bg-gradient-to-br from-[#1a1815]/95 to-[#111010]/95 backdrop-blur-xl rounded-[20px] p-3 pb-4 shadow-xl z-10 hover:scale-105 transition-all duration-300 cursor-pointer overflow-hidden ${m.isMe ? 'border-2 border-[#c4a06a] shadow-[0_0_20px_rgba(196,160,106,0.4)] hover:shadow-[0_0_30px_rgba(196,160,106,0.6)]' : 'border border-[#c4a06a]/30 hover:border-[#c4a06a]/60'}`}
+                  <button
+                    type="button"
+                    aria-label={`عرض صفحة ${m.name}، ${m.role}`}
+                    className="group relative z-10 flex min-h-11 w-28 flex-col items-center rounded-2xl px-1 py-1 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e8bd72]"
                     onClick={() => handleNodeClick(m)}
                   >
-                    {/* Inner glow */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#c4a06a]/10 to-transparent pointer-events-none" />
-
-                    <div className={`relative w-[60px] h-[60px] rounded-full flex items-center justify-center text-3xl mb-3 shadow-inner overflow-hidden ${m.isMe ? 'border-2 border-[#c4a06a]' : 'border-2 border-[#c4a06a]/50'}`}>
-                      {m.avatar ? (
-                        <img src={m.avatar} alt={m.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="drop-shadow-md">{m.emoji}</span>
-                      )}
-
-                      {/* Status Badges */}
+                    <span className={`relative mb-2 block h-[5.5rem] w-[5.5rem] rounded-full border bg-[#17130f] p-1 shadow-[0_12px_35px_rgba(0,0,0,0.45)] transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_12px_35px_rgba(196,160,106,0.2)] ${m.isMe ? 'border-[#f1c778] ring-4 ring-[#c4a06a]/15' : 'border-[#c4a06a]/70'}`}>
+                      <span className="block h-full w-full overflow-hidden rounded-full bg-[#211b15]">
+                        {m.avatar ? (
+                          <img src={m.avatar} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        ) : (
+                          <span className="flex h-full w-full items-center justify-center text-3xl">{m.emoji || '👤'}</span>
+                        )}
+                      </span>
                       {m.status === 'preserved' && !m.isMe && (
-                        <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#111010] border border-[#c4a06a]/50 flex items-center justify-center shadow-lg">
-                          <Sparkles className="w-2.5 h-2.5 text-[#c4a06a]" />
-                        </div>
+                        <span className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full border border-[#c4a06a]/60 bg-[#15110d] shadow-lg">
+                          <Sparkles className="h-2.5 w-2.5 text-[#e7bd75]" aria-hidden="true" />
+                        </span>
                       )}
                       {m.status === 'processing' && (
-                        <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#111010] border border-yellow-500/50 flex items-center justify-center shadow-lg">
-                          <Clock className="w-2.5 h-2.5 text-yellow-500 animate-pulse" />
-                        </div>
+                        <span className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full border border-amber-400/60 bg-[#15110d] shadow-lg">
+                          <Clock className="h-2.5 w-2.5 animate-pulse text-amber-300" aria-hidden="true" />
+                        </span>
                       )}
-                    </div>
-
-                    <p className="text-[#c4a06a] text-[9px] uppercase tracking-wider font-bold mb-1 z-10 leading-none h-3">{m.role}</p>
-                    <p className={`font-bold z-10 leading-tight ${m.isMe ? 'text-[#c4a06a] text-lg' : 'text-[#f8ebd5] text-sm drop-shadow-md'}`} style={{ fontFamily: 'var(--font-heading)' }}>{m.name}</p>
-                  </div>
+                    </span>
+                    <span className="mb-0.5 text-[0.68rem] font-semibold text-[#bca782]">{m.role}</span>
+                    <span className={`max-w-full truncate font-bold leading-5 ${m.isMe ? 'text-base text-[#f2c978]' : 'text-sm text-[#f6e6c9]'}`} style={{ fontFamily: 'var(--font-heading)' }}>
+                      {m.name}
+                    </span>
+                  </button>
                 )}
               </div>
             ))}
@@ -501,92 +523,107 @@ export default function FamilyTree() {
     const m = selectedMember;
     return (
       <PageShell>
-        <div className="min-h-screen bg-[#0b0a08] text-[#e8d1a7] py-12 px-4 relative overflow-hidden" dir="rtl">
-          <div className="absolute top-0 left-0 w-full h-[400px] bg-gradient-to-b from-[#1a1510] to-transparent opacity-80 pointer-events-none" />
-          <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#c4a06a] blur-[150px] opacity-[0.07] pointer-events-none rounded-full" />
+        <main className="relative min-h-[calc(100dvh-4rem)] overflow-x-hidden bg-[#0b0907] text-[#f3e3c5]" dir="rtl">
+          <div className="pointer-events-none absolute inset-0 opacity-40 [background-image:radial-gradient(circle_at_15%_18%,rgba(196,160,106,0.18),transparent_28%),radial-gradient(circle_at_82%_76%,rgba(112,63,25,0.18),transparent_32%)]" />
 
-          <div className="max-w-3xl mx-auto relative z-10 animate-fade-in-up">
-            <button onClick={() => { setView('tree'); setSelectedMember(null); }} className="flex items-center gap-2 text-[#9d9167] hover:text-[#c4a06a] transition-colors mb-10 text-sm font-semibold tracking-wide">
-              <ChevronLeft className="w-5 h-5 rotate-180" />
-              ارجع لشجرة العيلة
-            </button>
-
-            {/* Hero Profile */}
-            <div className="text-center mb-12">
-              <div className="relative inline-block mb-6">
-                <div className="w-32 h-32 bg-[#1a1815] rounded-full flex items-center justify-center overflow-hidden shadow-[0_0_40px_rgba(196,160,106,0.15)] ring-2 ring-[#c4a06a] animate-float">
-                  {m.avatar ? (
-                    <img src={m.avatar} alt={m.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-6xl">{m.emoji}</span>
-                  )}
-                </div>
+          <div className="relative z-10 flex min-h-[calc(100dvh-4rem)] flex-col lg:flex-row" dir="ltr">
+            <aside className="order-1 border-b border-[#c4a06a]/15 bg-[#0a0807]/95 px-3 py-2 lg:sticky lg:top-16 lg:h-[calc(100dvh-4rem)] lg:w-32 lg:shrink-0 lg:self-start lg:border-b-0 lg:border-r lg:px-3 lg:py-6" aria-label="أفراد العيلة" dir="rtl">
+              <div className="flex gap-2 overflow-x-auto pb-1 lg:h-[calc(100vh-10rem)] lg:flex-col lg:items-center lg:gap-4 lg:overflow-x-hidden lg:overflow-y-auto">
+                {familyMembers.map((member) => {
+                  const isActive = member.id === m.id;
+                  return (
+                    <button
+                      type="button"
+                      key={member.id}
+                      onClick={() => setSelectedMember(member)}
+                      aria-current={isActive ? 'true' : undefined}
+                      className={`group flex min-h-11 min-w-[4.65rem] flex-col items-center rounded-2xl px-1 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e8bd72] lg:w-full ${isActive ? 'bg-[#c4a06a]/12' : 'hover:bg-[#c4a06a]/7'}`}
+                    >
+                      <span className={`relative h-12 w-12 overflow-hidden rounded-full border-2 bg-[#1b1713] transition-transform group-hover:scale-105 ${isActive ? 'border-[#f1c778] shadow-[0_0_18px_rgba(196,160,106,0.35)]' : 'border-[#c4a06a]/35'}`}>
+                        {member.avatar ? <img src={member.avatar} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full w-full items-center justify-center text-xl">{member.emoji || '👤'}</span>}
+                      </span>
+                      <span className={`mt-1 max-w-[4.5rem] truncate text-[0.68rem] font-bold ${isActive ? 'text-[#f2c978]' : 'text-[#bca782]'}`}>{member.name}</span>
+                      <span className="max-w-[4.5rem] truncate text-[0.58rem] text-[#8f8068]">{member.role}</span>
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => handleAddClick()}
+                  className="flex min-h-11 min-w-[4.65rem] flex-col items-center rounded-2xl px-1 py-1.5 text-[#bca782] transition-colors hover:bg-[#c4a06a]/8 hover:text-[#edc77e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e8bd72] lg:w-full"
+                >
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-[#c4a06a]/45"><Plus className="h-5 w-5" aria-hidden="true" /></span>
+                  <span className="mt-1 text-[0.65rem] font-bold">إضافة فرد</span>
+                </button>
               </div>
-              <h2 className="text-4xl md:text-5xl font-bold text-[#f8ebd5] mb-3 drop-shadow-md" style={{ fontFamily: 'var(--font-heading)' }}>{m.name}</h2>
-              <p className="text-[#c4a06a]/80 text-lg tracking-wide">{m.role}</p>
+            </aside>
 
-              <div className="mt-6 inline-flex items-center justify-center">
-                <span className={`flex items-center gap-2 text-sm px-4 py-1.5 rounded-full font-semibold border ${m.status === 'preserved' ? 'bg-[#c4a06a]/10 border-[#c4a06a]/30 text-[#c4a06a]' : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500'
-                  }`}>
-                  {m.status === 'preserved' ? <><Volume2 className="w-4 h-4" /> الصوت اتحفظ</> : <><Clock className="w-4 h-4" /> بيتعالج دلوقتي</>}
+            <section className="relative order-2 min-h-[calc(100dvh-10rem)] flex-1 bg-[#0b0907] lg:min-h-[calc(100dvh-4rem)]" dir="rtl">
+              <div className="relative h-[52dvh] min-h-[22rem] overflow-hidden lg:absolute lg:inset-y-0 lg:right-0 lg:h-auto lg:min-h-0 lg:w-[58%]">
+                {m.avatar ? (
+                  <img src={m.avatar} alt={`صورة ${m.name}`} className="h-full w-full object-cover object-[center_24%]" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-[#18130f] text-[8rem]">{m.emoji || '👤'}</div>
+                )}
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,5,4,0.03)_45%,#0b0907_100%)] lg:bg-[linear-gradient(90deg,#0b0907_0%,rgba(11,9,7,0.18)_32%,rgba(7,5,4,0.04)_100%),linear-gradient(180deg,rgba(7,5,4,0.06),rgba(7,5,4,0.35))]" />
+              </div>
+
+              <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between p-4 sm:p-6">
+                <button
+                  type="button"
+                  onClick={() => { setView('tree'); setSelectedMember(null); }}
+                  className="flex min-h-11 items-center gap-2 rounded-full border border-[#c4a06a]/35 bg-[#0b0907]/70 px-4 text-sm font-bold text-[#f0d6a8] backdrop-blur-md transition-colors hover:bg-[#c4a06a]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e8bd72]"
+                >
+                  <ChevronLeft className="h-4 w-4 rotate-180" aria-hidden="true" />
+                  شجرة العيلة
+                </button>
+                <span className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold backdrop-blur-md ${m.status === 'preserved' ? 'border-[#c4a06a]/35 bg-[#0b0907]/65 text-[#e8bd72]' : 'border-amber-400/30 bg-[#0b0907]/65 text-amber-300'}`}>
+                  {m.status === 'preserved' ? <Volume2 className="h-4 w-4" aria-hidden="true" /> : <Clock className="h-4 w-4" aria-hidden="true" />}
+                  {m.status === 'preserved' ? 'الصوت محفوظ' : 'الصوت بيتجهز'}
                 </span>
               </div>
-            </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 gap-6 mb-12">
-              <div className="bg-[#111010]/80 backdrop-blur-xl rounded-2xl p-6 text-center border border-[#c4a06a]/10 hover:border-[#c4a06a]/30 transition-all duration-300 shadow-lg">
-                <p className="text-4xl font-bold text-[#f8ebd5] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>{m.memories}</p>
-                <p className="text-[#9d9167] text-sm uppercase tracking-widest font-semibold">ذكرى اتحفظت</p>
-              </div>
-              <div className="bg-[#111010]/80 backdrop-blur-xl rounded-2xl p-6 text-center border border-[#c4a06a]/10 hover:border-[#c4a06a]/30 transition-all duration-300 shadow-lg">
-                <p className="text-4xl font-bold text-[#f8ebd5] mb-2" style={{ fontFamily: 'var(--font-heading)' }}>{m.occasions?.length || 0}</p>
-                <p className="text-[#9d9167] text-sm uppercase tracking-widest font-semibold">مناسبة اتسجلت</p>
-              </div>
-            </div>
+              <div className="relative z-10 -mt-12 w-full px-5 pb-10 sm:px-8 lg:mr-auto lg:mt-0 lg:flex lg:min-h-[calc(100dvh-4rem)] lg:w-[48%] lg:flex-col lg:justify-center lg:px-12 lg:py-28 xl:px-16">
+                <p className="mb-2 text-sm font-bold tracking-[0.12em] text-[#e4b96f]">{m.role}</p>
+                <h1 className="font-amiri text-4xl font-bold leading-tight text-[#fff0d2] drop-shadow-lg sm:text-5xl xl:text-6xl">{m.name}</h1>
+                <p className="mt-4 max-w-xl font-amiri text-xl leading-9 text-[#f2dfbd]/90 sm:text-2xl lg:text-xl xl:text-2xl">
+                  صوت {m.name} وحكاياته محفوظين هنا، علشان يفضلوا قريبين من العيلة جيل بعد جيل.
+                </p>
 
-            {/* Occasions Timeline */}
-            <div className="mb-12">
-              <h3 className="text-xl font-bold text-[#f8ebd5] mb-6 flex items-center gap-3" style={{ fontFamily: 'var(--font-heading)' }}>
-                <Calendar className="w-6 h-6 text-[#c4a06a]" />
-                تقويم العيلة
-              </h3>
-
-              <div className="bg-[#111010]/60 backdrop-blur-md rounded-3xl p-6 md:p-8 border border-[#c4a06a]/10">
-                {!m.occasions || m.occasions.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-[#9d9167] text-base">لسه محصلش أي مناسبة</p>
+                <div className="mt-6 grid grid-cols-2 gap-3 sm:max-w-md">
+                  <div className="rounded-2xl border border-[#c4a06a]/18 bg-[#0b0907]/65 px-4 py-3 backdrop-blur-md">
+                    <p className="text-2xl font-bold text-[#f5d69e]">{m.memories || 0}</p>
+                    <p className="mt-0.5 text-xs text-[#bba888]">ذكرى محفوظة</p>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {m.occasions.map((occ, i) => (
-                      <div key={i} className="group flex items-center gap-5 bg-[#1a1815]/80 hover:bg-[#c4a06a]/10 border border-[#c4a06a]/5 hover:border-[#c4a06a]/20 rounded-2xl px-6 py-4 transition-all duration-300">
-                        <div className="w-12 h-12 rounded-full bg-[#0b0a08] border border-[#c4a06a]/20 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">✨</div>
-                        <p className="text-[#e8d1a7] font-medium text-lg">{occ}</p>
-                      </div>
-                    ))}
+                  <div className="rounded-2xl border border-[#c4a06a]/18 bg-[#0b0907]/65 px-4 py-3 backdrop-blur-md">
+                    <p className="text-2xl font-bold text-[#f5d69e]">{m.occasions?.length || 0}</p>
+                    <p className="mt-0.5 text-xs text-[#bba888]">مناسبة عائلية</p>
+                  </div>
+                </div>
+
+                {m.occasions?.length > 0 && (
+                  <div className="mt-4 max-w-xl rounded-2xl border border-[#c4a06a]/15 bg-[#0b0907]/70 p-4 backdrop-blur-md">
+                    <div className="mb-2 flex items-center gap-2 text-sm font-bold text-[#e9c47e]"><Calendar className="h-4 w-4" aria-hidden="true" /> من تقويم العيلة</div>
+                    <div className="flex flex-wrap gap-2">
+                      {m.occasions.map((occasion, index) => <span key={index} className="rounded-full bg-[#c4a06a]/10 px-3 py-1.5 text-xs text-[#ebd5b1]">{occasion}</span>)}
+                    </div>
                   </div>
                 )}
-              </div>
-            </div>
 
-            {/* Chat CTA */}
-            {m.status === 'preserved' && (
-              <button
-                onClick={() => openChat(m)}
-                className="w-full relative overflow-hidden group rounded-full p-[1px] hover:scale-[1.02] transition-all duration-300"
-              >
-                <span className="absolute inset-0 bg-gradient-to-r from-[#c4a06a] via-[#f8ebd5] to-[#c4a06a] opacity-70 rounded-full animate-pulse" />
-                <div className="relative flex items-center justify-center gap-3 bg-[#111010] px-8 py-5 rounded-full group-hover:bg-[#1a1510] transition-all duration-300">
-                  <MessageCircle className="w-6 h-6 text-[#c4a06a]" />
-                  <span className="text-lg font-bold text-[#c4a06a]" style={{ fontFamily: 'var(--font-heading)' }}>
+                {m.status === 'preserved' && (
+                  <button
+                    type="button"
+                    onClick={() => openChat(m)}
+                    className="mt-6 flex min-h-12 w-full items-center justify-center gap-3 rounded-full bg-[#f0c778] px-6 py-3.5 text-base font-black text-[#21160b] shadow-[0_12px_35px_rgba(196,160,106,0.24)] transition-all hover:-translate-y-0.5 hover:bg-[#f6d493] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#fff0d2] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b0907] sm:w-auto sm:min-w-56"
+                  >
+                    <Mic className="h-5 w-5" aria-hidden="true" />
                     اتكلم مع {m.name}
-                  </span>
-                </div>
-              </button>
-            )}
+                  </button>
+                )}
+              </div>
+            </section>
           </div>
-        </div>
+        </main>
       </PageShell>
     );
   }
@@ -858,21 +895,16 @@ export default function FamilyTree() {
   return (
     <ErrorBoundary>
       <PageShell>
-        {/* 
-        CRITICAL: We apply the CSS Tree rules here.
-        Since we need absolute precision, we enforce LTR on the wrapper 
-        so `left` and `right` CSS rules don't flip unpredictably. 
-      */}
         <style>{`
         .tf-tree ul {
-          padding-top: 40px;
+          padding-top: 46px;
           position: relative;
           display: flex;
           justify-content: center;
         }
         .tf-tree li {
           position: relative;
-          padding: 40px 10px 0 10px;
+          padding: 46px 12px 0;
           text-align: center;
           list-style-type: none;
         }
@@ -881,9 +913,9 @@ export default function FamilyTree() {
           position: absolute;
           top: 0;
           width: 50%;
-          height: 40px;
-          border-top: 2px solid rgba(196,160,106,0.7);
-          box-shadow: 0 -2px 5px rgba(196,160,106,0.2);
+          height: 46px;
+          border-top: 1px solid rgba(214,174,105,0.62);
+          box-shadow: 0 -1px 7px rgba(196,160,106,0.18);
         }
         .tf-tree li::before {
           left: 0;
@@ -892,7 +924,7 @@ export default function FamilyTree() {
         .tf-tree li::after {
           left: 50%;
           right: 0;
-          border-left: 2px solid rgba(196,160,106,0.7);
+          border-left: 1px solid rgba(214,174,105,0.62);
         }
         .tf-tree li:only-child::after, .tf-tree li:only-child::before {
           display: none;
@@ -904,7 +936,7 @@ export default function FamilyTree() {
           border: 0 none;
         }
         .tf-tree li:last-child::before {
-          border-right: 2px solid rgba(196,160,106,0.7);
+          border-right: 1px solid rgba(214,174,105,0.62);
           border-radius: 0 12px 0 0;
         }
         .tf-tree li:first-child::after {
@@ -916,80 +948,120 @@ export default function FamilyTree() {
           top: 0;
           left: 50%;
           transform: translateX(-50%);
-          border-left: 2px solid rgba(196,160,106,0.7);
+          border-left: 1px solid rgba(214,174,105,0.62);
           width: 0;
-          height: 40px;
+          height: 46px;
         }
       `}</style>
+        <main className="relative min-h-[calc(100dvh-4rem)] bg-[#0b0907] text-[#f2dfbd] lg:h-[calc(100dvh-4rem)] lg:min-h-[36rem] lg:overflow-hidden" dir="rtl">
+          <div className="pointer-events-none absolute inset-0 opacity-80 [background-image:radial-gradient(circle_at_50%_18%,rgba(160,103,39,0.18),transparent_32%),radial-gradient(circle_at_12%_70%,rgba(196,160,106,0.08),transparent_30%),linear-gradient(180deg,#0d0b08,#080706)]" />
+          <div className="pointer-events-none absolute inset-0 opacity-[0.08] [background-image:repeating-linear-gradient(115deg,transparent_0,transparent_42px,rgba(215,177,111,0.2)_43px,transparent_44px)]" />
 
-        <div className="min-h-screen bg-[#0b0a08] text-[#e8d1a7] py-16 px-4 relative overflow-x-auto" dir="ltr">
-          {/* Huge Ambient Glows for maximum cinematic effect */}
-          <div className="fixed top-[0%] left-[-20%] w-[80%] h-[80%] bg-[#c4a06a] blur-[250px] opacity-[0.05] pointer-events-none rounded-full mix-blend-screen" />
-          <div className="fixed bottom-[-10%] right-[-20%] w-[70%] h-[70%] bg-[#8b4513] blur-[250px] opacity-[0.04] pointer-events-none rounded-full mix-blend-screen" />
+          <header className="sticky top-0 z-30 border-b border-[#c4a06a]/12 bg-[#0b0907]/95 px-4 py-3 backdrop-blur-xl sm:px-6 lg:absolute lg:inset-x-0" dir="rtl">
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
+              <div className="min-w-0">
+                {isEditingTitle ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={editedTitle}
+                      onChange={(event) => setEditedTitle(event.target.value)}
+                      className="min-w-0 max-w-56 border-b border-[#d9ae67] bg-transparent px-1 py-1 font-amiri text-xl font-bold text-[#fff0d2] outline-none sm:max-w-sm sm:text-2xl"
+                      autoFocus
+                    />
+                    <button type="button" aria-label="حفظ اسم الشجرة" onClick={() => {
+                      setIsEditingTitle(false);
+                      updateTreeState({ ...treeData, title: editedTitle || 'شجرة العيلة' });
+                    }} className="flex h-11 w-11 items-center justify-center rounded-full text-[#e9bd72] hover:bg-[#c4a06a]/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e8bd72]"><Check className="h-5 w-5" /></button>
+                    <button type="button" aria-label="إلغاء التعديل" onClick={() => setIsEditingTitle(false)} className="flex h-11 w-11 items-center justify-center rounded-full text-[#bca782] hover:bg-[#c4a06a]/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e8bd72]"><X className="h-5 w-5" /></button>
+                  </div>
+                ) : (
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="hidden h-10 w-10 items-center justify-center rounded-full border border-[#c4a06a]/25 bg-[#c4a06a]/8 text-[#e4b76d] sm:flex"><Users className="h-5 w-5" aria-hidden="true" /></span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h1 className="truncate font-amiri text-xl font-bold text-[#fff0d2] sm:text-2xl">{treeData?.title || 'شجرة العيلة'}</h1>
+                        <button type="button" aria-label="تعديل اسم الشجرة" onClick={() => { setEditedTitle(treeData?.title || 'شجرة العيلة'); setIsEditingTitle(true); }} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[#9f8b6c] transition-colors hover:bg-[#c4a06a]/10 hover:text-[#dfb66f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e8bd72]"><Edit2 className="h-4 w-4" /></button>
+                      </div>
+                      <p className="hidden text-xs text-[#9f8b6c] sm:block">اضغط على أي صورة علشان تفتح حكاياتها</p>
+                    </div>
+                  </div>
+                )}
 
-          <div className="min-w-max mx-auto relative z-10 flex flex-col items-center pt-10 pb-32 px-10">
-
-            {/* Header */}
-            <div className="text-center mb-16 animate-fade-in-up relative w-full sticky left-0 right-0 max-w-4xl mx-auto" dir="rtl">
-              {isEditingTitle ? (
-                <div className="flex items-center justify-center gap-3 mb-4">
-                  <input
-                    type="text"
-                    value={editedTitle}
-                    onChange={(e) => setEditedTitle(e.target.value)}
-                    className="bg-transparent border-b-2 border-[#c4a06a] text-[#f8ebd5] text-4xl md:text-5xl font-bold outline-none text-center"
-                    style={{ fontFamily: 'var(--font-heading)' }}
-                    autoFocus
-                  />
-                  <button onClick={() => {
-                    setIsEditingTitle(false);
-                    const newTreeData = { ...treeData, title: editedTitle || "شجرة العيلة" };
-                    updateTreeState(newTreeData);
-                  }} className="text-[#c4a06a] hover:text-[#f8ebd5]">
-                    <Check className="w-8 h-8" />
-                  </button>
-                  <button onClick={() => setIsEditingTitle(false)} className="text-red-400 hover:text-red-300">
-                    <X className="w-8 h-8" />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center gap-4 mb-4">
-                  <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#f8ebd5] via-[#c4a06a] to-[#f8ebd5] drop-shadow-[0_2px_10px_rgba(196,160,106,0.2)]" style={{ fontFamily: 'var(--font-heading)' }}>
-                    {treeData?.title || "شجرة العيلة"}
-                  </h1>
-                  <button onClick={() => {
-                    setEditedTitle(treeData?.title || "شجرة العيلة");
-                    setIsEditingTitle(true);
-                  }} className="text-[#c4a06a]/50 hover:text-[#c4a06a] transition-colors mt-2">
-                    <Edit2 className="w-5 h-5" />
-                  </button>
-                </div>
-              )}
-              <p className="text-[#c4a06a]/90 text-sm md:text-base max-w-xl mx-auto leading-relaxed font-medium">
-                صوّت حبايبك وذكرياتهم هتفضل حية، تحكي قصصهم لأجيال بعد أجيال.
-              </p>
+                <button
+                  type="button"
+                  onClick={() => handleAddClick()}
+                  className="flex min-h-11 shrink-0 items-center gap-2 rounded-full bg-[#e7bd74] px-4 text-sm font-black text-[#23180c] shadow-[0_8px_25px_rgba(196,160,106,0.2)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#fff0d2] sm:px-5"
+                >
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  <span className="hidden sm:inline">إضافة فرد</span>
+                  <span className="sm:hidden">إضافة</span>
+                </button>
+              </div>
             </div>
+          </header>
 
-            {/* ── THE CSS ORG CHART TREE ── */}
-            <div className="tf-tree w-full animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-              <ul className="pt-[100px]"> {/* Extra padding top for the Great-grandparents overflowing above */}
-                {treeData ? <FamilyNode node={treeData} /> : <div className="text-center w-full py-20 text-[#c4a06a]"><Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" /> جاري تحميل شجرة العيلة...</div>}
-              </ul>
+          <div className="relative z-10 px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-5 lg:hidden" dir="rtl">
+            <div className="mx-auto max-w-md">
+              <div className="mb-7 rounded-3xl border border-[#c4a06a]/15 bg-[#15110d]/80 p-4 text-center shadow-[0_18px_45px_rgba(0,0,0,0.24)] backdrop-blur">
+                <p className="font-amiri text-xl font-bold text-[#f7dfb5]">كل حكاية ليها مكان في العيلة</p>
+                <p className="mt-1 text-sm leading-6 text-[#aa9676]">الأجيال مرتبة من الكبار للصغار—اختار أي شخص علشان تفتح حكايته.</p>
+              </div>
+
+              <div className="relative space-y-1 pb-4">
+                <span className="pointer-events-none absolute bottom-12 right-1/2 top-8 w-px translate-x-1/2 bg-gradient-to-b from-transparent via-[#d5aa64]/45 to-transparent" aria-hidden="true" />
+                {familyGenerations.map((generation, generationIndex) => (
+                  <section key={generationIndex} className="relative pb-11">
+                    <div className="relative z-10 mb-5 flex justify-center">
+                      <h2 className="rounded-full border border-[#c4a06a]/25 bg-[#0b0907] px-4 py-1.5 text-xs font-bold text-[#d7b477] shadow-[0_6px_18px_rgba(0,0,0,0.35)]">
+                        {['الأجداد', 'الأبناء', 'الأحفاد', 'أبناء الأحفاد'][generationIndex] || `الجيل ${generationIndex + 1}`}
+                      </h2>
+                    </div>
+                    <div className="relative z-10 flex flex-wrap justify-center gap-x-4 gap-y-6 rounded-[2rem] border border-[#c4a06a]/10 bg-[#100d0a]/72 px-3 py-5 shadow-[0_18px_48px_rgba(0,0,0,0.24)] backdrop-blur-sm before:absolute before:-top-5 before:right-1/2 before:h-5 before:w-px before:translate-x-1/2 before:bg-[#d5aa64]/45">
+                      {generation.map((member) => member.isAddNode ? (
+                        <button
+                          type="button"
+                          key={member.id}
+                          onClick={() => handleAddClick(member.role, member.id)}
+                          className="flex min-h-28 w-28 flex-col items-center justify-center rounded-2xl text-[#b99f76] transition-colors active:bg-[#c4a06a]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e8bd72]"
+                        >
+                          <span className="flex h-[4.75rem] w-[4.75rem] items-center justify-center rounded-full border border-dashed border-[#c4a06a]/45 bg-[#0b0907] shadow-[0_10px_25px_rgba(0,0,0,0.32)]"><Plus className="h-5 w-5" aria-hidden="true" /></span>
+                          <span className="mt-2 text-xs font-bold">إضافة {member.role}</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          key={member.id}
+                          onClick={() => handleNodeClick(member)}
+                          className="group flex min-h-28 w-28 flex-col items-center justify-center rounded-2xl px-1 py-2 text-center transition-colors active:bg-[#c4a06a]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e8bd72]"
+                        >
+                          <span className={`relative overflow-hidden rounded-full border-2 bg-[#211a13] p-0.5 shadow-[0_12px_28px_rgba(0,0,0,0.38)] transition-transform duration-300 group-active:scale-95 ${member.isMe ? 'h-[5.75rem] w-[5.75rem] border-[#f0c777] ring-4 ring-[#c4a06a]/14' : 'h-[4.75rem] w-[4.75rem] border-[#c4a06a]/55'}`}>
+                            {member.avatar ? <img src={member.avatar} alt="" className="h-full w-full rounded-full object-cover" /> : <span className="flex h-full w-full items-center justify-center text-3xl">{member.emoji || '👤'}</span>}
+                            {member.status === 'preserved' && <span className="absolute bottom-1 right-1 h-2.5 w-2.5 rounded-full border-2 border-[#15110d] bg-[#e7bd74]" aria-hidden="true" />}
+                          </span>
+                          <span className="mt-2 text-[0.68rem] font-semibold text-[#b79c74]">{member.role}</span>
+                          <span className="font-amiri text-lg font-bold text-[#f8e3bd]">{member.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
             </div>
-
           </div>
 
-          {/* Floating Add Member Button */}
-          <button
-            onClick={() => handleAddClick()}
-            className="fixed bottom-8 right-8 z-50 flex items-center gap-3 bg-gradient-to-r from-[#c4a06a] to-[#d4b483] text-[#0b0a08] px-6 py-4 rounded-full shadow-[0_0_30px_rgba(196,160,106,0.3)] hover:scale-105 hover:shadow-[0_0_40px_rgba(196,160,106,0.5)] transition-all duration-300 font-bold"
-            style={{ fontFamily: 'var(--font-heading)' }}
-          >
-            <Plus className="w-5 h-5" />
-            ضيف فرد جديد
-          </button>
-
-        </div>
+          <div className="hidden h-full overflow-auto overscroll-contain lg:block">
+            <div className="flex min-h-full min-w-max items-start justify-center px-20 pb-24 pt-36" dir="ltr">
+              {treeData ? (
+                <div className="tf-tree animate-fade-in-up">
+                  <ul><FamilyNode node={treeData} /></ul>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center text-[#c4a06a]" dir="rtl"><Loader2 className="mb-4 h-8 w-8 animate-spin" /> جاري تحميل شجرة العيلة...</div>
+              )}
+            </div>
+          </div>
+        </main>
       </PageShell>
     </ErrorBoundary>
   );
