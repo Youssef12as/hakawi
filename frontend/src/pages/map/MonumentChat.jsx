@@ -283,9 +283,18 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
     }
   }, [monument, initialContext, sessionId, hasSentInitialContext, handleSendText]);
 
-  if (!governorates) {return (
+  const isRamsis = monument?.character_name === 'ramsis' || monument?.key === 'abu-simbel';
+  const isOthman = monument?.key === 'aswan-general';
+  const isImmersive = isRamsis || isOthman;
+  const Wrapper = isOverlay ? 'div' : PageShell;
+  const wrapperProps = isOverlay
+    ? { className: 'h-full w-full bg-[#111010]' }
+    : { className: isImmersive ? 'bg-espresso/5 max-lg:!p-0' : 'bg-espresso/5' };
+
+  if (!governorates) {
+    return (
       <Wrapper {...wrapperProps}>
-          <div className={isOverlay ? "h-full flex items-center justify-center" : "h-[calc(100vh-4rem)] flex items-center justify-center"}>
+        <div className={isOverlay ? "h-full flex items-center justify-center" : "h-[calc(100vh-4rem)] flex items-center justify-center"}>
           <div className="w-10 h-10 border-[3px] border-[#c4a06a]/20 border-t-[#c4a06a] rounded-full animate-spin" />
         </div>
       </Wrapper>
@@ -296,13 +305,6 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
     return null;
   }
 
-  const isRamsis = monument.character_name === 'ramsis' || monument.key === 'abu-simbel';
-  const isOthman = monument.key === 'aswan-general';
-  const isImmersive = isRamsis || isOthman;
-  const Wrapper = isOverlay ? 'div' : PageShell;
-  const wrapperProps = isOverlay
-    ? { className: 'h-full w-full bg-[#111010]' }
-    : { className: isImmersive ? 'bg-espresso/5 max-lg:!p-0' : 'bg-espresso/5' };
   const innerClass = isOverlay
     ? 'h-full grid lg:grid-cols-[1.15fr_0.85fr] animate-slide-in-end overflow-hidden'
     : 'h-[calc(100vh-4rem)] grid lg:grid-cols-[1.15fr_0.85fr] animate-slide-in-end overflow-hidden';
