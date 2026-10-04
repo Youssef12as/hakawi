@@ -204,6 +204,12 @@ body {
   animation: breathe 5s ease-in-out infinite;
 }
 
+@media (max-width: 1023px) {
+  .immersive-chat-layout {
+    grid-template-rows: var(--immersive-hero-size, 52%) minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 639px) {
   .ramsis-legacy__intro {
     top: auto;
