@@ -205,8 +205,8 @@ body {
 }
 
 @media (max-width: 1023px) {
-  .ramsis-chat-layout {
-    grid-template-rows: var(--ramsis-hero-size, 52%) minmax(0, 1fr);
+  .immersive-chat-layout {
+    grid-template-rows: var(--immersive-hero-size, 52%) minmax(0, 1fr);
   }
 }
 

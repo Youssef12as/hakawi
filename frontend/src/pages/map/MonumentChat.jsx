@@ -9,11 +9,11 @@
  */
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { X, Languages, History } from 'lucide-react';
+import { X, Languages, History, Landmark } from 'lucide-react';
 import PageShell from '../../components/layout/PageShell';
 import CharacterStage from '../../components/character/CharacterStage';
 import CharacterCard from '../../components/character/CharacterCard';
-import RamsisLegacyStage from '../../components/character/RamsisLegacyStage';
+import ImmersiveCharacterStage from '../../components/character/RamsisLegacyStage';
 import ChatPanel from '../../components/chat/ChatPanel';
 import ChatHistoryDrawer from '../../components/chat/ChatHistoryDrawer';
 import AIBadge from '../../components/consent/AIBadge';
@@ -31,6 +31,45 @@ const WALL_SYMBOLS = [
   { id: 'woven-textile', name: 'قطعة نسيج يدوية', desc: 'كل لون ونقشة يحملان دلالة خاصة ترتبط بالمكان والمناسبة.', img: '/image/ramz.png', top: '81%', left: '74%' },
   { id: 'luxor-carpet', name: 'سجادة الأقصر', desc: 'استُلهمت زخارفها من المعابد وأعمدة الكرنك والطبيعة المحيطة بالنيل.', img: '/image/noqush.png', top: '42%', left: '90%' },
 ];
+
+function LivingWallScene({ onClose, onSelect }) {
+  return (
+    <div
+      className="absolute inset-0 z-40 flex flex-col bg-[#111010] bg-cover bg-center animate-fade-in"
+      style={{ backgroundImage: "url('/new photos/wall.png')" }}
+    >
+      <div className="absolute top-0 z-30 flex w-full items-center justify-between border-b border-[#c4a06a]/30 bg-[#111010]/80 px-4 py-3 backdrop-blur-md">
+        <h3 className="text-lg font-bold text-[#c4a06a]">منقوشاتنا</h3>
+        <button
+          type="button"
+          onClick={onClose}
+          className="min-h-11 rounded-lg bg-[#c4a06a]/10 px-4 text-sand/70 transition-colors hover:bg-[#c4a06a]/20 hover:text-[#c4a06a]"
+        >
+          عودة
+        </button>
+      </div>
+
+      <div className="relative mt-12 h-full w-full overflow-hidden">
+        {WALL_SYMBOLS.map((symbol) => (
+          <button
+            key={symbol.id}
+            type="button"
+            onClick={() => onSelect(symbol)}
+            className="group absolute transition-transform duration-300 hover:scale-110"
+            style={{ top: symbol.top, left: symbol.left }}
+          >
+            <div className="h-12 w-12 overflow-hidden rounded-full border-2 border-[#c4a06a]/40 shadow-[0_0_15px_rgba(196,160,106,0.2)] group-hover:border-[#c4a06a] group-hover:shadow-[0_0_20px_rgba(196,160,106,0.6)] md:h-16 md:w-16">
+              <img src={symbol.img} alt={symbol.name} className="h-full w-full object-cover opacity-80 mix-blend-screen group-hover:opacity-100" />
+            </div>
+            <div className="absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded border border-[#c4a06a]/30 bg-[#111010]/90 px-2 py-1 text-[10px] font-bold text-[#c4a06a] opacity-0 group-hover:opacity-100 md:text-xs">
+              {symbol.name}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const DEFAULT_MOBILE_HERO_SIZE = 52;
 const MIN_MOBILE_HERO_SIZE = 30;
@@ -258,42 +297,81 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
   }
 
   const isRamsis = monument.character_name === 'ramsis' || monument.key === 'abu-simbel';
+  const isOthman = monument.key === 'aswan-general';
+  const isImmersive = isRamsis || isOthman;
   const Wrapper = isOverlay ? 'div' : PageShell;
   const wrapperProps = isOverlay
     ? { className: 'h-full w-full bg-[#111010]' }
-    : { className: isRamsis ? 'bg-espresso/5 max-lg:!p-0' : 'bg-espresso/5' };
+    : { className: isImmersive ? 'bg-espresso/5 max-lg:!p-0' : 'bg-espresso/5' };
   const innerClass = isOverlay
     ? 'h-full grid lg:grid-cols-[1.15fr_0.85fr] animate-slide-in-end overflow-hidden'
     : 'h-[calc(100vh-4rem)] grid lg:grid-cols-[1.15fr_0.85fr] animate-slide-in-end overflow-hidden';
-  const ramsisLayoutClass = isRamsis
+  const immersiveLayoutClass = isImmersive
     ? isOverlay
-      ? 'ramsis-chat-layout relative !h-full !overflow-hidden lg:grid-rows-1'
-      : 'ramsis-chat-layout relative !overflow-hidden max-lg:fixed max-lg:inset-0 max-lg:z-[400] max-lg:!h-[100svh] lg:!h-[calc(100vh-4rem)] lg:grid-rows-1'
+      ? 'immersive-chat-layout relative !h-full !overflow-hidden lg:grid-rows-1'
+      : 'immersive-chat-layout relative !overflow-hidden max-lg:fixed max-lg:inset-0 max-lg:z-[400] max-lg:!h-[100svh] lg:!h-[calc(100vh-4rem)] lg:grid-rows-1'
     : '';
 
   return (
     <Wrapper {...wrapperProps}>
       <div
         ref={layoutRef}
-        className={`${innerClass} ${ramsisLayoutClass}`}
+        className={`${innerClass} ${immersiveLayoutClass}`}
         style={{
           background: 'radial-gradient(circle at center, #111010 0%, #0b0a08 100%)',
-          ...(isRamsis ? { '--ramsis-hero-size': `${mobileHeroSize}%` } : {}),
+          ...(isImmersive ? { '--immersive-hero-size': `${mobileHeroSize}%` } : {}),
         }}
       >
         {/* Character Portal & Bio Side (Right Column in RTL) */}
-        <div className={`flex min-h-0 flex-col border-b border-[#c4a06a]/20 lg:border-b-0 lg:border-l custom-scrollbar ${isRamsis ? 'overflow-hidden' : 'overflow-y-auto'}`}>
-          {isRamsis ? (
-            <RamsisLegacyStage
-              isSpeaking={isSpeaking}
-              name={monument.builder}
-              location={monument.display_name}
-              title={monument.title}
-              bio={monument.bio}
-              chips={monument.chips || []}
-              onChipClick={(question) => handleSendText(question)}
-              onClose={handleClose}
-            />
+        <div className={`flex min-h-0 flex-col border-b border-[#c4a06a]/20 lg:border-b-0 lg:border-l custom-scrollbar ${isImmersive ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+          {isImmersive ? (
+            <div className="relative h-full min-h-0">
+              <ImmersiveCharacterStage
+                isSpeaking={isSpeaking}
+                name={monument.builder}
+                location={monument.display_name}
+                title={monument.title}
+                bio={monument.bio}
+                chips={monument.chips || []}
+                onChipClick={(question) => handleSendText(question)}
+                onClose={handleClose}
+                {...(isOthman ? {
+                  imageSrc: '/map/am-othman-legacy.jpg',
+                  imageAlt: 'عم عثمان أمام النيل وقت الغروب في أسوان',
+                  imageWidth: 1680,
+                  imageHeight: 933,
+                  imageClassName: 'object-[30%_50%] lg:object-[32%_50%]',
+                  idleVideoSrc: '/character/3am-3othman-idle.mp4',
+                  speakingVideoSrc: '/character/3am-3othman-speaking.mp4',
+                  eyebrow: 'حَارِسُ بَوَّابَةِ الجَنُوب',
+                  suggestionsTitle: 'اسأل عم عثمان',
+                } : {
+                  imageAlt: `تمثال فرعوني يجسد ${monument.builder} داخل معبد مصري قديم`,
+                })}
+              />
+
+              {isOthman && !showWall && (
+                <button
+                  type="button"
+                  onClick={() => setShowWall(true)}
+                  className="absolute left-4 top-4 z-30 flex min-h-11 items-center gap-2 rounded-full border border-[#e6b768]/30 bg-[#0b0907]/70 px-4 text-xs font-bold text-[#f4dfbd] backdrop-blur-md transition-colors active:bg-[#e6b768]/15 lg:hidden"
+                >
+                  <Landmark className="h-4 w-4 text-[#e6b768]" aria-hidden="true" />
+                  <span>منقوشاتنا</span>
+                </button>
+              )}
+
+              {isOthman && showWall && (
+                <LivingWallScene
+                  onClose={() => setShowWall(false)}
+                  onSelect={(symbol) => {
+                    handleSendText(`حدثني عن ${symbol.name}`);
+                    setSelectedSymbol(symbol);
+                    setShowWall(false);
+                  }}
+                />
+              )}
+            </div>
           ) : (
             <>
           {/* Header */}
@@ -317,39 +395,14 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
           {/* Video Container OR Living Wall */}
           <div className="w-full relative min-h-[300px] sm:min-h-[400px]">
             {showWall ? (
-              <div className="absolute inset-0 z-20 flex flex-col bg-[#111010] animate-fade-in bg-cover bg-center" style={{ backgroundImage: "url('/new photos/wall.png')" }}>
-                <div className="flex items-center justify-between px-4 py-3 border-b border-[#c4a06a]/30 bg-[#111010]/80 backdrop-blur-md absolute top-0 w-full z-30">
-                  <h3 className="text-[#c4a06a] font-bold text-lg">منقوشاتنا</h3>
-                  <button
-                    onClick={() => setShowWall(false)}
-                    className="text-sand/50 hover:text-[#c4a06a] transition-colors px-3 py-1.5 rounded-lg bg-[#c4a06a]/10 hover:bg-[#c4a06a]/20"
-                  >
-                    عودة
-                  </button>
-                </div>
-
-                <div className="relative w-full h-full overflow-hidden mt-12">
-                  {WALL_SYMBOLS.map((symbol) => (
-                    <button
-                      key={symbol.id}
-                      onClick={() => {
-                        handleSendText(`حدثني عن ${symbol.name}`);
-                        setSelectedSymbol(symbol);
-                        setShowWall(false);
-                      }}
-                      className="absolute group hover:scale-110 transition-transform duration-300"
-                      style={{ top: symbol.top, left: symbol.left }}
-                    >
-                      <div className="w-12 h-12 md:w-16 md:h-16 rounded-full overflow-hidden border-2 border-[#c4a06a]/40 group-hover:border-[#c4a06a] shadow-[0_0_15px_rgba(196,160,106,0.2)] group-hover:shadow-[0_0_20px_rgba(196,160,106,0.6)]">
-                        <img src={symbol.img} alt={symbol.name} className="w-full h-full object-cover mix-blend-screen opacity-80 group-hover:opacity-100" />
-                      </div>
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-[#111010]/90 px-2 py-1 rounded text-[#c4a06a] text-[10px] md:text-xs font-bold opacity-0 group-hover:opacity-100 whitespace-nowrap border border-[#c4a06a]/30">
-                        {symbol.name}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <LivingWallScene
+                onClose={() => setShowWall(false)}
+                onSelect={(symbol) => {
+                  handleSendText(`حدثني عن ${symbol.name}`);
+                  setSelectedSymbol(symbol);
+                  setShowWall(false);
+                }}
+              />
             ) : (
               <CharacterStage
                 isSpeaking={isSpeaking}
@@ -373,14 +426,14 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
         </div>
 
         {/* Chat Side (Left Column in RTL) */}
-        <div className={`relative flex min-h-0 flex-col bg-[#111010] ${isRamsis ? 'z-40 h-full overflow-hidden rounded-t-[2.25rem] border-t border-[#c4a06a]/45 shadow-[0_-18px_55px_rgba(0,0,0,0.72)] lg:z-auto lg:h-auto lg:rounded-none lg:border-t-0 lg:shadow-none' : ''}`}>
+        <div className={`relative flex min-h-0 flex-col bg-[#111010] ${isImmersive ? 'z-40 h-full overflow-hidden rounded-t-[2.25rem] border-t border-[#c4a06a]/45 shadow-[0_-18px_55px_rgba(0,0,0,0.72)] lg:z-auto lg:h-auto lg:rounded-none lg:border-t-0 lg:shadow-none' : ''}`}>
 
-          {isRamsis && (
+          {isImmersive && (
             <div className="relative flex h-6 shrink-0 items-center justify-center lg:hidden">
               <div
                 role="separator"
                 tabIndex={0}
-                aria-label="تغيير حجم صورة رمسيس والمحادثة"
+                aria-label={`تغيير حجم صورة ${monument.builder} والمحادثة`}
                 aria-orientation="horizontal"
                 aria-valuemin={MIN_MOBILE_HERO_SIZE}
                 aria-valuemax={MAX_MOBILE_HERO_SIZE}
@@ -402,7 +455,7 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
           )}
 
           {/* Chat Side Header — "محادثاتي" icon + Language Toggle */}
-          <div className={`items-center justify-between px-4 py-2 border-b border-[#c4a06a]/15 bg-[#14120e]/95 backdrop-blur z-20 ${isRamsis ? 'hidden lg:flex' : 'flex'}`}>
+          <div className={`items-center justify-between px-4 py-2 border-b border-[#c4a06a]/15 bg-[#14120e]/95 backdrop-blur z-20 ${isImmersive ? 'hidden lg:flex' : 'flex'}`}>
             {/* Right side (RTL start): Chat History Button */}
             <div className="flex items-center gap-2">
               <button
@@ -495,7 +548,7 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
             languageMode={languageMode}
             responseMode={responseMode}
             onResponseModeChange={setResponseMode}
-            immersiveMobile={isRamsis}
+            immersiveMobile={isImmersive}
             suggestions={monument.chips || []}
           />
         </div>
