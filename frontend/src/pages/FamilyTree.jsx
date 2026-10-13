@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo, Component } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Plus, Mic, Square, RotateCcw, Upload, Calendar, MessageCircle, ChevronLeft, Volume2, Clock, Sparkles, X, Loader2, Edit2, Check, Users, ShieldCheck } from 'lucide-react';
+import { Plus, Mic, Square, RotateCcw, Upload, Calendar, MessageCircle, ChevronLeft, Volume2, Clock, Sparkles, X, Loader2, Edit2, Check, Users, ShieldCheck, GripHorizontal } from 'lucide-react';
 import PageShell from '../components/layout/PageShell';
 import ConsentScreen from '../components/consent/ConsentScreen';
 import CharacterStage from '../components/character/CharacterStage';
@@ -32,6 +32,10 @@ class ErrorBoundary extends Component {
     return this.props.children;
   }
 }
+
+const DEFAULT_FAMILY_CHARACTER_SIZE = 42;
+const MIN_FAMILY_CHARACTER_SIZE = 30;
+const MAX_FAMILY_CHARACTER_SIZE = 70;
 
 // Helper to convert WebM to WAV in browser so TTS server (librosa) can read it natively
 async function convertWebMToWav(webmBlob) {
@@ -87,6 +91,11 @@ export default function FamilyTree() {
   const [charConsentGiven, setCharConsentGiven] = useState(false);
   const [view, setView] = useState('tree');
   const [selectedMember, setSelectedMember] = useState(null);
+  const [mobileCharacterSize, setMobileCharacterSize] = useState(DEFAULT_FAMILY_CHARACTER_SIZE);
+  const [isResizingCharacter, setIsResizingCharacter] = useState(false);
+  const familyChatLayoutRef = useRef(null);
+  const resizeStartYRef = useRef(null);
+  const resizeMovedRef = useRef(false);
 
   // Tree Data State
   const [treeData, setTreeData] = useState(null);
@@ -425,6 +434,66 @@ export default function FamilyTree() {
     }
   }, [selectedMember, chatSessionId, sendAudioMessage, fetchTTS, playResponseAudio]);
 
+  const updateFamilyChatSplit = useCallback((clientY) => {
+    const layout = familyChatLayoutRef.current;
+    if (!layout) return;
+
+    const bounds = layout.getBoundingClientRect();
+    const nextSize = ((clientY - bounds.top) / bounds.height) * 100;
+    setMobileCharacterSize(Math.min(
+      MAX_FAMILY_CHARACTER_SIZE,
+      Math.max(MIN_FAMILY_CHARACTER_SIZE, nextSize),
+    ));
+  }, []);
+
+  const handleFamilyResizePointerDown = useCallback((event) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    resizeStartYRef.current = event.clientY;
+    resizeMovedRef.current = false;
+    setIsResizingCharacter(true);
+  }, []);
+
+  const handleFamilyResizePointerMove = useCallback((event) => {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    if (Math.abs(event.clientY - resizeStartYRef.current) > 4) resizeMovedRef.current = true;
+    updateFamilyChatSplit(event.clientY);
+  }, [updateFamilyChatSplit]);
+
+  const handleFamilyResizePointerEnd = useCallback((event) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setIsResizingCharacter(false);
+  }, []);
+
+  const toggleFamilyCharacterSize = useCallback(() => {
+    if (resizeMovedRef.current) {
+      resizeMovedRef.current = false;
+      return;
+    }
+    setMobileCharacterSize((current) => (
+      current > DEFAULT_FAMILY_CHARACTER_SIZE
+        ? MIN_FAMILY_CHARACTER_SIZE
+        : MAX_FAMILY_CHARACTER_SIZE
+    ));
+  }, []);
+
+  const handleFamilyResizeKeyDown = useCallback((event) => {
+    const steps = { ArrowUp: -4, ArrowDown: 4, PageUp: -10, PageDown: 10 };
+    if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      setMobileCharacterSize(event.key === 'Home' ? MIN_FAMILY_CHARACTER_SIZE : MAX_FAMILY_CHARACTER_SIZE);
+      return;
+    }
+    if (!steps[event.key]) return;
+    event.preventDefault();
+    setMobileCharacterSize((current) => Math.min(
+      MAX_FAMILY_CHARACTER_SIZE,
+      Math.max(MIN_FAMILY_CHARACTER_SIZE, current + steps[event.key]),
+    ));
+  }, []);
+
   const familyMembers = useMemo(() => {
     const members = [];
     const visit = (node) => {
@@ -637,14 +706,19 @@ export default function FamilyTree() {
   // ── Chat View — member avatar panel + original ChatPanel with voice ──
   if (view === 'chat' && selectedMember) {
     const m = selectedMember;
+    const isCharacterCompact = mobileCharacterSize <= 38;
     return (
       <PageShell>
         <div
-          className="h-[calc(100vh-4rem)] flex flex-col lg:flex-row relative overflow-hidden"
-          style={{ background: 'radial-gradient(circle at center, #111010 0%, #0b0a08 100%)' }}
+          ref={familyChatLayoutRef}
+          className="relative grid h-[calc(100dvh-4rem)] grid-rows-[var(--family-character-size)_minmax(0,1fr)] overflow-hidden lg:grid-cols-[45%_55%] lg:grid-rows-1"
+          style={{
+            background: 'radial-gradient(circle at center, #111010 0%, #0b0a08 100%)',
+            '--family-character-size': `${mobileCharacterSize}%`,
+          }}
         >
           {/* ── Member Avatar Panel (replaces CharacterStage) ── */}
-          <div className="flex flex-col lg:w-[45%] border-b lg:border-b-0 lg:border-l border-[#c4a06a]/20">
+          <div className="flex min-h-0 flex-col overflow-hidden border-b border-[#c4a06a]/20 lg:border-b-0 lg:border-l">
 
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-[#c4a06a]/20 flex-shrink-0 bg-[#050403]/80 backdrop-blur">
@@ -664,19 +738,19 @@ export default function FamilyTree() {
             </div>
 
             {/* Avatar Hero */}
-            <div className="flex-1 flex flex-col items-center justify-center px-8 py-10 relative overflow-hidden">
+            <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden px-4 py-3 sm:px-8 lg:py-10">
               {/* Ambient glow behind avatar */}
               <div className={`absolute inset-0 transition-all duration-700 ${isSpeaking ? 'opacity-100' : 'opacity-40'}`}>
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#c4a06a] blur-[100px] opacity-20 rounded-full" />
               </div>
 
               {/* Avatar ring — pulses when speaking */}
-              <div className={`relative mb-8 transition-all duration-500 ${isSpeaking ? 'scale-105' : 'scale-100'}`}>
+              <div className={`relative transition-all duration-500 lg:mb-8 ${isCharacterCompact ? 'mb-1.5' : 'mb-3'} ${isSpeaking ? 'scale-105' : 'scale-100'}`}>
                 <div className={`absolute inset-0 rounded-full transition-all duration-700 ${isSpeaking
                     ? 'shadow-[0_0_60px_rgba(196,160,106,0.6)] ring-4 ring-[#c4a06a]/80 scale-110'
                     : 'shadow-[0_0_30px_rgba(196,160,106,0.2)] ring-2 ring-[#c4a06a]/30'
                   }`} />
-                <div className="w-48 h-48 rounded-full overflow-hidden relative z-10">
+                <div className={`relative z-10 overflow-hidden rounded-full lg:h-48 lg:w-48 ${isCharacterCompact ? 'h-20 w-20 sm:h-24 sm:w-24' : 'h-28 w-28 sm:h-32 sm:w-32'}`}>
                   {m.avatar
                     ? <img src={m.avatar} alt={m.name} className="w-full h-full object-cover" />
                     : <div className="w-full h-full bg-[#1a1815] flex items-center justify-center text-7xl">{m.emoji || '👤'}</div>
@@ -691,11 +765,11 @@ export default function FamilyTree() {
                 )}
               </div>
 
-              <h2 className="text-3xl font-bold text-[#f8ebd5] mb-1 relative z-10" style={{ fontFamily: 'var(--font-heading)' }}>{m.name}</h2>
-              <p className="text-[#c4a06a]/70 text-sm mb-6 relative z-10">{m.role}</p>
+              <h2 className={`relative z-10 mb-0.5 font-bold text-[#f8ebd5] lg:mb-1 lg:text-3xl ${isCharacterCompact ? 'text-xl' : 'text-2xl'}`} style={{ fontFamily: 'var(--font-heading)' }}>{m.name}</h2>
+              <p className={`relative z-10 text-sm text-[#c4a06a]/70 lg:mb-6 lg:block ${isCharacterCompact ? 'hidden' : 'mb-2'}`}>{m.role}</p>
 
               {/* Status indicator */}
-              <div className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold relative z-10 transition-all duration-500 border ${isSpeaking
+              <div className={`relative z-10 flex items-center gap-2 rounded-full border font-semibold transition-all duration-500 ${isCharacterCompact ? 'px-4 py-1.5 text-xs' : 'px-5 py-2 text-sm'} ${isSpeaking
                   ? 'bg-[#c4a06a]/20 border-[#c4a06a]/50 text-[#c4a06a]'
                   : 'bg-[#1a1815] border-[#c4a06a]/20 text-[#9d9167]'
                 }`}>
@@ -705,7 +779,7 @@ export default function FamilyTree() {
               </div>
 
               {/* Suggested topics */}
-              <div className="mt-8 w-full relative z-10">
+              <div className="relative z-10 mt-8 hidden w-full lg:block">
                 <p className="text-xs text-[#c4a06a]/50 uppercase tracking-widest mb-3 text-center">ابدأ بـ</p>
                 <div className="flex flex-wrap justify-center gap-2">
                   {['حكايات زمان', 'ذكرياتك', 'نصيحة للناس'].map(topic => (
@@ -723,7 +797,31 @@ export default function FamilyTree() {
           </div>
 
           {/* ── Chat Side ── */}
-          <div className="flex flex-col lg:w-[55%] min-h-0 bg-[#111010]">
+          <div className="relative z-10 flex min-h-0 flex-col overflow-hidden rounded-t-[1.75rem] border-t border-[#c4a06a]/35 bg-[#111010] shadow-[0_-16px_45px_rgba(0,0,0,0.55)] lg:rounded-none lg:border-t-0 lg:shadow-none">
+            <div className="relative flex h-6 shrink-0 items-center justify-center lg:hidden">
+              <div
+                role="separator"
+                tabIndex={0}
+                aria-label={`تغيير حجم بطاقة ${m.name} والمحادثة`}
+                aria-orientation="horizontal"
+                aria-valuemin={MIN_FAMILY_CHARACTER_SIZE}
+                aria-valuemax={MAX_FAMILY_CHARACTER_SIZE}
+                aria-valuenow={Math.round(mobileCharacterSize)}
+                aria-valuetext={`${Math.round(mobileCharacterSize)}٪ لبطاقة الشخصية`}
+                title="اسحب لتغيير الحجم أو اضغط للفتح والإغلاق"
+                onPointerDown={handleFamilyResizePointerDown}
+                onPointerMove={handleFamilyResizePointerMove}
+                onPointerUp={handleFamilyResizePointerEnd}
+                onPointerCancel={handleFamilyResizePointerEnd}
+                onLostPointerCapture={() => setIsResizingCharacter(false)}
+                onClick={toggleFamilyCharacterSize}
+                onDoubleClick={() => setMobileCharacterSize(DEFAULT_FAMILY_CHARACTER_SIZE)}
+                onKeyDown={handleFamilyResizeKeyDown}
+                className="absolute inset-x-0 top-1/2 z-20 flex h-11 -translate-y-1/2 cursor-row-resize touch-none select-none items-center justify-center text-[#c4a06a] active:bg-[#c4a06a]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#e8bd72]"
+              >
+                <GripHorizontal className={`transition-all ${isResizingCharacter ? 'h-6 w-16 text-[#f0c778]' : 'h-5 w-12 text-[#c4a06a]/65'}`} aria-hidden="true" />
+              </div>
+            </div>
             <ChatPanel
               chatHistory={chatHistory}
               onSendText={handleChatSendText}
@@ -731,6 +829,8 @@ export default function FamilyTree() {
               onTranscribeAudio={transcribeAudio}
               isLoading={chatLoading}
               elderName={m.characterName || m.name}
+              immersiveMobile
+              suggestions={['حكايات زمان', 'ذكرياتك', 'نصيحة للناس']}
             />
           </div>
         </div>
