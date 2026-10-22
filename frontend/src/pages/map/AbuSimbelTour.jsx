@@ -37,7 +37,20 @@ export default function AbuSimbelTour() {
     const isWhite = color === "white";
     const baseColor = isWhite ? "#ffffff" : "#f59e0b";
     return (
-      <g onClick={onClick} className="cursor-pointer group">
+      <g
+        onClick={onClick}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onClick();
+          }
+        }}
+        role="button"
+        tabIndex="0"
+        aria-label={isWhite ? 'الدخول للمرحلة التالية' : 'طرح سؤال عن هذا الجزء'}
+        className="abu-simbel-hotspot group cursor-pointer"
+      >
+        <circle cx={cx} cy={cy} r="60" fill="transparent" className="md:hidden" />
         <circle cx={cx} cy={cy} r="25" fill={baseColor} className="animate-ping opacity-60" style={{ transformOrigin: `${cx}px ${cy}px` }} />
         <circle cx={cx} cy={cy} r="15" fill={baseColor} stroke="#ffffff" strokeWidth="3" className="group-hover:scale-125 transition-transform duration-300" style={{ transformOrigin: `${cx}px ${cy}px` }} />
       </g>
@@ -45,7 +58,16 @@ export default function AbuSimbelTour() {
   };
 
   return (
-    <div className="relative w-full h-screen bg-[#0e0b08] overflow-hidden flex font-sans text-white">
+    <div className="relative flex h-[100dvh] w-full overflow-hidden bg-[#0e0b08] font-sans text-white">
+      <style>{`
+        @media (max-width: 767px) {
+          .abu-simbel-hotspot {
+            transform: scale(2.5);
+            transform-box: fill-box;
+            transform-origin: center;
+          }
+        }
+      `}</style>
       
       {/* زرار الرجوع */}
       {!chatOpen && (
@@ -60,10 +82,18 @@ export default function AbuSimbelTour() {
 
       {/* الخريطة (هتاخد الشاشة كلها دايماً) */}
       <div className="w-full h-full">
-        <TransformWrapper initialScale={1} minScale={1} maxScale={4} limitToBounds={true}>
+        <TransformWrapper
+          key={level}
+          initialScale={1}
+          minScale={1}
+          maxScale={4}
+          centerOnInit={true}
+          centerZoomedOut={true}
+          limitToBounds={true}
+        >
           <TransformComponent 
             wrapperStyle={{ width: '100%', height: '100%' }}
-            contentStyle={{ width: '100%', height: '100%' }}
+            contentStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             wrapperClass="w-full h-full cursor-move" 
             contentClass="w-full h-full"
           >
@@ -71,12 +101,12 @@ export default function AbuSimbelTour() {
               viewBox="0 0 1920 1080" 
               className="w-full h-full select-none"
               style={{ width: '100%', height: '100%', display: 'block' }}
-              preserveAspectRatio="xMidYMid slice"
+              preserveAspectRatio="xMidYMid meet"
             >
               
               {level === 1 && (
                 <>
-                  <image href="/images/abu_simbel_1_exterior.jpg" width="1920" height="1080" preserveAspectRatio="xMidYMid slice" />
+                  <image href="/images/abu_simbel_1_exterior.jpg" width="1920" height="1080" preserveAspectRatio="xMidYMid meet" />
                   
                   {/* التمثال المكسور */}
                   <Hotspot cx="475" cy="500" onClick={() => handleHotspotClick("إيه قصة التمثال المكسور ده؟ وليه متصلحش؟")} />
@@ -91,7 +121,7 @@ export default function AbuSimbelTour() {
 
               {level === 2 && (
                 <>
-                  <image href="/images/abu_simbel_2_hall.jpg" width="1920" height="1080" preserveAspectRatio="xMidYMid slice" />
+                  <image href="/images/abu_simbel_2_hall.jpg" width="1920" height="1080" preserveAspectRatio="xMidYMid meet" />
                   
                   <Hotspot cx="525" cy="550" onClick={() => handleHotspotClick("ليه شكل التماثيل اللي جوه دي مختلف ومكتف إيده؟")} />
                   <Hotspot cx="250" cy="550" onClick={() => handleHotspotClick("احكيلي عن المعركة الطاحنة اللي مرسومة على الحيطة دي.")} />
@@ -103,7 +133,7 @@ export default function AbuSimbelTour() {
 
               {level === 3 && (
                 <>
-                  <image href="/images/abu_simbel_3_sanctuary.jpg" width="1920" height="1080" preserveAspectRatio="xMidYMid slice" />
+                  <image href="/images/abu_simbel_3_sanctuary.jpg" width="1920" height="1080" preserveAspectRatio="xMidYMid meet" />
                   
                   <Hotspot cx="950" cy="625" onClick={() => handleHotspotClick("إيه السر ورا تعامد الشمس في الأوضة دي بالذات؟")} />
                   <Hotspot cx="1350" cy="500" onClick={() => handleHotspotClick("مين الآلهة اللي مرسومين معاك على الحيطة هنا؟")} />
