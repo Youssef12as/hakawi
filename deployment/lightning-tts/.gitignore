@@ -1,0 +1,11 @@
+.venv/
+.cli-venv/
+__pycache__/
+.pytest_cache/
+models/
+pre_existing_voices/
+runtime_voices/
+test-output/
+.env
+.env.*
+installed-versions.txt

@@ -1,0 +1,10 @@
+{
+  "model": {
+    "repo_id": "oddadmix/lahgtna-omnivoice-v2",
+    "revision": "55c38a613e316499829eef60b006edc6da9499e2"
+  },
+  "audio_tokenizer": {
+    "repo_id": "eustlb/higgs-audio-v2-tokenizer",
+    "revision": "528e871c2a26c4f0f7773b9754e2e1acae20899d"
+  }
+}

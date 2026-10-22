@@ -1,0 +1,15 @@
+.git
+.venv
+.cli-venv
+__pycache__
+**/__pycache__
+.pytest_cache
+.env
+.env.*
+runtime_voices
+test-output
+tests
+README.md
+*.zip
+installed-versions.txt
+models/**/.cache
