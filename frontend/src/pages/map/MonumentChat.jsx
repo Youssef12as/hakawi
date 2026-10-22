@@ -9,7 +9,7 @@
  */
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { X, Languages, History, Landmark } from 'lucide-react';
+import { X, ChevronRight, Languages, History, Landmark } from 'lucide-react';
 import PageShell from '../../components/layout/PageShell';
 import CharacterStage from '../../components/character/CharacterStage';
 import CharacterCard from '../../components/character/CharacterCard';
@@ -32,36 +32,50 @@ const WALL_SYMBOLS = [
   { id: 'luxor-carpet', name: 'سجادة الأقصر', desc: 'استُلهمت زخارفها من المعابد وأعمدة الكرنك والطبيعة المحيطة بالنيل.', img: '/image/noqush.png', top: '42%', left: '90%' },
 ];
 
-function LivingWallScene({ onClose, onSelect }) {
+function LivingWallScene({ isOpen = true, onClose, onSelect }) {
   return (
     <div
-      className="absolute inset-0 z-40 flex flex-col bg-[#111010] bg-cover bg-center animate-fade-in"
+      role="dialog"
+      aria-modal={isOpen}
+      aria-hidden={!isOpen}
+      aria-labelledby="living-wall-title"
+      className={`fixed inset-0 z-[500] flex h-[100dvh] flex-col bg-[#111010] bg-cover bg-center transition-[opacity,transform] ease-out motion-reduce:transform-none motion-reduce:transition-none lg:absolute lg:z-40 lg:h-full ${
+        isOpen
+          ? 'pointer-events-auto translate-y-0 opacity-100 duration-[220ms]'
+          : 'pointer-events-none translate-y-2 opacity-0 duration-150'
+      }`}
       style={{ backgroundImage: "url('/new photos/wall.png')" }}
     >
-      <div className="absolute top-0 z-30 flex w-full items-center justify-between border-b border-[#c4a06a]/30 bg-[#111010]/80 px-4 py-3 backdrop-blur-md">
-        <h3 className="text-lg font-bold text-[#c4a06a]">منقوشاتنا</h3>
+      <div
+        className="relative z-30 flex w-full shrink-0 items-center justify-between border-b border-[#c4a06a]/30 bg-[#111010]/80 px-4 pb-3 backdrop-blur-md lg:pt-3"
+        style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
+      >
+        <h2 id="living-wall-title" className="text-lg font-bold text-[#c4a06a]">منقوشاتنا</h2>
         <button
           type="button"
           onClick={onClose}
-          className="min-h-11 rounded-lg bg-[#c4a06a]/10 px-4 text-sand/70 transition-colors hover:bg-[#c4a06a]/20 hover:text-[#c4a06a]"
+          disabled={!isOpen}
+          className="flex min-h-11 items-center gap-1 rounded-full bg-[#c4a06a]/10 px-4 text-sm font-bold text-sand/80 transition-colors hover:bg-[#c4a06a]/20 hover:text-[#fff2dc] active:bg-[#c4a06a]/25 disabled:pointer-events-none"
         >
-          عودة
+          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          <span>عودة لعم عثمان</span>
         </button>
       </div>
 
-      <div className="relative mt-12 h-full w-full overflow-hidden">
+      <div className="relative min-h-0 flex-1 overflow-hidden">
         {WALL_SYMBOLS.map((symbol) => (
           <button
             key={symbol.id}
             type="button"
             onClick={() => onSelect(symbol)}
-            className="group absolute transition-transform duration-300 hover:scale-110"
+            disabled={!isOpen}
+            className="group absolute -translate-x-1/2 -translate-y-1/2 transition-transform duration-200 hover:scale-110 active:scale-95 disabled:pointer-events-none motion-reduce:transition-none"
             style={{ top: symbol.top, left: symbol.left }}
           >
             <div className="h-12 w-12 overflow-hidden rounded-full border-2 border-[#c4a06a]/40 shadow-[0_0_15px_rgba(196,160,106,0.2)] group-hover:border-[#c4a06a] group-hover:shadow-[0_0_20px_rgba(196,160,106,0.6)] md:h-16 md:w-16">
               <img src={symbol.img} alt={symbol.name} className="h-full w-full object-cover opacity-80 mix-blend-screen group-hover:opacity-100" />
             </div>
-            <div className="absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded border border-[#c4a06a]/30 bg-[#111010]/90 px-2 py-1 text-[10px] font-bold text-[#c4a06a] opacity-0 group-hover:opacity-100 md:text-xs">
+            <div className="absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded border border-[#c4a06a]/30 bg-[#111010]/90 px-2 py-1 text-[10px] font-bold text-[#c4a06a] opacity-100 md:text-xs md:opacity-0 md:group-hover:opacity-100">
               {symbol.name}
             </div>
           </button>
@@ -367,19 +381,34 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
                 })}
               />
 
-              {isOthman && !showWall && (
+              <div
+                className="absolute inset-x-4 z-30 flex items-center justify-between lg:hidden"
+                style={{ top: 'max(1rem, env(safe-area-inset-top))' }}
+              >
                 <button
                   type="button"
-                  onClick={() => setShowWall(true)}
-                  className="absolute left-4 top-4 z-30 flex min-h-11 items-center gap-2 rounded-full border border-[#e6b768]/30 bg-[#0b0907]/70 px-4 text-xs font-bold text-[#f4dfbd] backdrop-blur-md transition-colors active:bg-[#e6b768]/15 lg:hidden"
+                  onClick={handleClose}
+                  className="flex min-h-11 items-center gap-1 rounded-full border border-[#e6b768]/30 bg-[#0b0907]/75 px-3 text-xs font-bold text-[#f4dfbd] shadow-lg backdrop-blur-md transition-colors active:bg-[#e6b768]/15"
                 >
-                  <Landmark className="h-4 w-4 text-[#e6b768]" aria-hidden="true" />
-                  <span>منقوشاتنا</span>
+                  <ChevronRight className="h-4 w-4 text-[#e6b768]" aria-hidden="true" />
+                  <span>الخريطة</span>
                 </button>
-              )}
 
-              {isOthman && showWall && (
+                {isOthman && (
+                  <button
+                    type="button"
+                    onClick={() => setShowWall(true)}
+                    className="flex min-h-11 items-center gap-2 rounded-full border border-[#e6b768]/30 bg-[#0b0907]/75 px-3 text-xs font-bold text-[#f4dfbd] shadow-lg backdrop-blur-md transition-colors active:bg-[#e6b768]/15"
+                  >
+                    <Landmark className="h-4 w-4 text-[#e6b768]" aria-hidden="true" />
+                    <span>منقوشاتنا</span>
+                  </button>
+                )}
+              </div>
+
+              {isOthman && (
                 <LivingWallScene
+                  isOpen={showWall}
                   onClose={() => setShowWall(false)}
                   onSelect={(symbol) => {
                     handleSendText(`حدثني عن ${symbol.name}`);
@@ -519,7 +548,8 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
                   onClick={() => setShowWall((prev) => !prev)}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all duration-300 text-xs font-medium ${showWall ? 'bg-[#c4a06a]/20 border-[#c4a06a]/50 text-[#c4a06a]' : 'bg-transparent border-[#c4a06a]/20 text-[#c4a06a]/70 hover:bg-[#c4a06a]/10 hover:text-[#c4a06a]'}`}
                 >
-                  🏛️ منقوشاتنا
+                  <Landmark className="h-4 w-4" aria-hidden="true" />
+                  <span>منقوشاتنا</span>
                 </button>
               )}
             </div>
