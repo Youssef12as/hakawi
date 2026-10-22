@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Trash2, X, MessageSquare, Clock, Landmark, Loader2 } from 'lucide-react';
 import { useChatApi } from '../../hooks/useChatApi';
+import { useAuth } from '../../context/AuthContext';
 
 function formatRelativeDate(ts) {
   if (!ts) return '';
@@ -22,6 +23,7 @@ export default function ChatHistoryDrawer({
   onSelectSession,
 }) {
   const { fetchSessions, deleteSession } = useChatApi();
+  const { isGuest, guest } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
@@ -97,6 +99,7 @@ export default function ChatHistoryDrawer({
         </div>
 
         {/* Session List for this monument */}
+        {isGuest && <p className="px-4 py-3 text-xs text-[#e8bc58]">محادثات مؤقتة تنتهي في {new Date(guest.expires_at).toLocaleString('ar-EG')}. تسجيل الدخول يبدأ سجلاً منفصلاً.</p>}
         <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-48 text-[#c4a06a]/60 gap-2">

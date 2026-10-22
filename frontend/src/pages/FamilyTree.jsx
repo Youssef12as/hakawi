@@ -353,14 +353,16 @@ export default function FamilyTree() {
 
   // ── Chat handlers — same pattern as pages/map/MonumentChat ──────────────
   const openChat = async (member) => {
+    setChatSessionId(null);
+    setChatHistory([]);
     setSelectedMember(member);
     stopAudio();
     setView('chat');
 
     const histData = await fetchChatHistory({ familyMemberId: member.id });
-    if (histData && histData.session_id && histData.messages?.length > 0) {
+    if (histData?.session_id) {
       setChatSessionId(histData.session_id);
-      setChatHistory(histData.messages);
+      setChatHistory(histData.messages || []);
     } else {
       try {
         const created = await createSession({
@@ -368,15 +370,16 @@ export default function FamilyTree() {
           family_member_id: member.id,
           title: member.name,
         });
-        setChatSessionId(created.session_id || uuidv4());
+        setChatSessionId(created.session_id || null);
       } catch {
-        setChatSessionId(uuidv4());
+        setChatSessionId(null);
       }
       setChatHistory([]);
     }
   };
 
   const handleChatSendText = useCallback(async (text) => {
+    if (!chatSessionId) return;
     const m = selectedMember;
     setChatHistory(prev => [...prev, { sender: 'user', text, timestamp: Date.now() }]);
 
@@ -405,6 +408,7 @@ export default function FamilyTree() {
   }, [selectedMember, chatSessionId, sendTextMessage, fetchTTS, playResponseAudio]);
 
   const handleChatSendAudio = useCallback(async (blob) => {
+    if (!chatSessionId) return;
     const m = selectedMember;
     try {
       const data = await sendAudioMessage(blob, chatSessionId, {
@@ -827,7 +831,7 @@ export default function FamilyTree() {
               onSendText={handleChatSendText}
               onSendAudio={handleChatSendAudio}
               onTranscribeAudio={transcribeAudio}
-              isLoading={chatLoading}
+              isLoading={chatLoading || !chatSessionId}
               elderName={m.characterName || m.name}
               immersiveMobile
               suggestions={['حكايات زمان', 'ذكرياتك', 'نصيحة للناس']}
