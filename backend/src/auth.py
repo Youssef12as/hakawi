@@ -115,6 +115,8 @@ def get_current_user_id(
         )
 
     token = credentials.credentials
+    if token.startswith("guest."):
+        raise HTTPException(status_code=403, detail="يجب تسجيل الدخول لاستخدام هذه الميزة.")
     try:
         payload = _verify_token(token)
     except jwt.ExpiredSignatureError:

@@ -1,4 +1,6 @@
 import logging
+import asyncio
+from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI
 
 from src.cors import setup_cors
@@ -8,6 +10,8 @@ from src.governorates.router import router as governorates_router
 from src.characters.router import router as characters_router
 from src.family.router import router as family_router
 from src.auth_router import router as auth_router
+from src.guest_auth import router as guest_router, cleanup_expired_guests
+from src.config import settings
 
 # Configure logging
 logging.basicConfig(
@@ -42,7 +46,28 @@ except ImportError:
 # ---------------------------------------------------
 
 # FastAPI Application Factory
+@asynccontextmanager
+async def lifespan(app):
+    async def clean_guests():
+        while True:
+            try:
+                await asyncio.to_thread(cleanup_expired_guests)
+            except Exception:
+                logger.exception("Guest expiry cleanup failed")
+            await asyncio.sleep(3600)
+
+    task = asyncio.create_task(clean_guests()) if settings.GUEST_JWT_SECRET else None
+    try:
+        yield
+    finally:
+        if task:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="Hikawi API — حكاوي",
     description="Interactive Egyptian Oral Heritage Chatbot API",
     version="1.1.0",
@@ -61,6 +86,7 @@ app.include_router(governorates_router)
 app.include_router(characters_router)
 app.include_router(family_router)
 app.include_router(auth_router)
+app.include_router(guest_router)
 
 
 @app.get("/health")
