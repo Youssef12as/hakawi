@@ -114,6 +114,8 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
 
   useEffect(() => {
     if (!monument) return;
+    let active = true;
+    setSessionId(null);
     setChatHistory([]);
     createSession({
       chat_mode: 'ancient',
@@ -121,10 +123,11 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
       language_mode: 'modern',
       title: monument.builder || monument.display_name,
     }).then((created) => {
-      setSessionId(created?.session_id || null);
+      if (active) setSessionId(created?.session_id || null);
     }).catch(() => {
-      setSessionId(null);
+      if (active) setSessionId(null);
     });
+    return () => { active = false; };
   }, [monument?.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectHistorySession = useCallback(async (selectedSid) => {
@@ -153,6 +156,7 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
 
   const handleSendText = useCallback(
     async (text) => {
+      if (!sessionId) return;
       setChatHistory((prev) => [
         ...prev,
         { sender: 'user', text, timestamp: Date.now() },
@@ -545,7 +549,7 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
             chatHistory={chatHistory}
             onSendText={handleSendText}
             onTranscribeAudio={transcribeAudio}
-            isLoading={isLoading}
+            isLoading={isLoading || !sessionId}
             elderName={monument.builder}
             languageMode={languageMode}
             responseMode={responseMode}

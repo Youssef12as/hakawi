@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     # Supabase JWT secret (Dashboard -> Project Settings -> API -> JWT Secret).
     # Used to verify HS256 access tokens sent by the frontend.
     SUPABASE_JWT_SECRET: str = ""
+    # Independent signing key; leave empty to disable guest entry.
+    GUEST_JWT_SECRET: str = ""
+    GUEST_SESSION_HOURS: int = 24
 
     model_config = {
         "env_file": (_env_file, ".env"),

@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 
 export default function Login() {
-  const { signInWithEmail, signInWithGoogle } = useAuth();
+  const { signInWithEmail, signInWithGoogle, enterAsGuest } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -211,6 +211,23 @@ export default function Login() {
           </form>
 
           {/* Footer Link */}
+          <button
+            type="button"
+            disabled={loading || googleLoading}
+            className="w-full mt-5 py-3 rounded-xl border border-[#c89830]/40 text-[#e8bc58] font-bold disabled:opacity-50"
+            onClick={async () => {
+              setLoading(true);
+              setError(null);
+              try {
+                await enterAsGuest();
+                navigate(['/family', '/profile'].includes(destination) ? '/' : destination, { replace: true });
+              } catch (err) { setError(err.message); }
+              finally { setLoading(false); }
+            }}
+          >
+            الدخول كضيف
+          </button>
+          <p className="mt-2 text-xs text-center text-[#f0e0c8]/60">محادثات الضيف مؤقتة ومتاحة حتى انتهاء جلسة الضيف.</p>
           <div className="mt-8 pt-6 border-t border-white/10 text-center text-xs text-[#f0e0c8]/60">
             ليس لديك حساب بعد؟{' '}
             <Link

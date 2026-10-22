@@ -47,10 +47,14 @@ export default function AncientMode() {
   // Restore chat history or initialize session for this monument
   useEffect(() => {
     if (!activeData.monumentKey) return;
+    let active = true;
+    setSessionId(null);
+    setChatHistory([]);
     fetchChatHistory({ monumentKey: activeData.monumentKey }).then((data) => {
-      if (data && data.session_id && data.messages?.length > 0) {
+      if (!active) return;
+      if (data?.session_id) {
         setSessionId(data.session_id);
-        setChatHistory(data.messages);
+        setChatHistory(data.messages || []);
       } else {
         createSession({
           chat_mode: 'ancient',
@@ -58,13 +62,15 @@ export default function AncientMode() {
           language_mode: 'ancient',
           title: activeData.elder || 'مصر القديمة',
         }).then((created) => {
-          if (created?.session_id) setSessionId(created.session_id);
+          if (active && created?.session_id) setSessionId(created.session_id);
         }).catch(() => {});
       }
     });
+    return () => { active = false; };
   }, [activeData.monumentKey, activeData.elder, fetchChatHistory, createSession]);
 
   const handleSendText = useCallback(async (text) => {
+    if (!sessionId) return;
     setChatHistory(prev => [...prev, { id: Date.now(), sender: 'user', text, timestamp: Date.now() }]);
 
     try {
@@ -181,7 +187,7 @@ export default function AncientMode() {
                </div>
             )}
           </div>
-          <ChatInput onSendText={handleSendText} isLoading={isLoading} />
+          <ChatInput onSendText={handleSendText} isLoading={isLoading || !sessionId} />
         </div>
 
       </div>

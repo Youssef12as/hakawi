@@ -4,7 +4,7 @@ import { Map, Users, Menu, X, User, LogIn, LogOut, Compass, Sparkles } from 'luc
 import { useAuth } from '../../context/AuthContext';
 
 export default function Navbar() {
-  const { user, signOut } = useAuth();
+  const { user, isGuest, signOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
@@ -59,10 +59,11 @@ export default function Navbar() {
     direction: 'rtl',
   };
 
-  const displayName = user?.user_metadata?.full_name?.split(' ')[0] || user?.profile?.display_name?.split(' ')[0] || 'الملف الشخصي';
+  const displayName = isGuest ? 'ضيف' : user?.user_metadata?.full_name?.split(' ')[0] || user?.profile?.display_name?.split(' ')[0] || 'الملف الشخصي';
 
   return (
     <nav style={navStyle} id="main-nav">
+      {isGuest && <Link to="/login" className="text-xs text-[#e8bc58]">تسجيل الدخول</Link>}
       {/* Brand Mark Logo */}
       <Link
         to="/"
@@ -182,7 +183,7 @@ export default function Navbar() {
         )}
 
         {/* User Auth Section */}
-        {user ? (
+        {user || isGuest ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 8 }}>
             {/* Profile Button */}
             <NavLink
@@ -367,7 +368,7 @@ export default function Navbar() {
           )}
 
           {/* User Mobile Options */}
-          {user ? (
+          {user || isGuest ? (
             <>
               <NavLink
                 to="/profile"

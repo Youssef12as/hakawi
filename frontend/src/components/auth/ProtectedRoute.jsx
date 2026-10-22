@@ -1,9 +1,11 @@
-import { Navigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import Modal from '../common/Modal';
 
-export default function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth();
+export default function ProtectedRoute({ children, memberOnly = false }) {
+  const { user, isGuest, loading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   if (loading) {
     return (
@@ -14,9 +16,26 @@ export default function ProtectedRoute({ children }) {
     );
   }
 
-  if (!user) {
+  if (!user && !isGuest) {
     // Redirect to login, preserving the intended destination in location state
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (isGuest && memberOnly) {
+    return (
+      <div className="min-h-screen" dir="rtl">
+        <Modal isOpen onClose={() => navigate('/')} title="تسجيل الدخول مطلوب">
+          <p className="text-espresso mb-6">
+            {location.pathname === '/family' ? 'يجب تسجيل الدخول لاستخدام شجرة العائلة.' : 'يجب تسجيل الدخول للوصول إلى الملف الشخصي.'}
+          </p>
+          <div className="flex gap-4 text-wine font-bold">
+            <Link to="/login" state={{ from: location }}>تسجيل الدخول</Link>
+            <Link to={location.pathname === '/family' ? '/login' : '/signup'} state={{ from: location }}>إنشاء حساب</Link>
+            <Link to="/">الرئيسية</Link>
+          </div>
+        </Modal>
+      </div>
+    );
   }
 
   return children;

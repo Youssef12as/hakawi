@@ -3,8 +3,10 @@ import { Trash2, Info, Globe, ChevronDown } from 'lucide-react';
 import PageShell from '../components/layout/PageShell';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
+import { useAuth } from '../context/AuthContext';
 
 export default function Settings() {
+  const { isGuest } = useAuth();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -34,7 +36,7 @@ export default function Settings() {
 
         <div className="space-y-5">
           {/* ── Delete My Data ── */}
-          <div className="bg-red-50 border border-red-200/60 rounded-2xl p-6" id="delete-section">
+          {!isGuest && <div className="bg-red-50 border border-red-200/60 rounded-2xl p-6" id="delete-section">
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
                 <Trash2 className="w-5 h-5 text-red-600" />
@@ -56,7 +58,7 @@ export default function Settings() {
                 </Button>
               </div>
             </div>
-          </div>
+          </div>}
 
           {/* ── Language ── */}
           <div className="bg-espresso/5 border border-brown/8 rounded-2xl p-6" id="language-section">

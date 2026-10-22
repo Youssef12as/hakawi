@@ -1,7 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { getAuthHeaders, handleUnauthorized } from '../utils/apiAuth';
+import { createSingleFlight } from '../utils/singleFlight';
 
 export function useChatApi() {
+  const runSessionCreation = useMemo(() => createSingleFlight(), []);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -159,27 +161,30 @@ export function useChatApi() {
 
   // Create a session owned by the logged-in user. Sends the access token;
   // the backend extracts the user id and stamps it on the session.
-  const createSession = useCallback(async (context = {}) => {
-    try {
-      const res = await fetch('/api/chat/sessions', {
-        method: 'POST',
-        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify(context),
-      });
-      if (res.status === 401) {
-        await handleUnauthorized();
-        throw new Error('التسجيل مطلوب لبدء محادثة.');
+  const createSession = useCallback((context = {}) => runSessionCreation(
+    JSON.stringify(Object.entries(context).sort(([a], [b]) => a.localeCompare(b))),
+    async () => {
+      try {
+        const res = await fetch('/api/chat/sessions', {
+          method: 'POST',
+          headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify(context),
+        });
+        if (res.status === 401) {
+          await handleUnauthorized();
+          throw new Error('التسجيل مطلوب لبدء محادثة.');
+        }
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `Server error: ${res.status}`);
+        }
+        return await res.json();
+      } catch (e) {
+        setError(e.message);
+        throw e;
       }
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || `Server error: ${res.status}`);
-      }
-      return await res.json();
-    } catch (e) {
-      setError(e.message);
-      throw e;
-    }
-  }, []);
+    },
+  ), [runSessionCreation]);
 
   const fetchSessions = useCallback(async () => {
     try {

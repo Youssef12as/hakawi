@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { readGuestSession, clearGuestSession } from './guestSession';
 
 /**
  * Build request headers including the current Supabase access token.
@@ -10,6 +11,9 @@ export async function getAuthHeaders(extra = {}) {
   const headers = { ...extra };
   if (session?.access_token) {
     headers['Authorization'] = `Bearer ${session.access_token}`;
+  } else {
+    const guest = readGuestSession();
+    if (guest) headers['Authorization'] = `Bearer ${guest.access_token}`;
   }
   return headers;
 }
@@ -19,6 +23,7 @@ export async function getAuthHeaders(extra = {}) {
  * Sign out locally and bounce to the login page.
  */
 export async function handleUnauthorized() {
+  clearGuestSession();
   try {
     await supabase.auth.signOut();
   } catch (e) {

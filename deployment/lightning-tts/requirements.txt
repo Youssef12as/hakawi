@@ -1,0 +1,11 @@
+# Install the CUDA build explicitly; keep torch/torchaudio matched.
+--extra-index-url https://download.pytorch.org/whl/cu128
+torch==2.8.0+cu128
+torchaudio==2.8.0+cu128
+omnivoice==0.2.1
+litserve==0.2.19
+transformers==5.18.0
+accelerate==1.15.0
+huggingface-hub==2.1.1
+numpy==2.3.5
+soundfile==0.14.0

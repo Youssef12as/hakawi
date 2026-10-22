@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, Fragment, useContext, useEffect, useState } from 'react';
 import { supabase } from '../utils/supabaseClient';
+import { readGuestSession, saveGuestSession, clearGuestSession, revokeGuestSession } from '../utils/guestSession';
 
 const AuthContext = createContext({});
 
@@ -7,6 +8,69 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [guest, setGuest] = useState(null);
+  const [guestLoading, setGuestLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const restore = async () => {
+      const saved = readGuestSession();
+      try {
+        if (saved) {
+          const res = await fetch('/api/guest/session', {
+            headers: { Authorization: `Bearer ${saved.access_token}` },
+          });
+          if (res.ok && active && readGuestSession()?.id === saved.id) setGuest(saved);
+          else if (res.status === 401 || res.status === 403) clearGuestSession();
+        }
+      } catch { /* Leave protected routes closed if verification is unavailable. */ }
+      finally { if (active) setGuestLoading(false); }
+    };
+    restore();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      setGuest(null);
+      void revokeGuestSession();
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!guest) return;
+    const timer = setTimeout(() => {
+      clearGuestSession();
+      setGuest(null);
+    }, Math.max(0, guest.expires_at - Date.now()));
+    return () => clearTimeout(timer);
+  }, [guest]);
+
+  useEffect(() => {
+    // Another tab may log in/out or replace the guest identity. Remount the
+    // application before it can display one identity's chats under another.
+    const onStorage = (event) => {
+      if (event.key === 'hakawi.guestSession') window.location.reload();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  const enterAsGuest = async () => {
+    if (user) return;
+    const saved = readGuestSession();
+    if (saved) {
+      const check = await fetch('/api/guest/session', { headers: { Authorization: `Bearer ${saved.access_token}` } });
+      if (check.ok) { setGuest(saved); return; }
+      if (check.status !== 401 && check.status !== 403) throw new Error('تعذر استعادة جلسة الضيف. حاول مرة أخرى.');
+      clearGuestSession();
+    }
+    const res = await fetch('/api/guest/session', { method: 'POST' });
+    if (!res.ok) throw new Error('تعذر الدخول كضيف. حاول مرة أخرى لاحقاً.');
+    const created = await res.json();
+    saveGuestSession(created);
+    setGuest(created);
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -297,6 +361,8 @@ export function AuthProvider({ children }) {
 
   // Sign Out
   const signOut = async () => {
+    await revokeGuestSession();
+    setGuest(null);
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     setUser(null);
@@ -332,7 +398,10 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     session,
-    loading,
+    guest: user ? null : guest,
+    isGuest: !user && !!guest,
+    enterAsGuest,
+    loading: loading || guestLoading,
     signUpWithEmail,
     signInWithEmail,
     signInWithOAuth,
@@ -345,7 +414,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      <Fragment key={user?.id || guest?.id || 'signed-out'}>{children}</Fragment>
     </AuthContext.Provider>
   );
 }
