@@ -1,0 +1,10 @@
+{
+  "planning": "compact",
+  "context_depth": "dependency",
+  "verification_depth": "impact",
+  "delegation": "none",
+  "reason_codes": ["notebook-platform-adaptation", "preserve-current-api", "temporary-authenticated-demo"],
+  "allowed_write_scope": ["deployment/kaggle-tts"],
+  "acceptance": ["self-contained importable notebook", "embed current Lightning source unchanged", "preserve model revisions and voice configuration", "reject unauthenticated tunnel requests", "document Kaggle session and public tunnel limits"],
+  "decision": "Add a separate Kaggle demo package and a loopback Bearer gateway. Existing deployment, application authentication and production configuration are untouched. Local package creation is reversible; no external deployment is executed."
+}
