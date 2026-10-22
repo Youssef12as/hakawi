@@ -289,7 +289,8 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
 
   const isRamsis = monument?.character_name === 'ramsis' || monument?.key === 'abu-simbel';
   const isOthman = monument?.key === 'aswan-general';
-  const isImmersive = isRamsis || isOthman;
+  const isKhufu = monument?.key === 'khufu_pyramid';
+  const isImmersive = isRamsis || isOthman || isKhufu;
   const Wrapper = isOverlay ? 'div' : PageShell;
   const wrapperProps = isOverlay
     ? { className: 'h-full w-full bg-[#111010]' }
@@ -351,6 +352,16 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
                   speakingVideoSrc: '/character/3am-3othman-speaking.mp4',
                   eyebrow: 'حَارِسُ بَوَّابَةِ الجَنُوب',
                   suggestionsTitle: 'اسأل عم عثمان',
+                } : isKhufu ? {
+                  imageSrc: '/map/khufu-legacy.png',
+                  imageAlt: 'الملك خوفو أمام أهرامات الجيزة',
+                  imageWidth: 1672,
+                  imageHeight: 941,
+                  imageClassName: 'object-[30%_50%]',
+                  idleVideoSrc: '/character/khufu_idle.mp4',
+                  speakingVideoSrc: '/character/khufu_speaking.mp4',
+                  eyebrow: 'مَلِكُ مِصْرَ العُلْيَا وَالسُّفْلَى',
+                  suggestionsTitle: 'اسأل خوفو',
                 } : {
                   imageAlt: `تمثال فرعوني يجسد ${monument.builder} داخل معبد مصري قديم`,
                 })}
@@ -412,8 +423,8 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
             ) : (
               <CharacterStage
                 isSpeaking={isSpeaking}
-                idleSrc={governorate?.key === 'giza' ? '/character/khufu_idle.mp4' : monument.idle_video_url}
-                talkingSrc={governorate?.key === 'giza' ? '/character/khufu_speaking.mp4' : monument.talking_video_url}
+                idleSrc={monument.idle_video_url}
+                talkingSrc={monument.talking_video_url}
               />
             )}
           </div>
