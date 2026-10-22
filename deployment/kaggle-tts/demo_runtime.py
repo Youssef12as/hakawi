@@ -73,17 +73,34 @@ class Demo:
     def assert_protected(url: str) -> None:
         for suffix in ["/health", "/"]:
             request = urllib.request.Request(url + suffix, data=b"{}" if suffix == "/" else None)
-            try:
-                with urllib.request.urlopen(request, timeout=30):
-                    pass
-            except urllib.error.HTTPError as exc:
-                if exc.code == 401:
+            for attempt in range(6):
+                try:
+                    with urllib.request.urlopen(request, timeout=10):
+                        pass
+                except urllib.error.HTTPError as exc:
+                    if exc.code == 401:
+                        break
+                    raise RuntimeError(f"Expected 401 from {suffix}, received {exc.code}") from exc
+                except (urllib.error.URLError, OSError) as exc:
+                    if attempt == 5:
+                        raise RuntimeError(
+                            "Public tunnel DNS/connection failed after retries. The model may still be running; "
+                            "inspect tunnel.log and retry section 6."
+                        ) from exc
+                    time.sleep(min(2 ** (attempt + 1), 10))
                     continue
-                raise RuntimeError(f"Expected 401 from {suffix}, received {exc.code}") from exc
-            raise RuntimeError("Endpoint accepted an unauthenticated request; do not connect backend")
+                raise RuntimeError("Endpoint accepted an unauthenticated request; do not connect backend")
 
     def start_tunnel(self) -> str:
         self.check("gateway")
+        existing = self.processes.get("tunnel")
+        if existing is not None and existing.poll() is None:
+            if not self.url:
+                raise RuntimeError("Tunnel is running without a known URL; stop only the tunnel and retry section 6")
+            print("Reusing running tunnel:", self.url, flush=True)
+            self.wait_health(self.url + "/health", "tunnel", self.token, 120)
+            self.assert_protected(self.url)
+            return self.url
         binary = self.root / "cloudflared"
         # Download from the vendor's official release and verify GitHub's asset digest.
         request = urllib.request.Request("https://api.github.com/repos/cloudflare/cloudflared/releases/latest",
@@ -114,8 +131,8 @@ class Demo:
                 self.url = match.group()
                 self.wait_health(self.url + "/health", "tunnel", self.token, 120)
                 self.assert_protected(self.url)
-                print("VOICE_API_URL=" + self.url)
-                print("Public health and authentication checks passed.")
+                print("VOICE_API_URL=" + self.url, flush=True)
+                print("Public health and authentication checks passed.", flush=True)
                 return self.url
             time.sleep(2)
         raise RuntimeError("Tunnel URL not available; inspect tunnel.log. Kaggle may restrict outbound tunnels.")

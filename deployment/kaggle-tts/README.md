@@ -5,11 +5,13 @@ It is self-contained: you do not need to upload the repository or helper files.
 
 1. Select **File → Import Notebook** (or the notebook upload option) and choose the `.ipynb`.
 2. Enable **Internet** and **GPU T4 ×2** in Session options. Finish account/phone verification if required. Only the first GPU is used.
-3. Add a notebook Secret called `VOICE_API_KEY`, with at least 32 ASCII characters and no spaces. Enable notebook access to it. Keep the value privately: you will use it in the backend too. A hidden prompt is also supported.
-4. Run cells **1 through 6 in order**, stopping on any error. Do not Run All: cell 10 deliberately stops the service. First installation and model loading can take several minutes and several GB of downloads.
-5. Listen to the generated samples in cell 5. Cell 6 prints your temporary public HTTPS URL only after authenticated health and unauthenticated rejection checks pass, then generates audio through that URL.
-6. Follow cell 7: set `VOICE_API_URL` and the same `VOICE_API_KEY` in the backend environment and restart it. Use your existing frontend and backend.
-7. Test the app and record/download your demo video while the session is live. Cell 8 verifies custom voice save, reuse and inline generation. Cell 9 shows diagnostics; cell 10 stops the demo.
+3. Edit `DEMO_API_KEY` in section 1 to your private key, with at least 32 ASCII characters and no spaces. The same value becomes your backend's `VOICE_API_KEY`. No key is supplied in the downloadable notebook and no input prompt is used.
+4. Set `PRESENTATION_MINUTES` in section 1 (default **180** minutes after setup). Set `RUN_CUSTOM_VOICE_TESTS=True` only if you want the additional custom voice checks. Choose **Save Version → Save & Run All**, which starts a fresh background session. First installation and model loading can take several minutes and several GB of downloads.
+5. Inspect the background run's logs/output. Section 6 prints **`DEMO_ENDPOINT_READY | VOICE_API_URL=https://...`** after public health/authentication and speech checks. It also writes `hakawi-tts/public-endpoint.json`, containing the URL without the key. Use this run's URL, not a previous interactive session's URL.
+6. Follow section 7: set `VOICE_API_URL` and your key in the backend environment and restart it. Test the website before turning off your laptop. Listen to the generated samples to verify voice quality.
+7. The final section monitors the running demo for `PRESENTATION_MINUTES`. Your laptop can be off while the background run continues. There is no automatic `demo.stop()` cell. When the timer ends, the notebook finishes; expect the background processes and public URL to stop. Kaggle limits and failures can stop it sooner. Stop the run manually in Kaggle when finished early.
+
+For interactive use, run sections in order and interrupt the final monitor when you need the notebook prompt again. Interrupting monitoring does not call `demo.stop()`; run that manually to stop services. A saved background run is separate from an interactive session and creates its own endpoint. This setup does not bypass Kaggle quotas or maximum session durations.
 
 ## What matches Lightning
 
@@ -29,7 +31,7 @@ The public tunnel is account-free but requires outbound TCP port 7844. It uses H
 
 Kaggle sessions and quotas are finite. The URL changes after restarting the tunnel, and the backend must receive the new URL. Custom voices live in session storage; after a new session, the existing backend's inline-reference retry can recreate them. The backend's current `save_character` call has a 10-second timeout; prepare the custom voice in advance via cell 8 if needed. No backend timeout policy is changed.
 
-Keep the notebook private and keep its API key in Secrets or the hidden prompt. Do not save/share personal recording outputs. Do not use automated keep-alive scripts or attempt to bypass Kaggle limits. A submission video downloaded while the demo runs will remain usable after the temporary endpoint expires.
+Keep the notebook private because your demo key is in its source. The generated downloadable notebook contains an empty key setting that you fill in on Kaggle. Do not save/share personal recording outputs. Do not use browser keep-alive scripts or attempt to bypass Kaggle limits. A submission video downloaded while the demo runs will remain usable after the temporary endpoint expires.
 
 ## Updating this notebook
 

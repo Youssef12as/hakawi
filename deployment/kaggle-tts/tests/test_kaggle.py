@@ -10,7 +10,8 @@ import sys
 import threading
 import tempfile
 import unittest
-from unittest.mock import Mock, patch
+import urllib.error
+from unittest.mock import Mock, MagicMock, patch
 
 HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HERE))
@@ -18,6 +19,7 @@ from gateway import MAX_PAYLOAD, make_handler  # noqa: E402
 from build_notebook import SOURCE_FILES, LIGHTNING, build  # noqa: E402
 from demo_runtime import Demo  # noqa: E402
 from runtime_env import clean_env, prepare_runtime  # noqa: E402
+from presentation_monitor import watch_presentation  # noqa: E402
 
 TOKEN = "unit-test-token-" + "x" * 32
 
@@ -108,6 +110,68 @@ class GatewayTests(unittest.TestCase):
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_recovery_cell_starts_fresh_tunnel_and_reuses_existing_one(self):
+        for existing_url in [None, 'https://existing.trycloudflare.com']:
+            with self.subTest(existing_url=existing_url), tempfile.TemporaryDirectory() as directory:
+                demo = Mock(url=existing_url, token=TOKEN, processes={}, assert_protected=Mock())
+                def start_tunnel():
+                    demo.url = 'https://new.trycloudflare.com'
+                demo.start_tunnel.side_effect = start_tunnel
+                namespace = {'demo': demo, 'ROOT': Path(directory), 'json': json,
+                             'Audio': Mock(), 'display': Mock()}
+                source = (HERE / 'recover_cell6.py').read_text(encoding='utf-8')
+                with patch('sys.stdout', new_callable=io.StringIO):
+                    exec(compile(source, 'recover_cell6.py', 'exec'), namespace)
+                self.assertEqual(demo.start_tunnel.call_count, 0 if existing_url else 1)
+                demo.wait_health.assert_called_once()
+                demo.assert_protected.assert_called_once_with(demo.url)
+                endpoint = json.loads((Path(directory) / 'public-endpoint.json').read_text())
+                self.assertEqual(endpoint['VOICE_API_URL'], demo.url)
+                demo.stop.assert_not_called()
+
+    def test_auth_probe_retries_dns_failure_then_requires_401(self):
+        unauthorized = urllib.error.HTTPError('https://test/', 401, 'Unauthorized', {}, None)
+        with patch('demo_runtime.urllib.request.urlopen', side_effect=[urllib.error.URLError('DNS failure'), unauthorized, unauthorized]) as fetch, \
+                patch('demo_runtime.time.sleep') as sleep:
+            Demo.assert_protected('https://test.trycloudflare.com')
+        self.assertEqual(fetch.call_count, 3)
+        sleep.assert_called_once_with(2)
+
+    def test_auth_probe_never_accepts_successful_unprotected_response(self):
+        with patch('demo_runtime.urllib.request.urlopen', return_value=MagicMock()):
+            with self.assertRaisesRegex(RuntimeError, 'unauthenticated'):
+                Demo.assert_protected('https://test.trycloudflare.com')
+
+    def test_existing_tunnel_is_reused_without_download_or_new_process(self):
+        demo = Demo(HERE, Path(sys.executable), TOKEN)
+        demo.url = 'https://test.trycloudflare.com'
+        demo.processes = {name: Mock(poll=Mock(return_value=None)) for name in ['gateway', 'tunnel']}
+        with patch.object(demo, 'wait_health'), patch.object(demo, 'assert_protected'), \
+                patch.object(demo, 'launch') as launch, patch('demo_runtime.urllib.request.urlopen') as fetch:
+            self.assertEqual(demo.start_tunnel(), demo.url)
+        launch.assert_not_called()
+        fetch.assert_not_called()
+
+    def test_presentation_monitor_checks_health_without_stopping_services(self):
+        demo = Mock(url='https://test.trycloudflare.com', token=TOKEN,
+                    processes={name: Mock() for name in ['model', 'gateway', 'tunnel']})
+        response = MagicMock()
+        response.__enter__.return_value.status = 200
+        with patch('presentation_monitor.time.monotonic', side_effect=[0, 0, 0, 60]), \
+                patch('presentation_monitor.time.sleep'), \
+                patch('presentation_monitor.urllib.request.urlopen', return_value=response) as fetch, \
+                patch('sys.stdout', new_callable=io.StringIO) as output:
+            watch_presentation(demo, minutes=1)
+        self.assertIn('READY', output.getvalue())
+        self.assertNotIn(TOKEN, output.getvalue())
+        self.assertEqual(demo.check.call_count, 3)
+        self.assertEqual(fetch.call_args.args[0].get_header('Authorization'), 'Bearer ' + TOKEN)
+        demo.stop.assert_not_called()
+
+    def test_presentation_monitor_requires_tunnel(self):
+        with self.assertRaisesRegex(RuntimeError, 'section 6'):
+            watch_presentation(Mock(url=None))
+
     def test_clean_environment_drops_injected_paths_preserves_gpu_and_secrets(self):
         original = {'PYTHONPATH': '/kaggle/lib', 'PYTHONHOME': '/wrong', 'PYTHONSTARTUP': '/hook',
                     'PYTHONUSERBASE': '/other', 'CUDA_VISIBLE_DEVICES': '0', 'HF_TOKEN': 'test-token'}
@@ -171,6 +235,20 @@ class RuntimeTests(unittest.TestCase):
 
 
 class NotebookTests(unittest.TestCase):
+    def test_background_run_has_no_prompts_and_monitor_is_last(self):
+        cells = [cell['source'] for cell in build()['cells'] if cell['cell_type'] == 'code']
+        self.assertIn('watch_presentation(demo, minutes=PRESENTATION_MINUTES)', cells[-1])
+        self.assertIn("DEMO_API_KEY = ''", cells[0])
+        self.assertIn('PRESENTATION_MINUTES = 180', cells[0])
+        combined = '\n'.join(cells)
+        self.assertNotIn('getpass', combined)
+        for source in cells:
+            tree = ast.parse(source)
+            for node in tree.body:
+                if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call):
+                    self.assertNotEqual(ast.unparse(node.value.func), 'demo.stop')
+        self.assertIn('DEMO_ENDPOINT_READY', combined)
+
     def test_all_code_cells_compile(self):
         for index, cell in enumerate(build()["cells"]):
             if cell["cell_type"] == "code":

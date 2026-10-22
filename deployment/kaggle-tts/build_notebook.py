@@ -38,9 +38,13 @@ def build() -> dict:
         two T4s do not combine their memory. Complete Kaggle phone verification if GPU/Internet
         controls require it. Check your available quota in the UI.
 
-        Run cells 1–7 in order. Cell 8 tests custom voice cloning. Cells 9–10 are manual
-        diagnostics/stop controls: **do not Run All**, because the final cell stops the demo.
-        Keep the interactive session running while recording/submitting your live demo.
+        In section 1 set **DEMO_API_KEY** to your private 32+ character key and choose
+        **PRESENTATION_MINUTES** (default 180 minutes after setup). Then choose
+        **Save Version → Save & Run All** for a fresh background session.
+        No input prompts are used. The last code cell monitors the serving window.
+        Section 6 prints **DEMO_ENDPOINT_READY** and the new URL in this run's logs/output.
+        Update your backend with that URL and your key, and test the app before closing your laptop.
+        Your laptop can then be off while the background run continues within Kaggle's limits.
         Kaggle sessions and the temporary URL expire; this is not permanent hosting.
         Outbound tunnel access and GPU availability must be confirmed in your actual session.
         Do not bypass Kaggle session limits or use browser keep-alive scripts.
@@ -55,6 +59,13 @@ def build() -> dict:
         import pathlib
         import subprocess
         import sys
+        DEMO_API_KEY = ''  # Paste your private demo key here: 32+ ASCII characters, no spaces.
+        PRESENTATION_MINUTES = 180  # Serving time AFTER installation, downloads and smoke tests.
+        RUN_CUSTOM_VOICE_TESTS = False  # Optional extra save/reuse/inline-cloning checks.
+        if len(DEMO_API_KEY) < 32 or not DEMO_API_KEY.isascii() or any(c.isspace() for c in DEMO_API_KEY):
+            raise ValueError('Set DEMO_API_KEY in section 1 to at least 32 ASCII characters without spaces.')
+        if not 0 < PRESENTATION_MINUTES <= 720:
+            raise ValueError('Choose PRESENTATION_MINUTES between 0 and 720; Kaggle limits still apply.')
         ROOT = pathlib.Path('/kaggle/working/hakawi-tts')
         ROOT.mkdir(parents=True, exist_ok=True)
         previous_demo = globals().get('demo')
@@ -139,23 +150,17 @@ def build() -> dict:
     """)
     add("markdown", """
         ## 4. Set the demo key and start the service
-        Create a Kaggle Secret named **VOICE_API_KEY** containing at least 32 ASCII characters
-        without spaces, and enable access for this notebook. You can instead enter that key
-        in the hidden prompt. Save the same value privately for your backend configuration.
+        Uses **DEMO_API_KEY** from section 1 without a prompt, so a background run can proceed.
+        Save the same value privately for your backend's **VOICE_API_KEY** setting.
         The notebook never prints it. Startup loads voices and performs a warmup generation.
     """)
     add("code", """
-        import getpass
-        try:
-            from kaggle_secrets import UserSecretsClient
-            voice_key = UserSecretsClient().get_secret('VOICE_API_KEY')
-        except Exception:
-            voice_key = getpass.getpass('Demo key (32+ ASCII characters, no spaces): ')
+        voice_key = DEMO_API_KEY
         if len(voice_key) < 32 or not voice_key.isascii() or any(c.isspace() for c in voice_key):
             raise ValueError('Use at least 32 ASCII characters without whitespace.')
         if str(ROOT) not in sys.path:
             sys.path.insert(0, str(ROOT))
-        from demo_runtime import Demo
+        from demo_runtime import Demo  # noqa: E402
         previous_demo = globals().get('demo')
         if previous_demo:
             previous_demo.stop()
@@ -187,7 +192,8 @@ def build() -> dict:
         VOICE_API_URL = demo.start_tunnel()
         public_audio = demo.smoke('am-othman', public=True)
         display(Audio(filename=str(public_audio)))
-        print('Copy this URL into your backend:', VOICE_API_URL)
+        (ROOT / 'public-endpoint.json').write_text(json.dumps({'VOICE_API_URL': VOICE_API_URL}), encoding='utf-8')
+        print('DEMO_ENDPOINT_READY | VOICE_API_URL=' + VOICE_API_URL, flush=True)
         print('Use your private VOICE_API_KEY value from cell 4. It is intentionally not printed.')
     """)
     add("markdown", """
@@ -214,36 +220,32 @@ def build() -> dict:
     """)
     add("markdown", """
         ## 8. Optional — verify save-character, reuse and inline cloning
-        Run once before the demo to verify the same three operations your backend uses.
+        Set RUN_CUSTOM_VOICE_TESTS=True in section 1 to verify the same three operations your backend uses.
         This uses the included am-othman sample to create two disposable demo voice names.
     """)
     add("code", """
-        reference = ROOT / 'pre_existing_voices/am-othman.wav'
-        transcript = (ROOT / 'pre_existing_voices/am-othman.txt').read_text(encoding='utf-8')
-        inline_args = ['--inline-audio', str(reference), '--ref-text', transcript]
-        demo.smoke('kaggle-saved-demo', public=True, extra=inline_args + ['--save-only'])
-        display(Audio(filename=str(demo.smoke('kaggle-saved-demo', public=True))))
-        display(Audio(filename=str(demo.smoke('kaggle-inline-demo', public=True, extra=inline_args))))
-        print('Save, saved-voice reuse and inline cloning passed.')
+        if RUN_CUSTOM_VOICE_TESTS:
+            reference = ROOT / 'pre_existing_voices/am-othman.wav'
+            transcript = (ROOT / 'pre_existing_voices/am-othman.txt').read_text(encoding='utf-8')
+            inline_args = ['--inline-audio', str(reference), '--ref-text', transcript]
+            demo.smoke('kaggle-saved-demo', public=True, extra=inline_args + ['--save-only'])
+            display(Audio(filename=str(demo.smoke('kaggle-saved-demo', public=True))))
+            display(Audio(filename=str(demo.smoke('kaggle-inline-demo', public=True, extra=inline_args))))
+            print('Save, saved-voice reuse and inline cloning passed.')
+        else:
+            print('Optional custom voice tests skipped.')
     """)
     add("markdown", """
         ## 9. Diagnostics — run manually when needed
         Logs report model failures and tunnel connection problems. The current server can log
         character identifiers. Review logs before sharing them. Never print `demo.token` or env vars.
         If only the tunnel stopped, run `demo.stop('tunnel')`, then rerun cell 6.
-        For a failed model, stop the demo with cell 10, correct the reported problem and rerun cell 4.
+        For a failed model, run demo.stop() manually, correct the reported problem and rerun cell 4.
     """)
     add("code", """
         demo.diagnostics()
         subprocess.run(['nvidia-smi'], check=False)
     """)
-    add("markdown", """
-        ## 10. Stop — run manually after recording
-        Stops only the processes started by this notebook. Also stop the Kaggle session in its UI
-        to release your GPU quota. Files under /kaggle/working are session storage; download any
-        needed WAVs/video separately. Do not save a model/voice output bundle publicly.
-    """)
-    add("code", "demo.stop()")
     add("markdown", """
         ## References
         - [Kaggle Notebook settings](https://www.kaggle.com/docs/notebooks)
@@ -255,6 +257,18 @@ def build() -> dict:
         This API uses ordinary JSON responses. Long generations may still encounter proxy limits;
         use short demo responses and measure the public request time in cell 6.
     """)
+    add("markdown", """
+        ## 10. Background presentation window — final running cell
+        Checks the model, gateway, tunnel and public health endpoint every 30 seconds for
+        PRESENTATION_MINUTES (set in section 1). There is no automatic stop cell after this.
+        In Save & Run All mode, the notebook remains executing during this bounded serving window.
+        When the timer finishes, the background run completes; expect its processes and URL to stop.
+        Kaggle may terminate the session earlier due to its limits or failures.
+        To finish early, stop the background run in Kaggle. During interactive use you can interrupt
+        this cell and run demo.stop() manually. No fake browser activity or quota bypass is used.
+    """)
+    add("code", (HERE / "presentation_monitor.py").read_text(encoding="utf-8").partition("\n")[2]
+        + "\nwatch_presentation(demo, minutes=PRESENTATION_MINUTES)\n")
     return {"cells": cells, "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
                                            "language_info": {"name": "python"},
                                            "kaggle": {"isInternetEnabled": True, "isGpuEnabled": True}},
