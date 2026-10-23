@@ -56,6 +56,7 @@ export default function GovernorateView() {
           governorate={governorate}
           monuments={governorate.monuments}
           onSelectMonument={handleSelectMonument}
+          onExploreAvailable={() => navigate('/map/aswan/hawari')}
           onBack={handleBack}
         />
       </div>
