@@ -13,6 +13,7 @@ import { X, ChevronRight, Languages, History, Landmark } from 'lucide-react';
 import PageShell from '../../components/layout/PageShell';
 import CharacterStage from '../../components/character/CharacterStage';
 import CharacterCard from '../../components/character/CharacterCard';
+import ComingSoonCharacter from '../../components/character/ComingSoonCharacter';
 import ImmersiveCharacterStage from '../../components/character/RamsisLegacyStage';
 import ChatPanel from '../../components/chat/ChatPanel';
 import ChatHistoryDrawer from '../../components/chat/ChatHistoryDrawer';
@@ -21,6 +22,7 @@ import { useCharacterState } from '../../hooks/useCharacterState';
 import { useChatApi } from '../../hooks/useChatApi';
 import { useMapContext } from '../../context/MapContext';
 import { slugToKey } from '../../utils/monumentSlugs';
+import { isCharacterAvailable } from '../../utils/characterAvailability';
 
 /* ── Wall Symbols (from Landing Page) ── */
 const WALL_SYMBOLS = [
@@ -109,6 +111,7 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
     () => governorate?.monuments?.find((m) => m.key === monumentKey),
     [governorate, monumentKey]
   );
+  const characterIsAvailable = isCharacterAvailable(monument?.key);
 
   const [sessionId, setSessionId] = useState(null);
   const [chatHistory, setChatHistory] = useState([]);
@@ -128,7 +131,7 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
   const { sendAncientMessage, fetchTTS, fetchChatHistory, fetchSessionDetail, transcribeAudio, createSession, isLoading } = useChatApi();
 
   useEffect(() => {
-    if (!monument) return;
+    if (!monument || !characterIsAvailable) return;
     let active = true;
     setSessionId(null);
     setChatHistory([]);
@@ -143,7 +146,7 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
       if (active) setSessionId(null);
     });
     return () => { active = false; };
-  }, [monument?.key]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [monument?.key, characterIsAvailable]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectHistorySession = useCallback(async (selectedSid) => {
     try {
@@ -309,15 +312,15 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
   }, [governorates, monument, navigate, govKey]);
 
   useEffect(() => {
-    if (monument && initialContext && sessionId && !hasSentInitialContext) {
+    if (characterIsAvailable && monument && initialContext && sessionId && !hasSentInitialContext) {
       handleSendText(initialContext);
       setHasSentInitialContext(true);
     }
-  }, [monument, initialContext, sessionId, hasSentInitialContext, handleSendText]);
+  }, [characterIsAvailable, monument, initialContext, sessionId, hasSentInitialContext, handleSendText]);
 
   const isRamsis = monument?.character_name === 'ramsis' || monument?.key === 'abu-simbel';
   const isOthman = monument?.key === 'aswan-general';
-  const isKhufu = monument?.key === 'khufu_pyramid';
+  const isKhufu = monument?.key === 'khufu_pyramid' || monument?.key === 'great-pyramid';
   const isImmersive = isRamsis || isOthman || isKhufu;
 
   useEffect(() => {
@@ -359,6 +362,19 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
 
   if (!monument) {
     return null;
+  }
+
+  if (!characterIsAvailable) {
+    return (
+      <PageShell className="bg-espresso/5 max-lg:!p-0">
+        <ComingSoonCharacter
+          monument={monument}
+          standalone
+          onClose={() => navigate(`/map/${govKey}`)}
+          onExploreAvailable={() => navigate('/map/aswan/hawari')}
+        />
+      </PageShell>
+    );
   }
 
   const innerClass = isOverlay

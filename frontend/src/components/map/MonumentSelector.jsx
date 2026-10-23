@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { MapPin, ChevronLeft, Landmark, Sparkles, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { MapPin, ChevronLeft, Landmark, Sparkles, ZoomIn, ZoomOut, RotateCcw, Clock3 } from 'lucide-react';
+import ComingSoonCharacter from '../character/ComingSoonCharacter';
+import { findAvailableCharacter, isCharacterAvailable } from '../../utils/characterAvailability';
 
 const GOVERNORATE_MAPS = {
   aswan: {
@@ -17,6 +19,32 @@ const GOVERNORATE_MAPS = {
     generalLabel: 'حواري أسوان',
     accentColor: '#d4853a',
     pulseColor: 'rgba(212,133,58,0.7)',
+  },
+  luxor: {
+    mapSrc: '/map/luxor_map.svg',
+    aspectRatio: 'aspect-[3/2]',
+    positions: {
+      'hatshepsut-temple': { left: '31%', top: '25%' },
+      'tutankhamun-tomb': { left: '14%', top: '14%' },
+      'karnak': { left: '81%', top: '43%' },
+      'nefertari-tomb': { left: '10%', top: '65%' },
+      'deir-el-medina': { left: '31%', top: '69%' },
+    },
+    hasGeneralTab: false,
+    accentColor: '#d99a4e',
+    pulseColor: 'rgba(217,154,78,0.65)',
+  },
+  alexandria: {
+    mapSrc: '/map/alexandria_map.svg',
+    aspectRatio: 'aspect-[3/2]',
+    positions: {
+      'qaitbay': { left: '17%', top: '18%' },
+      'pompeys-pillar': { left: '18%', top: '65%' },
+      'ancient-library': { left: '81%', top: '43%' },
+    },
+    hasGeneralTab: false,
+    accentColor: '#54a6b5',
+    pulseColor: 'rgba(84,166,181,0.65)',
   },
   giza: {
     mapSrc: '/map/giza_cinematic_landmarks_map.svg',
@@ -69,6 +97,7 @@ export default function MonumentSelector({
   governorate,
   monuments = [],
   onSelectMonument,
+  onExploreAvailable,
   onBack,
 }) {
   const govKey = governorate?.key;
@@ -76,6 +105,33 @@ export default function MonumentSelector({
   const hasMap = Boolean(mapConfig);
 
   const [viewMode, setViewMode] = useState(hasMap ? 'map' : 'grid');
+  const [comingSoonMonument, setComingSoonMonument] = useState(null);
+  const generalMonument = mapConfig?.generalKey
+    ? monuments.find((monument) => monument.key === mapConfig.generalKey) || monuments[0]
+    : null;
+  const generalIsAvailable = isCharacterAvailable(generalMonument?.key);
+
+  const handleMonumentClick = (monument) => {
+    if (isCharacterAvailable(monument?.key)) {
+      onSelectMonument(monument);
+      return;
+    }
+    setComingSoonMonument(monument);
+  };
+
+  const handleExploreAvailable = () => {
+    const availableHere = findAvailableCharacter(monuments);
+    setComingSoonMonument(null);
+    if (availableHere) {
+      onSelectMonument(availableHere);
+      return;
+    }
+    if (onExploreAvailable) {
+      onExploreAvailable();
+      return;
+    }
+    onBack();
+  };
 
   return (
     <div className="h-full flex flex-col bg-[#0b0a08] animate-slide-in-end">
@@ -110,12 +166,18 @@ export default function MonumentSelector({
             </button>
             <button
               onClick={() => {
-                const generalMon = monuments.find((m) => m.key === mapConfig.generalKey) || monuments[0];
-                if (generalMon) onSelectMonument(generalMon);
+                if (generalMonument) handleMonumentClick(generalMonument);
               }}
-              className={`flex-1 text-center py-2 rounded-lg text-xs sm:text-sm font-bold transition-all text-sand/70 hover:text-[#c4a06a] hover:bg-[#c4a06a]/10`}
+              className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-center text-xs font-bold text-sand/70 transition-all hover:bg-[#c4a06a]/10 hover:text-[#c4a06a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#d9b875] sm:text-sm"
+              aria-label={`${mapConfig.generalLabel}، ${generalIsAvailable ? 'متاح الآن' : 'قريبًا'}`}
             >
-              {mapConfig.generalLabel}
+              <span>{mapConfig.generalLabel}</span>
+              {!generalIsAvailable && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#c4a06a]/10 px-1.5 py-0.5 text-[9px] text-[#e0c89b]">
+                  <Clock3 className="h-2.5 w-2.5" aria-hidden="true" />
+                  قريبًا
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -187,17 +249,19 @@ export default function MonumentSelector({
                       {monuments.map((monument, idx) => {
                         const pos = mapConfig.positions[monument.key];
                         if (!pos) return null;
+                        const isAvailable = isCharacterAvailable(monument.key);
 
                         return (
                           <button
                             key={monument.key}
                             onClick={(e) => {
                               e.stopPropagation();
-                              onSelectMonument(monument);
+                              handleMonumentClick(monument);
                             }}
-                            className="absolute z-20 flex flex-col items-center -translate-x-1/2 -translate-y-1/2 hover:scale-110 active:scale-95 transition-all duration-300 group cursor-pointer"
+                            className={`absolute z-20 flex min-h-12 min-w-12 flex-col items-center -translate-x-1/2 -translate-y-1/2 active:scale-95 transition-all duration-300 group cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f2d092] ${isAvailable ? 'hover:scale-110' : 'opacity-90 hover:opacity-100'}`}
                             style={{ left: pos.left, top: pos.top }}
                             id={`hotspot-${monument.key}`}
+                            aria-label={`${monument.display_name}، ${isAvailable ? 'متاح الآن' : 'قريبًا'}`}
                           >
                             <div className="relative flex items-center justify-center">
                               {/* Animated outer ripple */}
@@ -205,8 +269,9 @@ export default function MonumentSelector({
                                 className="absolute w-10 h-10 sm:w-12 sm:h-12 rounded-full pointer-events-none"
                                 style={{
                                   border: `2px solid ${mapConfig.accentColor}`,
-                                  animation: 'rippleGov 2s ease-out infinite',
+                                  animation: isAvailable ? 'rippleGov 2s ease-out infinite' : 'none',
                                   animationDelay: `${idx * 0.35}s`,
+                                  opacity: isAvailable ? 1 : 0.55,
                                 }}
                               />
                               {/* Inner glowing dot */}
@@ -214,16 +279,24 @@ export default function MonumentSelector({
                                 className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-[2.5px] border-[#fff8ee] shadow-lg"
                                 style={{
                                   backgroundColor: mapConfig.accentColor,
-                                  animation: 'hotspotPulseGov 2s infinite',
+                                  animation: isAvailable ? 'hotspotPulseGov 2s infinite' : 'none',
                                   animationDelay: `${idx * 0.25}s`,
+                                  filter: isAvailable ? 'none' : 'saturate(0.45)',
                                 }}
                               />
                             </div>
 
                             {/* Badge with monument title */}
                             <div className="mt-2 px-3 py-1.5 rounded-xl bg-[#0b0a08]/92 backdrop-blur-md border border-[#c4a06a]/40 text-sand text-[11px] sm:text-xs font-bold shadow-2xl whitespace-nowrap flex items-center gap-1.5 group-hover:border-[#c4a06a] group-hover:text-[#fff8ee] transition-all">
-                              <Sparkles className="w-3 h-3 text-[#c4a06a]" />
+                              {isAvailable ? (
+                                <Sparkles className="w-3 h-3 text-[#c4a06a]" aria-hidden="true" />
+                              ) : (
+                                <Clock3 className="w-3 h-3 text-[#d7bd8b]" aria-hidden="true" />
+                              )}
                               <span>{monument.display_name}</span>
+                              <span className={`rounded-full px-1.5 py-0.5 text-[9px] ${isAvailable ? 'bg-emerald-400/15 text-emerald-200' : 'bg-[#c4a06a]/15 text-[#e0c89b]'}`}>
+                                {isAvailable ? 'متاح الآن' : 'قريبًا'}
+                              </span>
                             </div>
                           </button>
                         );
@@ -247,20 +320,30 @@ export default function MonumentSelector({
 
           <div className="flex-1 overflow-y-auto px-4 pb-6 custom-scrollbar">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {monuments.map((monument) => (
-                <button
-                  key={monument.key}
-                  onClick={() => onSelectMonument(monument)}
-                  className="group text-right p-5 bg-[#111010] border border-[#c4a06a]/15 rounded-2xl hover:border-[#c4a06a]/50 hover:bg-[#c4a06a]/5 transition-all duration-300 active:scale-[0.98]"
-                >
+              {monuments.map((monument) => {
+                const isAvailable = isCharacterAvailable(monument.key);
+                return (
+                  <button
+                    key={monument.key}
+                    onClick={() => handleMonumentClick(monument)}
+                    className="group min-h-32 text-right p-5 bg-[#111010] border border-[#c4a06a]/15 rounded-2xl hover:border-[#c4a06a]/50 hover:bg-[#c4a06a]/5 transition-all duration-300 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d9b875]"
+                    aria-label={`${monument.display_name}، ${isAvailable ? 'متاح الآن' : 'قريبًا'}`}
+                  >
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#c4a06a]/10 border border-[#c4a06a]/20 flex items-center justify-center group-hover:bg-[#c4a06a]/20 transition-colors">
-                      <Landmark className="w-5 h-5 text-[#c4a06a]/70" />
+                      {isAvailable ? (
+                        <Landmark className="w-5 h-5 text-[#c4a06a]/70" aria-hidden="true" />
+                      ) : (
+                        <Clock3 className="w-5 h-5 text-[#c4a06a]/70" aria-hidden="true" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sand font-bold text-base mb-0.5 truncate">
-                        {monument.display_name}
-                      </h3>
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <h3 className="truncate text-base font-bold text-sand">{monument.display_name}</h3>
+                        <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-bold ${isAvailable ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-200' : 'border-[#c4a06a]/25 bg-[#c4a06a]/10 text-[#e0c89b]'}`}>
+                          {isAvailable ? 'متاح الآن' : 'قريبًا'}
+                        </span>
+                      </div>
                       <p className="text-[#c4a06a]/60 text-xs font-medium mb-2">
                         {monument.builder}
                       </p>
@@ -269,12 +352,20 @@ export default function MonumentSelector({
                       </p>
                     </div>
                   </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </>
       )}
+
+      <ComingSoonCharacter
+        monument={comingSoonMonument}
+        isOpen={Boolean(comingSoonMonument)}
+        onClose={() => setComingSoonMonument(null)}
+        onExploreAvailable={handleExploreAvailable}
+      />
     </div>
   );
 }
