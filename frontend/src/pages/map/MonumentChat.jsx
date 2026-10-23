@@ -122,6 +122,7 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
   const [mobileHeroSize, setMobileHeroSize] = useState(DEFAULT_MOBILE_HERO_SIZE);
   const [isResizingMobile, setIsResizingMobile] = useState(false);
   const layoutRef = useRef(null);
+  const activeResizePointerRef = useRef(null);
 
   const { isSpeaking, playResponseAudio, stopAudio } = useCharacterState();
   const { sendAncientMessage, fetchTTS, fetchChatHistory, fetchSessionDetail, transcribeAudio, createSession, isLoading } = useChatApi();
@@ -241,22 +242,35 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
 
   const handleResizePointerDown = useCallback((event) => {
     event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
+    activeResizePointerRef.current = event.pointerId;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
     setIsResizingMobile(true);
     updateMobileSplit(event.clientY);
   }, [updateMobileSplit]);
 
-  const handleResizePointerMove = useCallback((event) => {
-    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-    updateMobileSplit(event.clientY);
-  }, [updateMobileSplit]);
+  useEffect(() => {
+    const handlePointerMove = (event) => {
+      if (activeResizePointerRef.current !== event.pointerId) return;
+      event.preventDefault();
+      updateMobileSplit(event.clientY);
+    };
 
-  const handleResizePointerEnd = useCallback((event) => {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    setIsResizingMobile(false);
-  }, []);
+    const handlePointerEnd = (event) => {
+      if (activeResizePointerRef.current !== event.pointerId) return;
+      activeResizePointerRef.current = null;
+      setIsResizingMobile(false);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: false });
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+    };
+  }, [updateMobileSplit]);
 
   const handleResizeKeyDown = useCallback((event) => {
     const keySteps = {
@@ -305,6 +319,29 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
   const isOthman = monument?.key === 'aswan-general';
   const isKhufu = monument?.key === 'khufu_pyramid';
   const isImmersive = isRamsis || isOthman || isKhufu;
+
+  useEffect(() => {
+    if (!isImmersive || isOverlay) return undefined;
+
+    const root = document.documentElement;
+    const previousRootOverflow = root.style.overflow;
+    const previousRootOverscroll = root.style.overscrollBehavior;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousBodyOverscroll = document.body.style.overscrollBehavior;
+
+    root.style.overflow = 'hidden';
+    root.style.overscrollBehavior = 'none';
+    document.body.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'none';
+
+    return () => {
+      root.style.overflow = previousRootOverflow;
+      root.style.overscrollBehavior = previousRootOverscroll;
+      document.body.style.overflow = previousBodyOverflow;
+      document.body.style.overscrollBehavior = previousBodyOverscroll;
+    };
+  }, [isImmersive, isOverlay]);
+
   const Wrapper = isOverlay ? 'div' : PageShell;
   const wrapperProps = isOverlay
     ? { className: 'h-full w-full bg-[#111010]' }
@@ -330,7 +367,7 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
   const immersiveLayoutClass = isImmersive
     ? isOverlay
       ? 'immersive-chat-layout relative !h-full !overflow-hidden lg:grid-rows-1'
-      : 'immersive-chat-layout relative !overflow-hidden max-lg:fixed max-lg:inset-0 max-lg:z-[400] max-lg:!h-[100svh] lg:!h-[calc(100vh-4rem)] lg:grid-rows-1'
+      : 'immersive-chat-layout relative !overflow-hidden max-lg:fixed max-lg:inset-0 max-lg:z-[400] max-lg:!h-[100dvh] max-lg:overscroll-none lg:!h-[calc(100vh-4rem)] lg:grid-rows-1'
     : '';
 
   return (
@@ -487,10 +524,6 @@ export default function MonumentChat({ overrideSlug, initialContext, isOverlay }
                 aria-valuetext={`${Math.round(mobileHeroSize)}٪ للصورة`}
                 title="اسحب لتغيير الحجم، واضغط مرتين لإعادة الضبط"
                 onPointerDown={handleResizePointerDown}
-                onPointerMove={handleResizePointerMove}
-                onPointerUp={handleResizePointerEnd}
-                onPointerCancel={handleResizePointerEnd}
-                onLostPointerCapture={() => setIsResizingMobile(false)}
                 onDoubleClick={() => setMobileHeroSize(DEFAULT_MOBILE_HERO_SIZE)}
                 onKeyDown={handleResizeKeyDown}
                 className="absolute inset-x-0 top-1/2 z-50 flex h-11 -translate-y-1/2 touch-none cursor-row-resize select-none items-center justify-center"
