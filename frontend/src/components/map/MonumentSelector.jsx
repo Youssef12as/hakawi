@@ -209,27 +209,36 @@ export default function MonumentSelector({
             {({ zoomIn, zoomOut, resetTransform }) => (
               <>
                 {/* Floating Map Controls */}
-                <div className="absolute top-6 left-6 z-30 flex flex-col gap-2">
+                <div className="absolute left-2 top-2 z-30 flex flex-col gap-0.5 sm:left-6 sm:top-6 sm:gap-2">
                   <button
                     onClick={() => zoomIn()}
                     title="تكبير"
-                    className="w-10 h-10 rounded-xl bg-[#111010]/85 backdrop-blur-sm border border-[#c4a06a]/30 text-[#e8d1a7] flex items-center justify-center hover:bg-[#c4a06a]/20 transition-all shadow-lg active:scale-95"
+                    aria-label="تكبير الخريطة"
+                    className="flex h-11 w-11 items-center justify-center text-[#e8d1a7] transition-opacity hover:opacity-100 active:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#d9b875]"
                   >
-                    <ZoomIn className="w-5 h-5" />
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#c4a06a]/30 bg-[#111010]/85 shadow-lg backdrop-blur-sm transition-colors hover:bg-[#c4a06a]/20 sm:h-10 sm:w-10 sm:rounded-xl">
+                      <ZoomIn className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
+                    </span>
                   </button>
                   <button
                     onClick={() => zoomOut()}
                     title="تصغير"
-                    className="w-10 h-10 rounded-xl bg-[#111010]/85 backdrop-blur-sm border border-[#c4a06a]/30 text-[#e8d1a7] flex items-center justify-center hover:bg-[#c4a06a]/20 transition-all shadow-lg active:scale-95"
+                    aria-label="تصغير الخريطة"
+                    className="flex h-11 w-11 items-center justify-center text-[#e8d1a7] transition-opacity hover:opacity-100 active:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#d9b875]"
                   >
-                    <ZoomOut className="w-5 h-5" />
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#c4a06a]/30 bg-[#111010]/85 shadow-lg backdrop-blur-sm transition-colors hover:bg-[#c4a06a]/20 sm:h-10 sm:w-10 sm:rounded-xl">
+                      <ZoomOut className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
+                    </span>
                   </button>
                   <button
                     onClick={() => resetTransform()}
                     title="إعادة ضبط"
-                    className="w-10 h-10 rounded-xl bg-[#111010]/85 backdrop-blur-sm border border-[#c4a06a]/30 text-[#e8d1a7] flex items-center justify-center hover:bg-[#c4a06a]/20 transition-all shadow-lg active:scale-95"
+                    aria-label="إعادة ضبط الخريطة"
+                    className="flex h-11 w-11 items-center justify-center text-[#e8d1a7] transition-opacity hover:opacity-100 active:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#d9b875]"
                   >
-                    <RotateCcw className="w-4 h-4" />
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#c4a06a]/30 bg-[#111010]/85 shadow-lg backdrop-blur-sm transition-colors hover:bg-[#c4a06a]/20 sm:h-10 sm:w-10 sm:rounded-xl">
+                      <RotateCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
+                    </span>
                   </button>
                 </div>
 
@@ -266,7 +275,7 @@ export default function MonumentSelector({
                             <div className="relative flex items-center justify-center">
                               {/* Animated outer ripple */}
                               <div
-                                className="absolute w-10 h-10 sm:w-12 sm:h-12 rounded-full pointer-events-none"
+                                className="pointer-events-none absolute h-7 w-7 rounded-full sm:h-12 sm:w-12"
                                 style={{
                                   border: `2px solid ${mapConfig.accentColor}`,
                                   animation: isAvailable ? 'rippleGov 2s ease-out infinite' : 'none',
@@ -276,7 +285,7 @@ export default function MonumentSelector({
                               />
                               {/* Inner glowing dot */}
                               <div
-                                className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-[2.5px] border-[#fff8ee] shadow-lg"
+                                className="h-3.5 w-3.5 rounded-full border-2 border-[#fff8ee] shadow-lg sm:h-6 sm:w-6 sm:border-[2.5px]"
                                 style={{
                                   backgroundColor: mapConfig.accentColor,
                                   animation: isAvailable ? 'hotspotPulseGov 2s infinite' : 'none',
@@ -287,14 +296,14 @@ export default function MonumentSelector({
                             </div>
 
                             {/* Badge with monument title */}
-                            <div className="mt-2 px-3 py-1.5 rounded-xl bg-[#0b0a08]/92 backdrop-blur-md border border-[#c4a06a]/40 text-sand text-[11px] sm:text-xs font-bold shadow-2xl whitespace-nowrap flex items-center gap-1.5 group-hover:border-[#c4a06a] group-hover:text-[#fff8ee] transition-all">
+                            <div className="mt-1 flex max-w-[6.5rem] items-center justify-center gap-1 rounded-lg border border-[#c4a06a]/40 bg-[#0b0a08]/92 px-1.5 py-1 text-center text-[9px] font-bold leading-tight text-sand shadow-2xl backdrop-blur-md transition-all group-hover:border-[#c4a06a] group-hover:text-[#fff8ee] sm:mt-2 sm:max-w-none sm:gap-1.5 sm:whitespace-nowrap sm:rounded-xl sm:px-3 sm:py-1.5 sm:text-xs">
                               {isAvailable ? (
-                                <Sparkles className="w-3 h-3 text-[#c4a06a]" aria-hidden="true" />
+                                <Sparkles className="h-2.5 w-2.5 shrink-0 text-[#c4a06a] sm:h-3 sm:w-3" aria-hidden="true" />
                               ) : (
-                                <Clock3 className="w-3 h-3 text-[#d7bd8b]" aria-hidden="true" />
+                                <Clock3 className="h-2.5 w-2.5 shrink-0 text-[#d7bd8b] sm:h-3 sm:w-3" aria-hidden="true" />
                               )}
-                              <span>{monument.display_name}</span>
-                              <span className={`rounded-full px-1.5 py-0.5 text-[9px] ${isAvailable ? 'bg-emerald-400/15 text-emerald-200' : 'bg-[#c4a06a]/15 text-[#e0c89b]'}`}>
+                              <span className="line-clamp-2 sm:line-clamp-none">{monument.display_name}</span>
+                              <span className={`hidden rounded-full px-1.5 py-0.5 text-[9px] sm:inline-flex ${isAvailable ? 'bg-emerald-400/15 text-emerald-200' : 'bg-[#c4a06a]/15 text-[#e0c89b]'}`}>
                                 {isAvailable ? 'متاح الآن' : 'قريبًا'}
                               </span>
                             </div>
